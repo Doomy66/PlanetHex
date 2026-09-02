@@ -1,5 +1,15 @@
 import { describe, expect, it } from "vitest";
-import { parsePois, poiAt, poiPlacements, poiPosition, putPoi, removePoi, type Poi } from "./poi";
+import {
+  parsePois,
+  poiAt,
+  poiPlacements,
+  poiPosition,
+  putPoi,
+  removePoi,
+  rerollStarport,
+  starports,
+  type Poi,
+} from "./poi";
 import { parsePlanet } from "./planet";
 import { buildGrid, nearestCell } from "./grid/grid";
 import {
@@ -208,5 +218,80 @@ describe("the hex a click in the patch lands on", () => {
         expect(hexRound(dp + 0.15, dq - 0.1)).toEqual([dp, dq]);
       }
     }
+  });
+});
+
+describe("the starport a reroll speaks for", () => {
+  const comment = (at: LatticeRef, name = "Wreck"): Poi => ({
+    kind: "comment",
+    name,
+    narrative: "Still there.",
+    ref: at,
+  });
+
+  const here = ref(2, 10, 5);
+  const there = ref(7, 20, 11);
+
+  it("renames it to the new class and puts it on the new site", () => {
+    const { pois, outcome } = rerollStarport([starport(here, "Starport A")], "C", there);
+    expect(outcome).toBe("moved");
+    expect(pois).toHaveLength(1);
+    expect(pois[0]!.name).toBe("Starport C");
+    expect(pois[0]!.ref).toEqual(there);
+  });
+
+  it("keeps the narrative, which is the user's and not the profile's", () => {
+    const written: Poi = { ...starport(here, "Port Ozymandias"), narrative: "Burnt out in 1104." };
+    const { pois } = rerollStarport([written], "B", there);
+    expect(pois[0]!.narrative).toBe("Burnt out in 1104.");
+    expect(pois[0]!.kind).toBe("starport");
+  });
+
+  it("leaves the comments on the world alone", () => {
+    const note = comment(ref(4, 6, 2));
+    const { pois } = rerollStarport([note, starport(here)], "D", there);
+    expect(pois).toContainEqual(note);
+    expect(starports(pois)).toHaveLength(1);
+  });
+
+  it("takes the starport away where the new profile is X", () => {
+    const { pois, outcome } = rerollStarport([starport(here), comment(there)], "X", there);
+    expect(outcome).toBe("removed");
+    expect(starports(pois)).toHaveLength(0);
+    // The note about the world is not the profile's business either way.
+    expect(pois).toHaveLength(1);
+  });
+
+  it("moves nothing on a world carrying several", () => {
+    const ports = [starport(here, "Starport A"), starport(ref(9, 4, 1), "The old field")];
+    const { pois, outcome } = rerollStarport(ports, "E", there);
+    expect(outcome).toBe("several");
+    expect(pois).toEqual(ports);
+  });
+
+  it("does not place one on a world the user has emptied", () => {
+    const { pois, outcome } = rerollStarport([comment(here)], "A", there);
+    expect(outcome).toBe("none");
+    expect(starports(pois)).toHaveLength(0);
+  });
+
+  it("leaves it where it is when the profile cannot be read", () => {
+    const { pois, outcome } = rerollStarport([starport(here, "Starport A")], null, there);
+    expect(outcome).toBe("none");
+    expect(pois[0]!.ref).toEqual(here);
+    expect(pois[0]!.name).toBe("Starport A");
+  });
+
+  it("leaves it where it is when the terrain offers nowhere to go", () => {
+    const { pois, outcome } = rerollStarport([starport(here, "Starport A")], "C", null);
+    expect(outcome).toBe("none");
+    expect(pois[0]!.ref).toEqual(here);
+  });
+
+  it("hands back a list of its own rather than the one it was given", () => {
+    const before = [starport(here)];
+    const { pois } = rerollStarport(before, null, there);
+    expect(pois).not.toBe(before);
+    expect(pois).toEqual(before);
   });
 });

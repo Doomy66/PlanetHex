@@ -16,7 +16,17 @@ import { isIced, type IceCaps } from "./gen/ice";
 import { DEFAULT_FIELD_OPTIONS, type HeightFieldOptions } from "./gen/field";
 import { newPlanet, parseUwp, rollUwp, type Planet } from "./planet";
 import { starportSite } from "./gen/site";
-import { poiAt, poiPlacements, putPoi, removePoi, type Poi, type PoiKind } from "./poi";
+import {
+  poiAt,
+  poiPlacements,
+  putPoi,
+  removePoi,
+  rerollStarport,
+  starportName,
+  starports,
+  type Poi,
+  type PoiKind,
+} from "./poi";
 import { formatSectorHex, parseSectorHex, subsectorLetter } from "./location";
 import { planetDetail, type PlanetDetail } from "./gen/detail";
 import {
@@ -475,12 +485,37 @@ el("reset-world").addEventListener("click", () => {
   say("World settings back to what the seed and the profile give.");
 });
 
+// Spec 6.5.8.5: a reroll is a different kind of world on the same seed, so the
+// starport it came with is renamed to the new class and put where the new
+// terrain wants it. Resurfacing comes first, since the site is read off the
+// heights and the sea level the new profile makes. Typing a digit does none of
+// this, under 6.5.8.5.2.
 el("roll-uwp").addEventListener("click", () => {
   state.planet.uwp = rollUwp(state.planet.seed + ":" + Date.now());
   fields.uwp.value = state.planet.uwp;
   showDetail();
   resurface();
+  const uwp = parseUwp(state.planet.uwp);
+  const { pois, outcome } = rerollStarport(
+    state.planet.pois,
+    uwp === null ? null : uwp.starport,
+    starportRef(),
+  );
+  state.planet.pois = pois;
   markDirty();
+  if (outcome === "none") {
+    say(`Rolled ${state.planet.uwp}.`);
+    return;
+  }
+  showPois();
+  if (outcome === "moved") {
+    const port = starports(state.planet.pois)[0]!;
+    say(`Rolled ${state.planet.uwp}. ${port.name} moved to ${formatLattice(port.ref)}.`);
+  } else if (outcome === "removed") {
+    say(`Rolled ${state.planet.uwp}, which gives the world no starport, so it has none.`);
+  } else {
+    say(`Rolled ${state.planet.uwp}. The world has several starports, so none was moved.`);
+  }
 });
 
 /* Hex properties --------------------------------------------------------- */
@@ -655,16 +690,26 @@ function showPois(): void {
 function placeStarport(): void {
   const uwp = parseUwp(state.planet.uwp);
   if (uwp === null || uwp.starport === "X") return;
-  const site = starportSite(state.grid, state.heights, state.seaLevel);
-  const ref = site === null ? null : state.refs.of[site.cell];
-  if (!ref) return;
+  const ref = starportRef();
+  if (ref === null) return;
   state.planet.pois = putPoi(state.planet.pois, {
     kind: "starport",
-    name: `Starport ${uwp.starport}`,
+    name: starportName(uwp.starport),
     narrative: "",
-    ref: asLatticeRef(ref),
+    ref,
   });
   showPois();
+}
+
+/**
+ * Where the terrain now puts a starport, or null where it has nowhere to put
+ * one. Read off the surface in hand, so it answers for the world on screen
+ * rather than for the one the site was first chosen on. Spec 6.5.8.1.
+ */
+function starportRef(): LatticeRef | null {
+  const site = starportSite(state.grid, state.heights, state.seaLevel);
+  const ref = site === null ? null : state.refs.of[site.cell];
+  return ref ? asLatticeRef(ref) : null;
 }
 
 /**

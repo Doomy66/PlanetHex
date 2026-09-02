@@ -85,6 +85,66 @@ export function removePoi(pois: readonly Poi[], ref: LatticeRef): Poi[] {
   return pois.filter((poi) => latticeKey(poi.ref) !== key);
 }
 
+/** What the starport a profile gives a world is called. Spec 6.5.8. */
+export function starportName(letter: string): string {
+  return `Starport ${letter}`;
+}
+
+/** The starports on a world, in the order they were placed. */
+export function starports(pois: readonly Poi[]): Poi[] {
+  return pois.filter((poi) => poi.kind === "starport");
+}
+
+/**
+ * What a reroll did to the world's starport. Spec 6.5.8.5.
+ *
+ * `moved` and `removed` are the two that changed something. `several` is a world
+ * carrying more than one, which the reroll will not choose between under
+ * 6.5.8.5.3, and `none` covers the rest: a world with no starport to move, a
+ * profile that cannot be read, and a surface with nowhere to put one.
+ */
+export type StarportRerollOutcome = "moved" | "removed" | "several" | "none";
+
+export interface StarportReroll {
+  /** The list to keep, new in every case, as putPoi and removePoi are. */
+  readonly pois: Poi[];
+  readonly outcome: StarportRerollOutcome;
+}
+
+/**
+ * The world's starport after a new profile has been rolled. Spec 6.5.8.5.
+ *
+ * A reroll is a different kind of world on the same seed, so the class the port
+ * is and the ground it stands on have both changed and the site the terrain
+ * picked was picked for a world that is gone. The narrative comes across
+ * untouched under 6.5.8.5.1: what the user wrote is theirs, and only where the
+ * port is and what it is called belong to the profile.
+ *
+ * `letter` is the starport digit of the new profile, or null where the profile
+ * cannot be read. `ref` is where the terrain now puts a port, or null where it
+ * has nowhere to put one.
+ */
+export function rerollStarport(
+  pois: readonly Poi[],
+  letter: string | null,
+  ref: LatticeRef | null,
+): StarportReroll {
+  const ports = starports(pois);
+  // A world the user has emptied stays empty, and one carrying several is an
+  // arrangement the profile does not get to pick from. Spec 6.5.8.5.3 and .5.
+  if (ports.length === 0) return { pois: [...pois], outcome: "none" };
+  if (ports.length > 1) return { pois: [...pois], outcome: "several" };
+  const port = ports[0]!;
+  // An unreadable profile says nothing either way. Spec 6.5.8.5.4.
+  if (letter === null) return { pois: [...pois], outcome: "none" };
+  // X says the world has no starport, and 6.5.8.3 declines to place one there,
+  // so one already standing goes.
+  if (letter === "X") return { pois: removePoi(pois, port.ref), outcome: "removed" };
+  if (ref === null) return { pois: [...pois], outcome: "none" };
+  const moved: Poi = { ...port, name: starportName(letter), ref };
+  return { pois: putPoi(removePoi(pois, port.ref), moved), outcome: "moved" };
+}
+
 /**
  * The POIs of a loaded save. Unlike the seed of 6.4.3 a POI is not something the
  * planet cannot be rebuilt without, so an entry that cannot be read is dropped

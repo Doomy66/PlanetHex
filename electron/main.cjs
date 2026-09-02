@@ -6,7 +6,7 @@
 // standard and secure gives the page a real origin instead of a null one, which
 // module loading needs and the File System Access API of src/io/files.ts wants.
 
-const { app, BrowserWindow, protocol, net, shell } = require("electron");
+const { app, BrowserWindow, dialog, protocol, net, shell } = require("electron");
 const path = require("node:path");
 const fs = require("node:fs");
 const { pathToFileURL } = require("node:url");
@@ -65,6 +65,31 @@ function createWindow() {
   const failsafe = setTimeout(reveal, 5000);
   win.once("closed", () => clearTimeout(failsafe));
   win.setMenuBarVisibility(false);
+
+  // The unsaved-changes warning of Spec 6.4.4.3.1.
+  //
+  // src/main.ts cancels the unload while the planet has unsaved edits. A browser
+  // answers that with its own Leave site? dialog; Chromium embedded has no such
+  // dialog and hands the decision here instead. An embedder that does not listen
+  // leaves the cancel standing with nothing said, and the window then ignores the
+  // close button, which is the application ignoring the user.
+  //
+  // preventDefault here means let the unload through, which is the opposite of
+  // how it reads: the event being prevented is the page's refusal, not the close.
+  win.webContents.on("will-prevent-unload", (event) => {
+    const choice = dialog.showMessageBoxSync(win, {
+      type: "warning",
+      title: "PlanetHex",
+      message: "This planet has unsaved changes.",
+      detail: "Close it and lose them?",
+      buttons: ["Close without saving", "Cancel"],
+      // Cancel is the safe one, so it is what Enter and Escape both land on.
+      defaultId: 1,
+      cancelId: 1,
+      noLink: true,
+    });
+    if (choice === 0) event.preventDefault();
+  });
 
   // Anything that is not the application itself belongs in the user's browser,
   // not in a chromeless Electron window.

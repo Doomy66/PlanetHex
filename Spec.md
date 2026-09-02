@@ -428,6 +428,10 @@ A browser application that generates planet surfaces procedurally and shows them
 
 6.4.4.3 The page-exit warning is the browser's own dialog. Its wording cannot be set, and browsers suppress it unless the user has interacted with the page. The New and Load prompts are the application's own, so those can name the planet and say what is about to be lost.
 
+6.4.4.3.1 The desktop shell has no such dialog to fall back on. Chromium embedded leaves the warning to whatever is embedding it, and an embedder that does nothing leaves the refusal standing with nothing on screen: the user presses the close button and the window ignores them, which is worse than either warning them or letting them go. So the shell puts up a dialog of its own, and the wording there is the application's, since it is the application asking.
+
+6.4.4.3.2 Its two answers are to close without saving or to stay. Saving is not among them, because a save needs the folder of 6.4.1.1 and a picker cannot be opened from the shell on the page's behalf. Staying is the safe answer, so it is the one the dialogue starts on.
+
 6.4.4.4 The left panel shows whether the open planet has unsaved edits, so the state is visible before a prompt appears rather than only at the moment something is at risk.
 
 6.4.2 The document carries a version number. The later phases in 6.5 and 6.7 add fields, and a loader that meets a version it does not know should say so rather than opening a partial planet.
@@ -471,6 +475,18 @@ A browser application that generates planet surfaces procedurally and shows them
 6.5.8.3 A profile of X has no starport to place, and an unreadable profile says nothing either way, so neither gets one.
 
 6.5.8.4 It is an ordinary point of interest once placed. The user can move it, rename it, write it up, or delete it, and nothing regenerates it: only New places one, so a planet the user has emptied stays empty.
+
+6.5.8.5 Rolling a new profile renames the world's starport and places it again. A reroll is a different kind of world on the same seed: the letter is a different letter, and under 3.4 the ground is different ground, so the site the terrain picked was picked for a world that no longer exists. Left where it was, the port is as likely to be in the sea as on the coast it was put on.
+
+6.5.8.5.1 The narrative comes across untouched, as it does through a move under 6.5.9.3. What the user wrote about the place is theirs. Where the port is and what class it is are the profile's, and the reroll is what asked for a new one.
+
+6.5.8.5.2 Editing a digit by hand does not move it. That edit shapes the surface as much as a reroll does, so the distinction is not in what changes underneath but in what was asked for: a digit is typed by someone working on this world with its ports in view, and moving one under them at every keystroke is the application arguing with the person editing. A reroll asks for a different world outright, and gets one.
+
+6.5.8.5.3 Only where the world carries one starport. Several is an arrangement the user made, and nothing in the profile says which of them it is talking about. The reroll leaves all of them and says so, rather than picking one.
+
+6.5.8.5.4 A new profile of X takes the starport away. The profile is what says whether a world has one, and 6.5.8.3 already declines to place a port on such a world; leaving one standing would be the same contradiction arrived at from the other side. An unreadable profile says nothing either way, so it leaves what is there alone.
+
+6.5.8.5.5 A world the user has emptied stays empty, as 6.5.8.4 has it. The reroll moves the starport the world has; it is not a second route to the one only New places.
 
 6.5.9 The dialogue opened on a point with nothing on it offers Move Here: a list of the points of interest the world already has, and a button that moves the chosen one to this point.
 
