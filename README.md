@@ -59,8 +59,13 @@ npm run desktop
 ```
 
 That builds the static bundle and opens it in Electron, which serves it over a
-custom `app://` scheme so the page has a real origin. `npm run package` produces
-a single portable Windows executable in `release/`.
+custom `app://` scheme so the page has a real origin.
+
+`npm run package` produces a Windows installer, `PlanetHex-Setup-<version>.exe`.
+It installs per user, so it needs no administrator, and it puts nothing outside
+the user's own profile. The output goes to `%LOCALAPPDATA%/PlanetHex/release`
+unless `PLANETHEX_OUT` names somewhere else; the project's own drive is ReFS,
+which electron-builder cannot package onto, so the build has to land elsewhere.
 
 ## Scripts
 
@@ -71,8 +76,9 @@ a single portable Windows executable in `release/`.
 | `npm test` | Run the test suite once. |
 | `npm run test:watch` | Run it on every change. |
 | `npm run desktop` | Build, then open the desktop shell. |
-| `npm run icon` | Regenerate `build/icon.png` from `build/icon.svg`. |
-| `npm run package` | Build the portable executable. |
+| `npm run icon` | Regenerate `build/icon.ico` from `build/icon.svg`. |
+| `npm run sidebar` | Regenerate the installer's sidebar image. |
+| `npm run package` | Build the Windows installer. |
 
 ## Layout
 

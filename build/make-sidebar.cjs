@@ -1,30 +1,28 @@
-// Turns the splash below into build/splash.bmp. Run with `npm run splash`.
+// Draws build/installerSidebar.bmp for the installer. Run with `npm run sidebar`.
 //
-// The portable executable is a self-extracting archive: it unpacks the whole
-// application into a temp folder and only then starts it. Nothing of ours is
-// running during that wait, so nothing of ours can say anything about it. The
-// one thing that can is the extractor, which will show a bitmap if it is given
-// one. Hence a picture rather than a message: there is no process of ours alive
-// to write a message with.
+// NSIS puts this panel down the left of the welcome and finish pages, so it is
+// the first thing a user sees of the application. It has to be an uncompressed
+// BMP of exactly 164x314: the installer draws it at that size and stretches
+// anything else.
 //
 // Electron does the drawing, as it does for the icon in make-icon.cjs, so there
-// is no image toolchain to install. NSIS wants an uncompressed BMP, which is
-// written out by hand at the foot of this file.
+// is no image toolchain to install. The BMP is written out by hand below.
 
 const { app, BrowserWindow } = require("electron");
 const fs = require("node:fs");
 const path = require("node:path");
 
-const WIDTH = 420;
-const HEIGHT = 240;
-const BMP = path.join(__dirname, "splash.bmp");
+// Fixed by NSIS, not by us.
+const WIDTH = 164;
+const HEIGHT = 314;
+const BMP = path.join(__dirname, "installerSidebar.bmp");
 
 /**
  * A 24 bit uncompressed BMP from Electron's BGRA bitmap.
  *
  * BMP rows run bottom to top and each is padded to a multiple of four bytes.
- * Alpha is dropped: the splash sits on the desktop as an opaque rectangle, and
- * the extractor does nothing with a transparency channel.
+ * Alpha is dropped: the sidebar is an opaque panel and the installer does
+ * nothing with a transparency channel.
  */
 function buildBmp(bgra, width, height) {
   const stride = Math.ceil((width * 3) / 4) * 4;
@@ -56,8 +54,8 @@ function buildBmp(bgra, width, height) {
   return Buffer.concat([header, info, pixels]);
 }
 
-// The palette is the application's own, from src/style.css, so the wait looks
-// like the front of the program rather than like something else starting.
+// The palette is the application's own, from src/style.css, so the installer
+// looks like the front of the program rather than like a generic setup.
 const PAGE = `<style>
     html, body { margin: 0; height: 100%; }
     body {
@@ -65,25 +63,26 @@ const PAGE = `<style>
       flex-direction: column;
       align-items: center;
       justify-content: center;
-      gap: 14px;
+      gap: 18px;
+      padding: 0 14px;
       background: #14161a;
       color: #dfe3ea;
-      font: 15px/1.5 "Segoe UI", system-ui, sans-serif;
-      border: 1px solid #2e333c;
+      font: 13px/1.45 "Segoe UI", system-ui, sans-serif;
+      text-align: center;
       box-sizing: border-box;
     }
-    h1 { margin: 0; font-size: 22px; font-weight: 600; letter-spacing: 0.06em; }
-    p { margin: 0; color: #8b93a1; font-size: 13px; }
+    h1 { margin: 0; font-size: 19px; font-weight: 600; letter-spacing: 0.05em; }
+    p { margin: 0; color: #8b93a1; font-size: 11px; }
     svg { display: block; }
   </style>
-  <svg width="56" height="56" viewBox="0 0 24 24" fill="none" stroke="#e0b341"
+  <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="#e0b341"
        stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
     <path d="M4 18v-5l4 -2l4 2v5l-4 2l-4 -2" />
     <path d="M8 11v-5l4 -2l4 2v5" />
     <path d="M12 13l4 -2l4 2v5l-4 2l-4 -2" />
   </svg>
   <h1>PlanetHex</h1>
-  <p>Unpacking the application. This takes a moment.</p>`;
+  <p>Planet surfaces as a hex map and a globe.</p>`;
 
 app.whenReady().then(async () => {
   const win = new BrowserWindow({
@@ -110,6 +109,11 @@ app.whenReady().then(async () => {
   }
 
   const { width, height } = shot.getSize();
+  if (width !== WIDTH || height !== HEIGHT) {
+    console.error(`capture is ${width}x${height}, and NSIS wants ${WIDTH}x${HEIGHT}`);
+    app.exit(1);
+    return;
+  }
   fs.writeFileSync(BMP, buildBmp(shot.toBitmap(), width, height));
   console.log(`Wrote ${BMP} (${width}x${height})`);
   app.exit(0);
