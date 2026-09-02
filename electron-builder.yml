@@ -1,0 +1,26 @@
+# A single portable exe: the user downloads it, double-clicks it, and there is
+# nothing to install and nothing to uninstall.
+appId: com.planethex.app
+productName: PlanetHex
+# three and the rest are bundled into dist/ by Vite, so node_modules has no
+# place in the package.
+files:
+  - dist/**
+  - electron/**
+  - package.json
+win:
+  target: portable
+  # Generated from build/icon.svg by `npm run icon`.
+  icon: build/icon.ico
+portable:
+  artifactName: PlanetHex-${version}.exe
+# The MIT licence of the Tabler icon used for the application icon has to travel
+# with the binary that embeds it.
+extraResources:
+  - from: build/LICENSE-tabler-icons.txt
+    to: LICENSE-tabler-icons.txt
+  # The application's own licence, for a reader who goes looking for a file
+  # called one. The help of Spec 4.8 carries the same text inside the program,
+  # since a file beside a portable exe is left behind the first time it moves.
+  - from: LICENSE
+    to: LICENSE.txt

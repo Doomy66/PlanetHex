@@ -1,0 +1,501 @@
+:root {
+  color-scheme: dark;
+  /* The two kinds of point of interest, Spec 5.5.1. Red for a starport, pale
+     grey for a comment, both bright enough to be seen over sea, land, and ice
+     and neither of them the accent the selection is drawn in. */
+  --poi-starport: #ff4d47;
+  --poi-comment: #d7dde6;
+  --bg: #14161a;
+  --panel: #1c1f25;
+  --line: #2e333c;
+  --text: #dfe3ea;
+  --muted: #8b93a1;
+  --accent: #e0b341;
+  /* The selected hex, Spec 5.5.4. The accent, which is the gold this application
+     marks the user's own choices in everywhere else. */
+  --select: var(--accent);
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font: 13px/1.5 "Segoe UI", system-ui, sans-serif;
+}
+
+.layout {
+  display: grid;
+  grid-template-columns: 280px minmax(0, 1fr) minmax(0, 34vw);
+  grid-template-rows: minmax(0, 100vh);
+  height: 100vh;
+  overflow: hidden;
+}
+
+.panel { overflow: auto; padding: 12px 14px; }
+.panel-left { background: var(--panel); border-right: 1px solid var(--line); }
+
+/* Collapsing leaves a rail wide enough to hold the button that brings it back,
+   so the panel is never shut in a way that cannot be undone. */
+.layout.left-collapsed { grid-template-columns: 34px minmax(0, 1fr) minmax(0, 34vw); }
+.left-collapsed .panel-left { padding: 10px 0; overflow: hidden; }
+.left-collapsed .panel-body,
+.left-collapsed .panel-head h1,
+.left-collapsed .panel-head .help-open,
+.left-collapsed .panel-head .dirty { display: none; }
+.left-collapsed .panel-head { justify-content: center; }
+
+.collapse {
+  flex: none;
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  line-height: 1;
+  font-size: 13px;
+  color: var(--muted);
+  background: transparent;
+  border: 1px solid var(--line);
+  border-radius: 3px;
+  cursor: pointer;
+}
+.collapse:hover { color: var(--text); border-color: var(--muted); }
+.collapse::before { content: "‹"; }
+.left-collapsed .collapse::before { content: "›"; }
+
+.panel-centre {
+  display: grid;
+  grid-template-rows: minmax(0, 1fr) minmax(0, 30%);
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+}
+.panel-map { display: flex; padding: 8px; min-height: 0; }
+
+/* Everything here is generated, so nothing in it can be typed into. */
+.panel-summary {
+  background: var(--panel);
+  border-top: 1px solid var(--line);
+  display: grid;
+  /* Side by side where there is room for both, stacked where there is not. A
+     fixed column for the details squeezes the narrative to one word a line in a
+     narrow window. */
+  grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+  gap: 10px 22px;
+  padding: 10px 14px;
+  overflow: auto;
+  min-height: 0;
+}
+/* One column of details, with the narrative beside it. */
+.panel-summary .props { align-content: start; }
+.panel-summary .description { margin: 0; align-self: start; }
+.panel-right {
+  display: grid;
+  grid-template-rows: minmax(0, 1fr) minmax(0, 44%);
+  border-left: 1px solid var(--line);
+  min-width: 0;
+  min-height: 0;
+  height: 100%;
+  overflow: hidden;
+}
+.panel-globe {
+  background: #0a0c10;
+  padding: 0;
+  overflow: hidden;
+}
+.panel-local {
+  background: var(--panel);
+  border-top: 1px solid var(--line);
+  display: flex;
+  flex-direction: column;
+  padding: 8px 10px 10px;
+  overflow: hidden;
+}
+.panel-local h2 { margin: 0 0 6px; }
+.localview-wrap { position: relative; flex: 1; min-height: 0; display: flex; }
+
+/* The hex readout sits over the panel that draws the hex, rather than across the
+   window from it. */
+.hex-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  z-index: 1;
+  min-width: 132px;
+  padding: 6px 9px;
+  font-size: 11px;
+  background: rgba(18, 20, 25, 0.84);
+  border: 1px solid var(--line);
+  border-radius: 3px;
+  pointer-events: none;
+}
+.hex-overlay[hidden] { display: none; }
+.hex-overlay div { gap: 16px; padding: 1px 0; }
+.localview { width: 100%; height: 100%; }
+.localview polygon { stroke: #0d0f12; stroke-width: 0.04; }
+.localview .localview-hex {
+  fill: none;
+  stroke: var(--select);
+  stroke-width: 0.5;
+  pointer-events: none;
+}
+.localview .localview-empty {
+  fill: var(--muted);
+  font-size: 7px;
+  text-anchor: middle;
+}
+
+.scalebar path { fill: none; stroke: var(--text); stroke-width: 0.5; vector-effect: non-scaling-stroke; }
+/* The bar sits over the map, so its text is haloed rather than trusting the
+   ground behind it to be dark. */
+.scalebar text {
+  fill: var(--text);
+  paint-order: stroke;
+  stroke: rgba(10, 12, 16, 0.8);
+  stroke-width: 2px;
+  stroke-linejoin: round;
+  vector-effect: non-scaling-stroke;
+}
+.scalebar .scalebar-hex { fill: #b6becd; }
+.globe { width: 100%; height: 100%; }
+.globe canvas { display: block; cursor: grab; }
+.globe canvas:active { cursor: grabbing; }
+
+.panel-head { display: flex; align-items: baseline; gap: 8px; }
+/* The name is PlanetHex, spelled with those capitals. Uppercasing it throws
+   away the one thing its spelling says. */
+h1 { font-size: 15px; margin: 0 0 10px; letter-spacing: 0.06em; }
+h2 { font-size: 11px; margin: 18px 0 8px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.08em; }
+
+.dirty { color: var(--accent); font-size: 11px; }
+
+.actions { display: flex; gap: 6px; }
+button {
+  background: #262b33;
+  color: var(--text);
+  border: 1px solid var(--line);
+  border-radius: 3px;
+  padding: 5px 10px;
+  font: inherit;
+  cursor: pointer;
+}
+button:hover { background: #303742; }
+
+.status { color: var(--muted); min-height: 1.5em; margin: 8px 0 0; }
+.status.error { color: #e08a7a; }
+
+label { display: block; margin-bottom: 8px; color: var(--muted); }
+.row { display: flex; gap: 6px; align-items: center; }
+input, textarea {
+  width: 100%;
+  margin-top: 3px;
+  background: #12151a;
+  color: var(--text);
+  border: 1px solid var(--line);
+  border-radius: 3px;
+  padding: 5px 7px;
+  font: inherit;
+}
+textarea { resize: vertical; }
+.hint { color: var(--muted); white-space: nowrap; font-size: 11px; }
+.hint.error { color: #e08a7a; }
+/* Under a row of fields rather than beside one, since the row has no space left
+   and the hint belongs to the pair. */
+.hint.under { margin: -6px 0 8px; }
+
+/* World settings. An overruled value is marked, so the rolled ones can be told
+   from the ones a referee has decided. Spec 6.15.3. */
+.linky {
+  background: none; border: 0; padding: 0 0 0 8px; cursor: pointer;
+  color: var(--muted); font: inherit; text-transform: none; letter-spacing: 0;
+  text-decoration: underline; text-underline-offset: 2px;
+}
+.linky:hover { color: var(--text); }
+input.overridden { border-color: var(--accent, #e0b341); }
+
+/* Two fields on one line, where the second is narrow enough to leave the first
+   a usable width. Sector and hex are one thing under 6.14, so they read better
+   side by side than stacked. */
+.row.fields { align-items: flex-end; margin-bottom: 8px; }
+.row.fields label { margin-bottom: 0; }
+.row.fields .grow { flex: 1 1 auto; min-width: 0; }
+/* Four digits and no more, so the field looks like the entry it takes rather
+   than inviting a sentence. */
+.hexfield { flex: 0 0 auto; width: 8ch; font-variant-numeric: tabular-nums; }
+
+.props { margin: 0; }
+.props div { display: flex; justify-content: space-between; gap: 10px; padding: 2px 0; min-width: 0; }
+.props div[hidden] { display: none; }
+/* The POI row holds one line per point of interest the hex covers, each in the
+   colour of its kind, so the readout says what is there rather than how many.
+   Spec 4.5.6.1. */
+#h-poi { display: flex; flex-direction: column; align-items: flex-end; }
+#h-poi .poi-line { color: var(--poi); overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
+.props dt { color: var(--muted); }
+.props dd { margin: 0; font-variant-numeric: tabular-nums; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+.description { margin: 10px 0 0; color: var(--muted); font-style: italic; line-height: 1.45; }
+
+/* An arrow until a pan actually starts. The map is a thing to point at hex by
+   hex before it is a thing to drag, and an open hand covers the hex under it and
+   has no tip to aim with. The closed hand appears once the map is moving, where
+   it says what is happening rather than getting in the way. Spec 4.3.6. */
+.hexmap { width: 100%; height: 100%; cursor: default; touch-action: none; }
+.hexmap.dragging { cursor: grabbing; }
+.hexmap polygon { stroke: #0d0f12; stroke-width: var(--hex-stroke, 0.006); }
+.hexmap .face-outline { fill: none; stroke: #f2f4f8; stroke-width: 0.012; opacity: 0.45; pointer-events: none; }
+.hexmap .selected-hex { fill: none; stroke: var(--select); stroke-width: var(--hex-stroke, 0.006); pointer-events: none; }
+
+.placeholder { color: var(--muted); }
+
+/* The detail slider of 2.2.2. The generic input rule above gives every field a
+   box, and a track inside a box reads as a field the user has to fill in. */
+input[type="range"] {
+  flex: 1 1 auto;
+  width: auto;
+  min-width: 90px;
+  padding: 0;
+  border: none;
+  background: none;
+  accent-color: var(--accent);
+  cursor: pointer;
+}
+input[type="range"] + .hint { white-space: nowrap; }
+
+/* Points of interest. Spec 5.5 ------------------------------------------- */
+
+.poi-starport { --poi: var(--poi-starport); }
+.poi-comment { --poi: var(--poi-comment); }
+
+/* An outline rather than a fill, so the terrain under a POI can still be read. */
+/* Both rings sit in the seam the hexes leave between them, by 4.3.4.1, so a mark
+   colours the gap rather than the ground it is about. */
+.hexmap .poi-hex {
+  fill: none;
+  stroke: var(--poi);
+  stroke-width: var(--hex-stroke, 0.006);
+  pointer-events: none;
+}
+/* In the seam, as 4.3.4.1 has it for the map, but at the map's proportion of a
+   hex rather than this panel's. The patch draws its seams four times finer, and
+   a mark that thin is a mark nobody can see. Spec 4.5.7.4. */
+.localview .poi-local {
+  fill: none;
+  stroke: var(--poi);
+  stroke-width: 0.15;
+  pointer-events: none;
+}
+.localview .poi-label {
+  fill: var(--poi);
+  font-size: 1.5px;
+  text-anchor: middle;
+  paint-order: stroke;
+  stroke: rgba(10, 12, 16, 0.85);
+  stroke-width: 0.6px;
+  stroke-linejoin: round;
+  pointer-events: none;
+}
+
+/* The map panel is the tooltip's frame, so it can be kept inside the map. */
+.panel-map { position: relative; }
+.poi-tip {
+  position: absolute;
+  z-index: 2;
+  max-width: 240px;
+  padding: 6px 9px;
+  background: rgba(18, 20, 25, 0.94);
+  border: 1px solid var(--poi, var(--line));
+  border-radius: 3px;
+  pointer-events: none;
+}
+.poi-tip[hidden] { display: none; }
+/* One entry per point of interest the hex covers, ruled off from each other so a
+   hex holding several reads as a list rather than as one run-on note. */
+.poi-tip-entry + .poi-tip-entry { margin-top: 6px; padding-top: 6px; border-top: 1px solid var(--line); }
+.poi-tip strong { color: var(--poi, var(--text)); }
+.poi-tip-kind { color: var(--muted); font-size: 11px; margin-left: 6px; }
+.poi-tip p { margin: 4px 0 0; color: var(--text); white-space: pre-wrap; }
+
+.poi-list { list-style: none; margin: 0 0 8px; padding: 0; }
+.poi-list li { margin: 0 0 3px; }
+/* A row rather than a button-shaped button: the list is an index of what is on
+   the world, and a column of pressable slabs reads as a toolbar. */
+.poi-entry {
+  display: block;
+  width: 100%;
+  text-align: left;
+  padding: 3px 6px;
+  background: transparent;
+  border: 1px solid transparent;
+  border-left: 3px solid var(--poi);
+  border-radius: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.poi-entry:hover { background: #262b33; border-color: var(--line); border-left-color: var(--poi); }
+
+.poi-dialog {
+  width: min(420px, 90vw);
+  padding: 14px 16px 16px;
+  background: var(--panel);
+  color: var(--text);
+  border: 1px solid var(--line);
+  border-radius: 4px;
+}
+.poi-dialog::backdrop { background: rgba(6, 8, 12, 0.6); }
+.poi-dialog h2 { margin: 0 0 2px; }
+/* Sentences rather than labels, so they wrap instead of running off the edge. */
+.poi-dialog .hint { white-space: normal; }
+/* The move control reads as an alternative to filling the form in, so it sits
+   under the coordinate the dialogue is about rather than among the fields. */
+.poi-move { display: flex; gap: 6px; align-items: flex-end; margin: 10px 0 2px; }
+.poi-move button { white-space: nowrap; }
+.poi-move[hidden] { display: none; }
+.poi-move label { margin: 0; }
+.poi-move .grow { flex: 1 1 auto; min-width: 0; }
+select {
+  width: 100%;
+  margin-top: 3px;
+  background: #12151a;
+  color: var(--text);
+  border: 1px solid var(--line);
+  border-radius: 3px;
+  padding: 5px 7px;
+  font: inherit;
+}
+
+.poi-kinds {
+  display: flex;
+  gap: 14px;
+  margin: 10px 0;
+  padding: 6px 10px 8px;
+  border: 1px solid var(--line);
+  border-radius: 3px;
+}
+.poi-kinds legend { color: var(--muted); font-size: 11px; text-transform: uppercase; letter-spacing: 0.08em; }
+label.inline { display: flex; align-items: center; gap: 5px; margin: 0; color: var(--text); }
+label.inline input { width: auto; margin: 0; accent-color: var(--accent); }
+.poi-actions { margin-top: 12px; }
+/* Delete sits away from Save, so the destructive one is not the neighbour of the
+   one the user came for. */
+#poi-delete { margin-left: auto; color: #e08a7a; }
+#poi-delete[hidden] { display: none; }
+
+/* Help, Spec 4.8 --------------------------------------------------------- */
+
+/* Sits at the far end of the header, away from the collapse button, so the one
+   that shuts the panel and the one that explains it are not neighbours. */
+.help-open {
+  flex: none;
+  margin-left: auto;
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  line-height: 1;
+  font-size: 12px;
+  color: var(--muted);
+  background: transparent;
+  border: 1px solid var(--line);
+  border-radius: 50%;
+  cursor: pointer;
+}
+.help-open:hover { color: var(--text); border-color: var(--muted); }
+
+/* Wider than the POI dialogue and capped in height: this is prose to be read,
+   not a form to be filled in, and the licence alone is longer than a panel. */
+.help-dialog {
+  width: min(680px, 92vw);
+  max-height: 88vh;
+  padding: 0;
+  background: var(--panel);
+  color: var(--text);
+  border: 1px solid var(--line);
+  border-radius: 4px;
+}
+.help-dialog::backdrop { background: rgba(6, 8, 12, 0.7); }
+
+/* The heading stays put while the text scrolls under it, so the way out is
+   always on screen however far down the licence the reader is. */
+.help-head {
+  position: sticky;
+  top: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 16px 10px;
+  background: var(--panel);
+  border-bottom: 1px solid var(--line);
+}
+.help-head h2 { margin: 0; color: var(--text); font-size: 12px; }
+.help-x {
+  margin-left: auto;
+  padding: 0 6px;
+  line-height: 1;
+  font-size: 16px;
+  color: var(--muted);
+  background: transparent;
+  border: 0;
+  cursor: pointer;
+}
+.help-x:hover { color: var(--text); }
+
+.help-body { padding: 4px 16px 0; }
+/* A measure short enough to read. The dialogue is as wide as it is for the
+   licence, which is set in fixed pitch and cannot be narrowed. */
+.help-body p { margin: 0 0 10px; max-width: 62ch; }
+.help-body h3 {
+  margin: 16px 0 6px;
+  font-size: 11px;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+.help-body b { color: #f0f3f8; font-weight: 600; }
+.help-body code {
+  padding: 1px 4px;
+  background: #12151a;
+  border: 1px solid var(--line);
+  border-radius: 3px;
+  font-family: ui-monospace, Consolas, monospace;
+  font-size: 12px;
+}
+
+/* Term and description on one line, since every description here is a sentence
+   about the term rather than a paragraph under it. */
+.help-list { margin: 0 0 10px; }
+.help-list dt {
+  float: left;
+  clear: left;
+  width: 13ch;
+  color: var(--muted);
+}
+.help-list dd { margin: 0 0 4px 14ch; max-width: 52ch; }
+
+.help-note { color: var(--muted); }
+
+/* Fixed pitch and wrapped as written: a licence is quoted, not reflowed. It
+   flows in the dialogue's own scroll rather than carrying a box of its own, or
+   a reader scrolling the help is caught inside it. */
+.help-licence {
+  margin: 0 0 10px;
+  padding: 10px 12px;
+  background: #12151a;
+  border: 1px solid var(--line);
+  border-radius: 3px;
+  color: var(--muted);
+  font-family: ui-monospace, Consolas, monospace;
+  font-size: 11px;
+  line-height: 1.45;
+  white-space: pre-wrap;
+}
+
+/* Sticky at the foot for the same reason the heading is stuck at the head. */
+.help-actions {
+  position: sticky;
+  bottom: 0;
+  justify-content: flex-end;
+  padding: 10px 16px 12px;
+  background: var(--panel);
+  border-top: 1px solid var(--line);
+}

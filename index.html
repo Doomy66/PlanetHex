@@ -1,0 +1,305 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'none'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; connect-src 'self'; worker-src 'self' blob:; base-uri 'none'; form-action 'none'"
+    />
+    <!-- The icon is the `hexagons` glyph from Tabler Icons by Pawel Kuna, used
+         under the MIT licence. The licence text ships with the site as
+         /LICENSE-tabler-icons.txt, and with the desktop build as a resource
+         beside the executable. -->
+    <link rel="icon" type="image/svg+xml" href="./icon.svg" />
+    <link rel="alternate icon" href="./favicon.ico" sizes="16x16 32x32 48x48" />
+    <title>PlanetHex</title>
+  </head>
+  <body>
+    <main class="layout">
+      <section class="panel panel-left" id="left-panel">
+        <header class="panel-head">
+          <button
+            id="toggle-left"
+            class="collapse"
+            type="button"
+            aria-expanded="true"
+            aria-controls="left-body"
+            title="Collapse the panel"
+          ></button>
+          <h1>PlanetHex</h1>
+          <span id="dirty" class="dirty" hidden>unsaved</span>
+          <button id="help" class="help-open" type="button" title="Help and licence (F1 or ?)">?</button>
+        </header>
+
+        <div id="left-body" class="panel-body">
+
+        <div class="actions">
+          <button id="new" type="button">New</button>
+          <button id="save" type="button">Save</button>
+          <button id="load" type="button">Load</button>
+        </div>
+        <p id="status" class="status" role="status"></p>
+
+        <h2>Planet</h2>
+        <label>Name<input id="p-name" type="text" autocomplete="off" /></label>
+        <div class="row fields">
+          <label class="grow">Sector<input id="p-sector" type="text" autocomplete="off" placeholder="Spinward Marches" /></label>
+          <label>Hex<input id="p-hex" class="hexfield" type="text" autocomplete="off" inputmode="numeric" maxlength="5" placeholder="1910" /></label>
+        </div>
+        <div id="subsector" class="hint under"></div>
+        <label>UWP<span class="row"><input id="p-uwp" type="text" autocomplete="off" /><button id="roll-uwp" type="button" title="Roll a new profile">Roll</button></span></label>
+        <label>Seed<input id="p-seed" type="text" autocomplete="off" /></label>
+        <label>Detail<span class="row"><input id="p-size" type="range" min="0" max="3" step="1" list="detail-stops" /><span id="cell-count" class="hint"></span></span></label>
+        <datalist id="detail-stops"><option value="0"></option><option value="1"></option><option value="2"></option><option value="3"></option></datalist>
+
+        <h2>
+          World
+          <button id="reset-world" class="linky" type="button" title="Back to the rolled values">reset</button>
+        </h2>
+        <div class="row fields">
+          <label class="grow">Axial tilt&deg;<input id="p-tilt" type="number" min="0" max="180" step="0.1" autocomplete="off" /></label>
+          <label class="grow">Day, hours<input id="p-rotation" type="number" min="0.1" step="0.1" autocomplete="off" /></label>
+        </div>
+        <div id="rotation-note" class="hint under"></div>
+        <div class="row fields">
+          <label class="grow">Orbit, AU<input id="p-orbit" type="number" min="0.05" max="50" step="0.01" autocomplete="off" /></label>
+          <label class="grow">Mean temp&deg;C<input id="p-temp" type="number" step="1" autocomplete="off" /></label>
+        </div>
+        <div id="orbit-note" class="hint under"></div>
+
+        <label>Narrative<textarea id="p-narrative" rows="6"></textarea></label>
+
+        <h2>Points of interest</h2>
+        <ul id="poi-list" class="poi-list"></ul>
+        </div>
+      </section>
+
+      <div class="panel-centre">
+        <section class="panel panel-map" id="map-panel">
+          <div id="poi-tip" class="poi-tip" hidden></div>
+        </section>
+        <section class="panel panel-summary">
+          <dl id="planet-detail" class="props"></dl>
+          <p id="p-description" class="description"></p>
+        </section>
+      </div>
+
+      <div class="panel-right">
+        <section class="panel panel-globe" id="globe-panel"></section>
+        <section class="panel panel-local" id="local-panel">
+          <h2>Local detail</h2>
+          <div class="localview-wrap" id="local-view">
+            <dl id="hex-props" class="props hex-overlay" hidden>
+              <div><dt>Hex</dt><dd id="h-id">&mdash;</dd></div>
+              <div><dt>Height</dt><dd id="h-height">&mdash;</dd></div>
+              <div><dt>Terrain</dt><dd id="h-band">&mdash;</dd></div>
+              <div><dt>Sides</dt><dd id="h-sides">&mdash;</dd></div>
+              <div><dt>Lat, lon</dt><dd id="h-latlon">&mdash;</dd></div>
+              <div id="h-poi-row" hidden><dt>POI</dt><dd id="h-poi">&mdash;</dd></div>
+            </dl>
+          </div>
+        </section>
+      </div>
+    </main>
+
+    <!-- The POI dialogue of 4.5.7: one hex, one point of interest, created,
+         edited, or dropped in the one place. -->
+    <dialog id="poi-dialog" class="poi-dialog">
+      <form id="poi-form" method="dialog">
+        <h2 id="poi-dialog-title">Point of interest</h2>
+        <p class="hint" id="poi-dialog-hex"></p>
+        <!-- Offered only on a point with nothing on it: the alternative to
+             writing a new one here is bringing one that already exists. -->
+        <div id="poi-move" class="poi-move" hidden>
+          <select id="poi-move-pick" class="grow" aria-label="Point of interest to move here"></select>
+          <button id="poi-move-go" type="button">Move Here</button>
+        </div>
+        <fieldset class="poi-kinds">
+          <legend>Kind</legend>
+          <label class="inline"><input type="radio" name="poi-kind" value="starport" /> Starport</label>
+          <label class="inline"><input type="radio" name="poi-kind" value="comment" /> Comment</label>
+        </fieldset>
+        <label>Name<input id="poi-name" type="text" autocomplete="off" /></label>
+        <label>Narrative<textarea id="poi-narrative" rows="5"></textarea></label>
+        <div id="poi-dialog-note" class="hint" hidden></div>
+        <div class="actions poi-actions">
+          <button id="poi-save" type="submit" value="save">Save</button>
+          <button id="poi-delete" type="button">Delete</button>
+          <button id="poi-cancel" type="button">Cancel</button>
+        </div>
+      </form>
+    </dialog>
+
+
+    <!-- Spec 4.8: the help travels inside the program, because the packaged
+         build is one executable and a user has nothing else beside it. The text
+         is written here rather than fetched, so it cannot fail to arrive and
+         take the licence of 4.8.4 with it. -->
+    <dialog id="help-dialog" class="help-dialog">
+      <header class="help-head">
+        <h2>PlanetHex</h2>
+        <button id="help-close" class="help-x" type="button" title="Close (Esc)">&times;</button>
+      </header>
+      <div class="help-body">
+        <p>
+          PlanetHex generates a planet from a seed and shows it two ways at once:
+          as a flat hex map on the unfolded icosahedral net, and as a globe. Both
+          read the same surface, so a coastline on one is the coastline on the
+          other.
+        </p>
+        <p>
+          Nothing about the surface is stored. A planet is its seed, its profile,
+          and whatever you have written on it, and the ground is rebuilt from
+          those every time it is opened.
+        </p>
+
+        <h3>The panels</h3>
+        <dl class="help-list">
+          <dt>Left</dt>
+          <dd>Everything you can change, and nothing else.</dd>
+          <dt>Middle</dt>
+          <dd>The flat map, with the worked-out figures for the world beneath it.</dd>
+          <dt>Right, top</dt>
+          <dd>The globe, drawn at the size and the axial tilt the profile gives it.</dd>
+          <dt>Right, bottom</dt>
+          <dd>
+            Local detail: the hex you are pointing at and the ground around it,
+            drawn far finer than the map can resolve. This is not a magnified copy
+            of the map &mdash; it reads the surface several levels deeper.
+          </dd>
+        </dl>
+
+        <h3>Making a world</h3>
+        <p>
+          <b>New</b> starts a fresh planet with a new seed, a rolled profile, and a
+          starport placed on coastal land near its equator.
+        </p>
+        <p>
+          The <b>seed</b> says which world this is. The same seed always gives the
+          same ground. The <b>UWP</b> says what kind of world it is: <b>Roll</b>
+          takes a new one from Traveller's world creation rules, or type over any
+          digit. Gravity sets how tall the ground stands, air and water weather it,
+          hydrographics decides how much of it is underwater, and axial tilt and
+          pressure size the ice caps.
+        </p>
+        <p>
+          <b>Detail</b> chooses how finely the world is drawn: 362, 1442, 5762, or
+          23042 hexes. It does not change the world. A coarser setting draws fewer
+          hexes of the same planet, so the slider is safe to move and safe to move
+          back.
+        </p>
+        <p>
+          The <b>World</b> figures &mdash; tilt, day, orbit, temperature &mdash;
+          arrive rolled and are yours to overrule. One you have typed over is
+          outlined in gold, and <b>reset</b> beside the heading hands them all back
+          to the roll.
+        </p>
+
+        <h3>The pointer</h3>
+        <dl class="help-list">
+          <dt>Map</dt>
+          <dd>
+            Click a hex to select it. Drag to pan, wheel to zoom. Whatever you
+            point at is what the local panel draws.
+          </dd>
+          <dt>Globe</dt>
+          <dd>
+            Drag to turn it, wheel to zoom, click a hex to select it. It picks its
+            own spin back up once you have been still for a moment.
+          </dd>
+          <dt>Local detail</dt>
+          <dd>
+            Click one of the fine hexes to put a point of interest on it, or to
+            open the one already there.
+          </dd>
+        </dl>
+
+        <h3>Points of interest</h3>
+        <p>
+          A <b>starport</b> is a place on the world; a <b>comment</b> is a note
+          about one. Each has a name and as much prose as you care to write, and
+          both are marked on the map and the globe in their own colour. They are
+          placed in the local panel, because the map's hexes are hundreds of miles
+          across and far too large to say where anything is.
+        </p>
+        <p>
+          One to a point. Clicking an empty point offers <b>Move Here</b>, which
+          brings an existing one over with its name and its notes intact. The left
+          panel lists what is on the world; choosing one goes to it.
+        </p>
+
+        <h3>Hex names</h3>
+        <p>
+          A hex is named <code>F07R33C08</code> &mdash; face, row, and column,
+          counted on the finest lattice, so the name is the same whatever the
+          Detail slider is set to. A point finer than the map draws carries the
+          depth after a slash. Write one down and it will still mean the same
+          ground tomorrow.
+        </p>
+
+        <h3>Saving</h3>
+        <p>
+          A save is a folder holding one planet: its JSON, and the flat map as a
+          picture at each of the four detail levels. The first <b>Save</b> asks
+          where the planet goes and later ones do not ask again. <b>Load</b> opens
+          the JSON. Nothing is sent anywhere &mdash; no server is involved and no
+          planet leaves this machine.
+        </p>
+        <p>
+          Drawing four maps takes a few seconds, most of it the finest one and its
+          23,042 hexes. The panel says what it is doing while it works.
+        </p>
+        <p>
+          <b>unsaved</b> appears at the top of the left panel when the open planet
+          has changes that are not written down, and anything that would discard
+          them asks first.
+        </p>
+        <p class="help-note">
+          Saving and loading need a Chromium browser &mdash; Chrome or Edge &mdash;
+          or the desktop build, which carries one. Firefox and Safari can draw a
+          world but cannot write one.
+        </p>
+
+        <h3>Licence</h3>
+        <pre class="help-licence">MIT License
+
+Copyright (c) 2026 Steve Burrows
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.</pre>
+        <p>
+          The application icon is the <i>hexagons</i> glyph from Tabler Icons by
+          Pawel Kuna, used under the MIT licence. Its notice ships with the desktop
+          build as <code>LICENSE-tabler-icons.txt</code> beside the executable.
+        </p>
+        <p>
+          PlanetHex uses Traveller's terms and formats where they are the clearest
+          way to describe what it does. It reproduces none of the game's text,
+          tables, artwork, or forms, and is not affiliated with or endorsed by its
+          publishers.
+        </p>
+      </div>
+      <div class="actions help-actions">
+        <button id="help-done" type="button">Close</button>
+      </div>
+    </dialog>
+
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>

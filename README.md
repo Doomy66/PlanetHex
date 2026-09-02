@@ -1,0 +1,113 @@
+# PlanetHex
+
+Generates a planet surface from a seed and shows it two ways at once: as a flat
+Traveller-style hex map on the unfolded icosahedral net, and as a globe that
+turns on its own axis.
+
+Nothing about the surface is stored. A planet is a seed, a Universal World
+Profile, and whatever the user has written on it, so the whole world travels as
+a short piece of JSON and is rebuilt on load.
+
+## Claude
+I have 50 years of hand coding, I even reproduced the Spinward Marches on my 
+ZX-Spectrum, so I have earned the right and have the skills to use AI. 
+At time 
+of writing, this is 100% Claude generated to my exacting requirements.
+
+## What it does
+
+- **One world, two views.** The map and the globe read the same height field, so
+  a coastline on one is the coastline on the other.
+- **Four detail levels.** 6, 12, 24, and 48 rows to a face, giving 362 to 23,042
+  hexes. The field is always built to the depth the finest level needs, so
+  raising the level resolves the same world more finely rather than producing a
+  different one.
+- **A third panel below the globe** draws the selected hex and the ground around
+  it several subdivisions deeper than the map can resolve, and that is where a
+  place on the world gets put.
+- **The UWP shapes the surface.** Gravity sets the relief, air and water weather
+  it, hydrographics sets sea level, axial tilt and pressure size the ice caps,
+  and the whole profile is rolled to Traveller's world creation rules and then
+  editable digit by digit.
+- **Points of interest.** Starports and comments, each with a name and free
+  prose, pinned to a hex by a name that survives a change of detail level. A new
+  world arrives with the starport its profile says it has, placed on coastal
+  land near the equator.
+- **Saving** writes a folder holding the planet's JSON and the flat map as a PNG
+  at each of the four detail levels. No server is involved and nothing leaves the
+  machine.
+
+Every hex has a stable name of the form `F07R33C08` — face, row, and column
+counted on the finest lattice — so a hex can be written in a save file or read
+out at the table.
+
+## Running it
+
+```bash
+npm install
+npm run dev
+```
+
+Then open the address Vite prints. Saving and loading use the File System Access
+API, which is Chromium only: Chrome and Edge work, Firefox and Safari cannot run
+the application as specified.
+
+For the desktop build:
+
+```bash
+npm run desktop
+```
+
+That builds the static bundle and opens it in Electron, which serves it over a
+custom `app://` scheme so the page has a real origin. `npm run package` produces
+a single portable Windows executable in `release/`.
+
+## Scripts
+
+| Script | What it does |
+| --- | --- |
+| `npm run dev` | Vite dev server. |
+| `npm run build` | Type check, then build into `dist/`. |
+| `npm test` | Run the test suite once. |
+| `npm run test:watch` | Run it on every change. |
+| `npm run desktop` | Build, then open the desktop shell. |
+| `npm run icon` | Regenerate `build/icon.png` from `build/icon.svg`. |
+| `npm run package` | Build the portable executable. |
+
+## Layout
+
+| Path | Holds |
+| --- | --- |
+| `src/grid/` | The icosahedral grid: coordinates, neighbours, hex geometry, and picking. |
+| `src/gen/` | Generation: the height field, climate, ice, life, tilt, starport siting, and the world description. |
+| `src/ui/` | The three panels: flat map, globe, local detail, plus colour and scale bars. |
+| `src/io/` | Save, load, and the map images. |
+| `electron/` | The desktop shell and its packaging script. |
+| `Spec.md` | The specification. Every decision, and why. |
+
+## The specification
+
+[Spec.md](Spec.md) is the authority on behaviour, and it is numbered so the code
+can cite it. Sub-clauses carry the reasoning: why the detail slider is safe to
+move, why a hex on a seam belongs to both faces, why the ice-capped trade code
+is a floor and not a gate. Read it before changing anything about the grid or
+the field.
+
+Reference material used while building — the example maps and the UWP
+cheatsheet — is third party and held for private use only. It sits in
+`Examples/`, which is excluded from the repository.
+
+## Built with
+
+TypeScript, Vite, three.js for the globe, SVG for the map and the local patch,
+Vitest for the tests, and Electron for the desktop build.
+
+## Licence
+
+MIT, see [LICENSE](LICENSE). The application icon is derived from a
+[Tabler](https://tabler.io/icons) icon, also MIT, whose notice travels with the
+packaged build as `LICENSE-tabler-icons.txt`.
+
+PlanetHex uses Traveller's terms and formats where they are the clearest way to
+describe what it does. It reproduces none of the game's text, tables, artwork,
+or forms, and is not affiliated with or endorsed by its publishers.

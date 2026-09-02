@@ -1,0 +1,14 @@
+# Third party reference material. Private use only, see Spec.md section 7.
+Examples/
+node_modules/
+dist/
+
+# Local editor tooling. The dev server config is per machine, not per project.
+.claude/launch.json
+.claude/settings.local.json
+
+# The packaged desktop build.
+release/
+
+# Generated from build/icon.svg by `npm run icon`.
+build/icon.png
