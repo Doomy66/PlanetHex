@@ -21,8 +21,12 @@ console.log(`Packaging into ${out}`);
 
 // Run the CLI through this same node, rather than a shell wrapper, so the
 // script does not care which shell invoked it.
+// --publish never because electron-builder publishes of its own accord when it
+// finds itself on a git tag, and then fails for want of a token it was never
+// given. Releasing is the release workflow's job: it attaches the exe with gh
+// once the build has succeeded. See .github/workflows/release.yml.
 const cli = require.resolve("electron-builder/cli.js");
-const result = spawnSync(process.execPath, [cli, `-c.directories.output=${out}`], {
+const result = spawnSync(process.execPath, [cli, `-c.directories.output=${out}`, "--publish", "never"], {
   stdio: "inherit",
   cwd: path.join(__dirname, ".."),
 });
