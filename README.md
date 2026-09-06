@@ -34,8 +34,9 @@ of writing, this is 100% Claude generated to my exacting requirements.
   world arrives with the starport its profile says it has, placed on coastal
   land near the equator.
 - **Saving** writes a folder holding the planet's JSON and the flat map as a PNG
-  at each of the four detail levels. No server is involved and nothing leaves the
-  machine.
+  at each of the four detail levels. On a browser without the File System Access
+  API the same five files arrive as one zip download instead. No server is
+  involved either way, and nothing leaves the machine.
 
 Every hex has a stable name of the form `F07R33C08` — face, row, and column
 counted on the finest lattice — so a hex can be written in a save file or read
@@ -48,9 +49,17 @@ npm install
 npm run dev
 ```
 
-Then open the address Vite prints. Saving and loading use the File System Access
-API, which is Chromium only: Chrome and Edge work, Firefox and Safari cannot run
-the application as specified.
+Then open the address Vite prints. Every browser with WebGL runs the
+application; the two save paths differ.
+
+| Browser | Save | Load |
+| --- | --- | --- |
+| Chrome, Edge | Writes a folder in place, and rewrites it on the next Save. | Opens the planet's JSON through the file picker. |
+| Firefox, Safari | Downloads the same five files as one zip. Each Save is a new file. | Opens either the zip or the JSON inside it. |
+
+The difference is the File System Access API, which is Chromium only. Where it
+is missing the application says so on the status line rather than failing at the
+moment the user clicks Save.
 
 For the desktop build:
 
@@ -108,12 +117,35 @@ cheatsheet — is third party and held for private use only. It sits in
 TypeScript, Vite, three.js for the globe, SVG for the map and the local patch,
 Vitest for the tests, and Electron for the desktop build.
 
+## Publishing it
+
+`npm run build` produces `dist/`, which is the whole application: a few hundred
+kilobytes of static files with no server behind them and no backend to run. It
+can be served from any static host, and `base` is relative in
+[vite.config.ts](vite.config.ts) so a subdirectory works as well as a root.
+
+Serve it over HTTPS. The File System Access API is refused outside a secure
+context, so the folder save of 6.4.1 would fall back to the zip on every
+browser without it.
+
+Nothing is collected, stored, or sent anywhere. A planet is a seed, a UWP, and
+whatever the user has written on it, and all three stay in the tab until the
+user saves them.
+
 ## Licence
 
 MIT, see [LICENSE](LICENSE). The application icon is derived from a
 [Tabler](https://tabler.io/icons) icon, also MIT, whose notice travels with the
 packaged build as `LICENSE-tabler-icons.txt`.
 
-PlanetHex uses Traveller's terms and formats where they are the clearest way to
-describe what it does. It reproduces none of the game's text, tables, artwork,
-or forms, and is not affiliated with or endorsed by its publishers.
+PlanetHex generates worlds by the procedure in the Traveller SRD: the Universal
+World Profile, the order the digits are rolled in, the modifiers each takes from
+the ones before it, and the trade classifications read off the result. That
+procedure is expressed here as code rather than copied as text. No text, table,
+artwork, form, or map from any Traveller publication is reproduced, and no
+setting material — no sector, subsector, world, or name from the Third Imperium
+— ships with the application.
+
+Traveller is a trademark of Far Future Enterprises. PlanetHex is an independent
+tool, not affiliated with, licensed by, or endorsed by Far Future Enterprises,
+Mongoose Publishing, or any other Traveller publisher.

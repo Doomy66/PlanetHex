@@ -43,11 +43,15 @@ import { createLocalView } from "./ui/local";
 import { DEFAULT_SEA_LEVEL, terrainBand } from "./ui/colour";
 import { DEFAULT_VERDANCY } from "./gen/life";
 import {
+  download,
   isSupported,
   load,
+  loadFromInput,
   PickerCancelled,
   pickFolder,
+  saveName,
   saveTo,
+  zipSave,
   type DirectoryHandle,
 } from "./io/files";
 import { renderMaps } from "./io/images";
@@ -925,19 +929,27 @@ el("save").addEventListener("click", async () => {
   try {
     // The folder is asked for while the click is still the gesture in hand.
     // Drawing the maps below takes seconds, and the picker will not open on a
-    // gesture that has gone stale by the time it is reached.
-    const folder = state.folder ?? (await pickFolder());
+    // gesture that has gone stale by the time it is reached. A browser with no
+    // picker has nothing to ask for and goes straight to drawing.
+    const folder = isSupported() ? (state.folder ?? (await pickFolder())) : null;
+    const into = folder?.name ?? saveName(state.planet);
     // Level 48 is 23,042 hexes, and there are four levels to draw. The button
     // goes down so a second click cannot start it all again underneath.
     save.disabled = true;
-    say(`Saving to ${folder.name}...`);
+    say(`Saving to ${into}...`);
     const images = await renderMaps(state.planet, currentDetail(), (size) =>
-      say(`Drawing the ${size} row map for ${folder.name}...`),
+      say(`Drawing the ${size} row map for ${into}...`),
     );
-    await saveTo(folder, state.planet, images);
-    state.folder = folder;
+    if (folder) {
+      await saveTo(folder, state.planet, images);
+      state.folder = folder;
+    } else {
+      // A download cannot be rewritten in place, so state.folder stays null and
+      // the next Save is another file rather than the same one again.
+      download(await zipSave(state.planet, images), into);
+    }
     markClean();
-    say(`Saved to ${folder.name}, with ${images.size} maps.`);
+    say(`Saved to ${into}, with ${images.size} maps.`);
   } catch (error) {
     if (error instanceof PickerCancelled) {
       say("");
@@ -952,7 +964,7 @@ el("save").addEventListener("click", async () => {
 el("load").addEventListener("click", async () => {
   if (!confirmDiscard("Load another planet")) return;
   try {
-    const { planet, name } = await load();
+    const { planet, name } = isSupported() ? await load() : await loadFromInput();
     Object.assign(state.planet, planet);
     // A file handle cannot name the folder it came from, so the next Save asks
     // where this planet belongs rather than guessing at the folder it was
@@ -1013,8 +1025,10 @@ showPlanet();
 regenerate();
 placeStarport();
 markClean();
-if (!isSupported()) {
-  say("This browser cannot save in place. Save and Load need a Chromium browser.", true);
-} else {
+// Not an error on either path: a browser without the API saves as a download
+// rather than writing back into the folder it came from. Spec 6.4.1.
+if (isSupported()) {
   say(`Seed ${state.planet.seed}. Sea level ${state.seaLevel.toFixed(3)}.`);
+} else {
+  say(`Seed ${state.planet.seed}. This browser saves as a zip download.`);
 }

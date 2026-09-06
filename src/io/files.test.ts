@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { saveTo, type DirectoryHandle, type FileHandle } from "./files";
+import { saveTo, zipSave, type DirectoryHandle, type FileHandle } from "./files";
+import { readZip } from "./zip";
 import { newPlanet } from "../planet";
 
 /**
@@ -84,5 +85,52 @@ describe("saving a planet to a folder", () => {
     await saveTo(handle, planet, new Map());
 
     expect([...written.keys()]).toEqual(["planet.json"]);
+  });
+});
+
+/**
+ * The same save on a browser with no File System Access API. Spec 6.4.1: a save
+ * is the planet and its maps together, and the archive is how they stay
+ * together when there is no folder to put them in.
+ */
+describe("saving a planet as an archive", () => {
+  it("holds the same files a folder would have held", async () => {
+    const planet = { ...newPlanet(), name: "Regina" };
+    const images = new Map([
+      [6, png()],
+      [12, png()],
+      [24, png()],
+      [48, png()],
+    ]);
+
+    const entries = readZip(new Uint8Array(await (await zipSave(planet, images)).arrayBuffer()));
+
+    expect(entries.map((entry) => entry.name).sort()).toEqual([
+      "Regina-12.png",
+      "Regina-24.png",
+      "Regina-48.png",
+      "Regina-6.png",
+      "Regina.json",
+    ]);
+  });
+
+  it("holds the planet as the JSON a load can read back", async () => {
+    const planet = { ...newPlanet(), name: "Regina", narrative: "A world." };
+
+    const entries = readZip(new Uint8Array(await (await zipSave(planet, new Map())).arrayBuffer()));
+    const json = entries.find((entry) => entry.name === "Regina.json");
+
+    expect(JSON.parse(new TextDecoder().decode(json!.data))).toEqual(planet);
+  });
+
+  it("keeps an awkward planet name out of the entry names", async () => {
+    const planet = { ...newPlanet(), name: "Regina/Credo: 2?" };
+
+    const entries = readZip(new Uint8Array(await (await zipSave(planet, new Map([[6, png()]]))).arrayBuffer()));
+
+    expect(entries.map((entry) => entry.name).sort()).toEqual([
+      "ReginaCredo 2-6.png",
+      "ReginaCredo 2.json",
+    ]);
   });
 });

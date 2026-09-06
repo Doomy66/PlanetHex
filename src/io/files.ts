@@ -1,6 +1,7 @@
 import type { Planet } from "../planet";
 import { parsePlanet } from "../planet";
 import type { MapImages } from "./images";
+import { buildZip, readZip, type ZipEntry } from "./zip";
 
 /**
  * Local saves through the File System Access API. Spec.md 6.4.1.
@@ -12,8 +13,10 @@ import type { MapImages } from "./images";
  *
  * The handle for the open folder is held by the caller, so a second Save rewrites
  * the same files without prompting. The API is Chromium only, which isSupported
- * reports so the application can say so plainly rather than failing at the moment
- * the user clicks Save.
+ * reports, and where it is missing the same save is offered as a zip through an
+ * ordinary download and read back through an ordinary file input. That path
+ * cannot rewrite what it wrote a moment ago, so every save is a fresh file, but
+ * the folder of 6.4.1 arrives whole rather than as five errands.
  */
 
 interface WritableStream {
@@ -101,6 +104,97 @@ export async function load(): Promise<{ planet: Planet; name: string }> {
   if (!handle) throw new PickerCancelled();
   const text = await (await handle.getFile()).text();
   return { planet: parsePlanet(text), name: handle.name };
+}
+
+/* The fallback, for a browser without the API above --------------------- */
+
+/**
+ * The save of 6.4.1 as a single archive: the planet's JSON and the images of
+ * 6.4.5 under the same names a folder would have given them, so a save made in
+ * Firefox and a save made in Chrome hold the same files.
+ *
+ * Separate from handing it to the browser so the archive can be tested without
+ * a document to download it into.
+ */
+export async function zipSave(planet: Planet, images: MapImages): Promise<Blob> {
+  const stem = sanitise(planet.name);
+  const entries: ZipEntry[] = [
+    { name: `${stem}.json`, data: new TextEncoder().encode(JSON.stringify(planet, null, 2)) },
+  ];
+  for (const [size, png] of images) {
+    entries.push({ name: `${stem}-${size}.png`, data: new Uint8Array(await png.arrayBuffer()) });
+  }
+  return buildZip(entries);
+}
+
+/** What the downloaded archive is called. The save is named for the world. */
+export function saveName(planet: Planet): string {
+  return `${sanitise(planet.name)}.zip`;
+}
+
+/**
+ * Hand a blob to the browser as a download. The anchor is put in the document
+ * because a click on one outside it is ignored by some browsers, and taken out
+ * again straight after.
+ */
+export function download(blob: Blob, name: string): void {
+  const url = URL.createObjectURL(blob);
+  const anchor = document.createElement("a");
+  anchor.href = url;
+  anchor.download = name;
+  anchor.style.display = "none";
+  document.body.append(anchor);
+  anchor.click();
+  anchor.remove();
+  // Revoked on a later turn: revoking it in this one can beat the download to
+  // the URL, and the download is what the click was for.
+  setTimeout(() => URL.revokeObjectURL(url), 60_000);
+}
+
+/**
+ * Open a planet through a file input, for a browser with no picker. Both what a
+ * save wrote are offered: the JSON on its own, and the archive holding it.
+ */
+export function loadFromInput(): Promise<{ planet: Planet; name: string }> {
+  return new Promise((resolve, reject) => {
+    const input = document.createElement("input");
+    input.type = "file";
+    input.accept = ".json,.zip,application/json,application/zip";
+    input.style.display = "none";
+
+    const finish = (): void => input.remove();
+
+    // Every browser that has no picker does fire this, and without it a
+    // cancelled Load would leave the promise hanging and the input in the page.
+    input.addEventListener("cancel", () => {
+      finish();
+      reject(new PickerCancelled());
+    });
+
+    input.addEventListener("change", () => {
+      const file = input.files?.[0];
+      finish();
+      if (!file) {
+        reject(new PickerCancelled());
+        return;
+      }
+      readPlanetFile(file).then(resolve, reject);
+    });
+
+    document.body.append(input);
+    input.click();
+  });
+}
+
+/** A planet out of whichever of the two files the user picked. */
+async function readPlanetFile(file: File): Promise<{ planet: Planet; name: string }> {
+  if (!/\.zip$/i.test(file.name)) {
+    return { planet: parsePlanet(await file.text()), name: file.name };
+  }
+  const entries = readZip(new Uint8Array(await file.arrayBuffer()));
+  const json = entries.find((entry) => /\.json$/i.test(entry.name));
+  if (!json) throw new Error("That archive holds no planet.");
+  return { planet: parsePlanet(new TextDecoder().decode(json.data)), name: json.name };
 }
 
 function sanitise(name: string): string {
