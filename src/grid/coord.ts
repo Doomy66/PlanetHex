@@ -40,17 +40,15 @@ export const REFERENCE_SIZE = 96;
 export const SEA_SAMPLE_SIZE = 48;
 
 /**
- * The level the sphere of 4.4.9 is drawn at, which divides REFERENCE_SIZE but is
- * not it. Spec 4.4.9.5.
+ * The level the sphere of 4.4.9 is drawn at, whatever the slider says. Spec 4.4.9.5.
  *
- * The sphere stands outside the slider because a hex of the coarse levels covers
- * a swathe of a world seen whole. Twenty three thousand hexes is where that stops
- * being true: on a sphere a few hundred pixels across they are already smaller
- * than a pixel, and the finest level is four times the mesh for a coastline
- * nobody can see the difference in. The sphere is rebuilt at every redraw, so
- * that four times is paid at every touch of the UWP.
+ * The finest level, so a coastline on the sphere is drawn as finely as the map can
+ * draw one. Four times the hexes is not four times the cost: the mesh is rebuilt
+ * at every redraw, but that is a fraction of what a redraw does, and measured
+ * against half this level it adds about a sixth of a second to one - some thirty
+ * parts in a hundred. The grid itself is built once a session and kept.
  */
-export const SPHERE_SIZE = 48;
+export const SPHERE_SIZE = 96;
 
 export const DEFAULT_DETAIL = 24;
 
