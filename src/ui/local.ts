@@ -7,7 +7,9 @@ import { fieldSizeFor, openHeightField, type HeightFieldOptions } from "../gen/f
 import { heightColour } from "./colour";
 import { scaleBar, stepKm } from "./scale";
 import { isIced, type IceCaps } from "../gen/ice";
-import { planContours, traceContours } from "./contour";
+import { planContours, traceContours, type Step } from "./contour";
+import { isoView, SQUASH } from "./iso";
+import { createReliefView } from "./relief";
 
 /**
  * The local view: the selected hex and its surroundings, at a depth the whole
@@ -53,6 +55,8 @@ export interface LocalInput {
   readonly pois: readonly Poi[];
   /** Whether to draw contour lines over the patch. Spec 4.5.8. */
   readonly contours: boolean;
+  /** Whether to draw the patch in relief, seen from over it rather than above it. Spec 4.5.9. */
+  readonly isometric: boolean;
 }
 
 /** A hex of the patch the user clicked. Spec 4.5.7. */
@@ -64,7 +68,7 @@ export interface Pick {
 }
 
 export interface LocalView {
-  readonly element: SVGSVGElement;
+  readonly element: HTMLElement;
   render(input: LocalInput): void;
   /** A hex the user clicked in the patch, which opens the POI dialogue of 4.5.7. */
   onPick(handler: (pick: Pick) => void): void;
@@ -73,8 +77,15 @@ export interface LocalView {
 type Pt2 = readonly [number, number];
 
 export function createLocalView(): LocalView {
+  // The panel is two layers: the lit ground of 4.5.9 in its own canvas, and over
+  // it the SVG, which draws the hexes of the flat view and, in either view, the
+  // marks and the scale bar that go on top of the ground rather than in it.
+  const element = document.createElement("div");
+  element.className = "localview-stack";
+  const relief = createReliefView();
   const svg = document.createElementNS(SVG_NS, "svg");
   svg.setAttribute("class", "localview");
+  element.append(relief.element, svg);
   let lastSeed = "";
   let field = openHeightField("");
   let pickHandlers: ((pick: Pick) => void)[] = [];
@@ -101,6 +112,7 @@ export function createLocalView(): LocalView {
     lastGrid = grid;
     if (selected === null) {
       pickAt = null;
+      relief.element.hidden = true;
       svg.setAttribute("viewBox", "0 0 100 40");
       const label = document.createElementNS(SVG_NS, "text");
       label.setAttribute("class", "localview-empty");
@@ -145,7 +157,11 @@ export function createLocalView(): LocalView {
       (x * e2[1] - y * e2[0]) / det,
       (e1[0] * y - e1[1] * x) / det,
     ];
-    pickAt = (x, y) => {
+    // Nothing is placed from the relief view. A click would have to be put back
+    // through the projection onto ground that may be hidden behind nearer ground,
+    // and a POI landing on a hex the user did not mean is worse than a panel that
+    // does not take the click. Spec 4.5.9.5.
+    pickAt = input.isometric ? null : (x, y) => {
       const steps = stepsAt(x, y);
       const [dp, dq] = hexRound(steps[0], steps[1]);
       const i = iCentre + dp + dq;
@@ -157,20 +173,34 @@ export function createLocalView(): LocalView {
       };
     };
 
-    /** A fractional lattice offset as a point in the drawing. */
-    const place = (at: readonly [number, number]): string =>
-      `${(at[0] * e1[0] + at[1] * e2[0]).toFixed(4)} ${(at[0] * e1[1] + at[1] * e2[1]).toFixed(4)}`;
+    /** A fractional lattice offset as a point on the flat ground. */
+    const ground = (at: Step): Pt2 => [
+      at[0] * e1[0] + at[1] * e2[0],
+      at[0] * e1[1] + at[1] * e2[1],
+    ];
+    const flat = (at: Step): string => {
+      const [x, y] = ground(at);
+      return `${x.toFixed(4)} ${y.toFixed(4)}`;
+    };
 
-    const hexes: SVGPolygonElement[] = [];
     /** Every height the patch found, kept for the contours of 4.5.8 to cut. */
     const heights = new Map<string, number>();
+    /** One hex of the patch, sampled but not yet drawn. */
+    interface Found {
+      readonly dp: number;
+      readonly dq: number;
+      readonly x: number;
+      readonly y: number;
+      readonly height: number;
+      readonly iced: boolean;
+    }
+    const found: Found[] = [];
     let low = Infinity;
     let high = -Infinity;
-    let minX = Infinity;
-    let maxX = -Infinity;
-    let minY = Infinity;
-    let maxY = -Infinity;
 
+    // The whole patch is sampled before any of it is drawn. In relief it has to go
+    // down the drawing from the back, and a contour has to be cut before the hex it
+    // lies on is drawn, so neither can be done in one pass over the lattice.
     for (let dp = -reach; dp <= reach; dp++) {
       const from = Math.max(-reach, -reach - dp);
       const to = Math.min(reach, reach - dp);
@@ -180,31 +210,47 @@ export function createLocalView(): LocalView {
         const j = jCentre + dq;
         const sample = sampleAt(field, home.face, fine, i, j);
         if (sample === null) continue;
-
-        const x = dp * e1[0] + dq * e2[0];
-        const y = dp * e1[1] + dq * e2[1];
-        const poly = document.createElementNS(SVG_NS, "polygon");
-        poly.setAttribute(
-          "points",
-          fill.map(([dx, dy]) => `${(x + dx).toFixed(4)},${(y + dy).toFixed(4)}`).join(" "),
-        );
-        poly.setAttribute("fill", heightColour(sample.height, seaLevel, isIced(input.caps, sample.y), verdancy));
-        hexes.push(poly);
+        found.push({
+          dp,
+          dq,
+          x: dp * e1[0] + dq * e2[0],
+          y: dp * e1[1] + dq * e2[1],
+          height: sample.height,
+          iced: isIced(input.caps, sample.y),
+        });
         heights.set(`${dp},${dq}`, sample.height);
         if (sample.height < low) low = sample.height;
         if (sample.height > high) high = sample.height;
-        if (x < minX) minX = x;
-        if (x > maxX) maxX = x;
-        if (y < minY) minY = y;
-        if (y > maxY) maxY = y;
       }
     }
 
+    let minX = Infinity;
+    let maxX = -Infinity;
+    let minY = Infinity;
+    let maxY = -Infinity;
+    const note = (x: number, y: number): void => {
+      if (x < minX) minX = x;
+      if (x > maxX) maxX = x;
+      if (y < minY) minY = y;
+      if (y > maxY) maxY = y;
+    };
+
+    /** The view in relief, or null where the patch is drawn flat. Spec 4.5.9. */
+    const view = input.isometric && found.length > 0 ? isoView(low) : null;
+    const points = (pts: readonly Pt2[]): string =>
+      pts.map(([x, y]) => `${x.toFixed(4)},${y.toFixed(4)}`).join(" ");
+
     // Contour lines, drawn along the sides between hexes whose heights fall either
     // side of a level, so a line lies exactly on the colour it separates. Spec 4.5.8.
+    // A dark line is lost on the deep sea and a light one on snow, so each level is
+    // drawn against the half of the ramp it belongs to.
+    const shadeOf = (level: number) => (level >= seaLevel ? "contour-land" : "contour-sea");
     const lines: SVGElement[] = [];
     let interval = 0;
-    if (input.contours && heights.size > 0) {
+    // Lines belong to the flat view. In relief the light does what they do, and
+    // better: what a contour says about a slope, a shaded hillside shows. Spec
+    // 4.5.9.6.
+    if (input.contours && view === null && heights.size > 0) {
       const plan = planContours(low, high, seaLevel);
       interval = plan.step;
       const traced = traceContours(
@@ -219,27 +265,48 @@ export function createLocalView(): LocalView {
         const path = document.createElementNS(SVG_NS, "path");
         path.setAttribute(
           "d",
-          line.segments.map(({ from, to }) => `M${place(from)}L${place(to)}`).join(""),
+          line.segments.map(({ from, to }) => `M${flat(from)}L${flat(to)}`).join(""),
         );
-        // A dark line is lost on the deep sea and a light one on snow, so each
-        // level is drawn against the half of the ramp it belongs to.
-        path.setAttribute("class", line.level >= seaLevel ? "contour-land" : "contour-sea");
+        path.setAttribute("class", shadeOf(line.level));
         group.append(path);
       }
-      lines.push(group);
+      if (group.childElementCount > 0) lines.push(group);
+    }
+
+    // The hexes. Flat, or as a lid with the cut earth of the ground under it, in
+    // which case they go down the drawing from the back so that what stands in
+    // front is drawn over what is behind it. Spec 4.5.9.2.
+    const hexes: SVGElement[] = [];
+    if (view === null) {
+      for (const cell of found) {
+        const poly = document.createElementNS(SVG_NS, "polygon");
+        poly.setAttribute("points", points(fill.map(([dx, dy]) => [cell.x + dx, cell.y + dy])));
+        poly.setAttribute("fill", heightColour(cell.height, seaLevel, cell.iced, verdancy));
+        hexes.push(poly);
+        note(cell.x, cell.y);
+      }
+    } else {
+      // The ground is the canvas's, so what the patch needs from the SVG is only
+      // the room it takes up: the surface, and the floor of the block under it.
+      for (const cell of found) {
+        const [cx, cy] = view.place(cell.x, cell.y, cell.height);
+        for (const [dx, dy] of fill) note(cx + dx, cy + dy * SQUASH);
+        note(cx, view.floor(cell.y));
+      }
     }
 
     // The clicked hex, outlined at its own size so the patch can be read against
-    // the middle panel rather than floating free of it.
-    const marker = document.createElementNS(SVG_NS, "polygon");
+    // the middle panel rather than floating free of it. The flat view only: in
+    // relief there is nothing for it to do. It is there to say which display hex
+    // the patch is of, and that is a question about the map, which is what the
+    // flat view is. Over lit ground it is a wire hoop in the way of the thing the
+    // view was turned on to look at. Spec 4.5.9.4.
     const spread = fine / grid.size;
-    marker.setAttribute(
-      "points",
-      hexOffsets(times(e1, spread), times(e2, spread))
-        .map(([dx, dy]) => `${dx.toFixed(4)},${dy.toFixed(4)}`)
-        .join(" "),
-    );
-    marker.setAttribute("class", "localview-hex");
+    const marker = view === null ? document.createElementNS(SVG_NS, "polygon") : null;
+    if (marker !== null) {
+      marker.setAttribute("points", points(hexOffsets(times(e1, spread), times(e2, spread))));
+      marker.setAttribute("class", "localview-hex");
+    }
 
     // The POIs the patch reaches, each ringed on the fine hex covering it and
     // named beside it. Spec 4.5.7.3: this panel draws a POI at the size of the
@@ -251,13 +318,16 @@ export function createLocalView(): LocalView {
       const steps = stepsAt(at[0], at[1]);
       const [dp, dq] = hexRound(steps[0], steps[1]);
       if (Math.abs(dp) > reach || Math.abs(dq) > reach || Math.abs(dp + dq) > reach) continue;
-      const x = dp * e1[0] + dq * e2[0];
-      const y = dp * e1[1] + dq * e2[1];
+      // On the ground, or on the lid of its own hex where the patch stands in
+      // relief. Either way the ring is the hex the POI is on. Spec 4.5.9.4.
+      const flatAt: Pt2 = [dp * e1[0] + dq * e2[0], dp * e1[1] + dq * e2[1]];
+      const shape = view === null ? outline : outline.map(([dx, dy]) => [dx, dy * SQUASH] as Pt2);
+      const [x, y] =
+        view === null
+          ? flatAt
+          : view.place(flatAt[0], flatAt[1], heights.get(`${dp},${dq}`) ?? low);
       const poly = document.createElementNS(SVG_NS, "polygon");
-      poly.setAttribute(
-        "points",
-        outline.map(([dx, dy]) => `${(x + dx).toFixed(4)},${(y + dy).toFixed(4)}`).join(" "),
-      );
+      poly.setAttribute("points", points(shape.map(([dx, dy]) => [x + dx, y + dy])));
       poly.setAttribute("class", `poi-local poi-${poi.kind}`);
       marks.push(poly);
       if (poi.name.trim() !== "") {
@@ -292,7 +362,23 @@ export function createLocalView(): LocalView {
       height = grown;
     }
     svg.setAttribute("viewBox", `${left} ${top} ${width} ${height}`);
-    svg.replaceChildren(...hexes, ...lines, marker, ...marks);
+    svg.replaceChildren(...hexes, ...lines, ...(marker === null ? [] : [marker]), ...marks);
+
+    // The ground itself, where the panel is in relief. The camera is given the
+    // window the SVG was just given, so the two are one view and a mark drawn in
+    // the SVG sits on the ground it is about. Spec 4.5.9.
+    relief.element.hidden = view === null;
+    if (view !== null) {
+      relief.render({
+        cells: found,
+        low,
+        seaLevel,
+        verdancy,
+        reach,
+        basis: [e1, e2],
+        frame: { left, top, width, height },
+      });
+    }
 
     if (input.diameterKm !== null) {
       svg.append(
@@ -322,7 +408,7 @@ export function createLocalView(): LocalView {
   }).observe(svg);
 
   return {
-    element: svg,
+    element,
     render,
     onPick(handler) {
       pickHandlers = [...pickHandlers, handler];

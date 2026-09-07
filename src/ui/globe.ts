@@ -1,18 +1,25 @@
 import * as THREE from "three";
 import { OrbitControls } from "three/addons/controls/OrbitControls.js";
 import type { Grid } from "../grid/grid";
+import type { Vec3 } from "../grid/vec3";
 import { heightColour } from "./colour";
 import { isIced, type IceCaps } from "../gen/ice";
 import type { PoiKind } from "../poi";
-import type { PoiMark } from "./map";
 
 /**
  * The planet as a sphere. Spec.md section 4.4.
  *
- * The mesh is built from the same cell outlines the grid already carries, each
- * one filled with the flat colour its height maps to, so the globe and the flat
- * map are two views of one set of numbers rather than two drawings that happen
- * to agree.
+ * The mesh is built from the cell outlines of whatever grid it is handed, each one
+ * filled with the flat colour its height maps to, so the globe and the flat map
+ * are two views of one set of numbers rather than two drawings that happen to
+ * agree. The grid it is handed is the finest of them, under 4.4.9, and not the one
+ * the map is drawing.
+ *
+ * So the panel knows nothing about display hexes. What is marked on it - the
+ * selection of 4.4.4 and the rings of 4.4.8 - arrives as the corners of a hex
+ * rather than as a hex of some grid, and a click leaves as the point of the sphere
+ * it landed on. Both are directions, which mean the same thing at every level, and
+ * it is the caller that knows which level it is asking about. Spec 4.4.9.2.
  */
 
 /**
@@ -49,6 +56,12 @@ const AXIS_NORTH = 1.22;
 const AXIS_SOUTH = 1.12;
 const DRAG_SLOP_PX = 4;
 
+/** A hex to ring on the sphere, named by its own corners. Spec 4.4.9.2. */
+export interface GlobeMark {
+  readonly corners: readonly Vec3[];
+  readonly kind: PoiKind;
+}
+
 export interface Globe {
   readonly element: HTMLElement;
   render(
@@ -61,10 +74,12 @@ export interface Globe {
     verdancy: number,
     axialTiltDeg: number,
   ): void;
-  setSelected(cell: number | null): void;
+  /** The hex to mark, by its corners, or null for none. Spec 4.4.4. */
+  setSelected(corners: readonly Vec3[] | null): void;
   /** The hexes carrying a POI, ringed in the colour of their kind. Spec 4.4.8. */
-  setPois(marks: readonly PoiMark[]): void;
-  onSelect(handler: (cell: number) => void): void;
+  setPois(marks: readonly GlobeMark[]): void;
+  /** Where on the sphere a click landed, as a direction from its centre. */
+  onSelect(handler: (at: Vec3) => void): void;
   /** Back to the starting viewpoint, so a new planet's size can be read. Spec 4.4.5.2. */
   resetView(): void;
 }
@@ -186,10 +201,8 @@ export function createGlobe(): Globe {
   // On the spinning group, so a mark turns with the ground it is drawn on.
   const poiLayer = new THREE.Group();
   spin.add(poiLayer);
-  let poiMarks: readonly PoiMark[] = [];
-  let cellByTriangle = new Int32Array(0);
-  let cellCorners: (readonly THREE.Vector3[])[] = [];
-  let handlers: ((cell: number) => void)[] = [];
+  let poiMarks: readonly GlobeMark[] = [];
+  let handlers: ((at: Vec3) => void)[] = [];
 
   function render(
     grid: Grid,
@@ -219,26 +232,21 @@ export function createGlobe(): Globe {
 
     const positions = new Float32Array(triangles * 9);
     const colours = new Float32Array(triangles * 9);
-    cellByTriangle = new Int32Array(triangles);
-    cellCorners = new Array(grid.cells.length);
 
     const colour = new THREE.Color();
     let t = 0;
     for (const cell of grid.cells) {
       colour.setStyle(heightColour(heights[cell.id]!, seaLevel, isIced(caps, cell.centre[1]), verdancy));
       colour.convertSRGBToLinear();
-      const corners = cell.corners.map((c) => new THREE.Vector3(c[0], c[1], c[2]));
-      cellCorners[cell.id] = corners;
-      const centre = new THREE.Vector3(cell.centre[0], cell.centre[1], cell.centre[2]);
+      const corners = cell.corners;
+      const [ax, ay, az] = cell.centre;
       // Fan from the cell centre, which keeps pentagons and hexagons the same code.
       for (let k = 0; k < corners.length; k++) {
-        const a = centre;
         const b = corners[k]!;
         const c = corners[(k + 1) % corners.length]!;
         const o = t * 9;
-        positions.set([a.x, a.y, a.z, b.x, b.y, b.z, c.x, c.y, c.z], o);
+        positions.set([ax, ay, az, b[0], b[1], b[2], c[0], c[1], c[2]], o);
         for (let v = 0; v < 3; v++) colours.set([colour.r, colour.g, colour.b], o + v * 3);
-        cellByTriangle[t] = cell.id;
         t++;
       }
     }
@@ -271,11 +279,10 @@ export function createGlobe(): Globe {
       (child as THREE.Line).geometry.dispose();
       ((child as THREE.Line).material as THREE.Material).dispose();
     }
-    for (const { cell, kind } of poiMarks) {
-      const corners = cellCorners[cell];
-      if (!corners) continue;
+    for (const { corners, kind } of poiMarks) {
+      if (corners.length === 0) continue;
       const geometry = new THREE.BufferGeometry().setFromPoints(
-        corners.map((c) => c.clone().setLength(POI_LIFT)),
+        corners.map((c) => new THREE.Vector3(c[0], c[1], c[2]).setLength(POI_LIFT)),
       );
       poiLayer.add(
         new THREE.LineLoop(geometry, new THREE.LineBasicMaterial({ color: poiColour(kind) })),
@@ -283,20 +290,20 @@ export function createGlobe(): Globe {
     }
   }
 
-  function setPois(marks: readonly PoiMark[]): void {
+  function setPois(marks: readonly GlobeMark[]): void {
     poiMarks = marks;
     drawPois();
   }
 
-  function setSelected(cell: number | null): void {
+  function setSelected(hex: readonly Vec3[] | null): void {
     if (highlight) {
       spin.remove(highlight);
       highlight.geometry.dispose();
       (highlight.material as THREE.Material).dispose();
       highlight = null;
     }
-    const corners = cell === null ? undefined : cellCorners[cell];
-    if (!corners) return;
+    if (hex === null || hex.length === 0) return;
+    const corners = hex.map((c) => new THREE.Vector3(c[0], c[1], c[2]));
 
     const centre = new THREE.Vector3();
     for (const c of corners) centre.add(c);
@@ -351,10 +358,13 @@ export function createGlobe(): Globe {
     pointer.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
     raycaster.setFromCamera(pointer, camera);
     const hit = raycaster.intersectObject(surface, false)[0];
-    if (!hit || hit.faceIndex === undefined || hit.faceIndex === null) return;
-    const cell = cellByTriangle[hit.faceIndex];
-    if (cell === undefined || cell < 0) return;
-    for (const h of handlers) h(cell);
+    if (!hit) return;
+    // Back out of the spin and the lean into the world's own frame, so the point
+    // is where the click landed on the ground rather than where that ground
+    // happened to be pointing at the time. Spec 4.4.9.2.
+    const at = spin.worldToLocal(hit.point.clone()).normalize();
+    if (!Number.isFinite(at.x) || !Number.isFinite(at.y) || !Number.isFinite(at.z)) return;
+    for (const h of handlers) h([at.x, at.y, at.z]);
   });
 
   /* Sizing and the frame loop. */

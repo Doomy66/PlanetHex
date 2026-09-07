@@ -15,6 +15,27 @@ user. Dates are the day the release was tagged.
 - While the lines are on, the seams between the hexes give way to them, so the
   contours are the only lines on the patch. Switched off, the panel is drawn
   exactly as it was.
+- **The globe is always drawn at the finest detail level**, whatever the Detail
+  slider is set to. It is a picture of the world rather than of the hex map, and
+  at the coarser levels a single hex covered a swathe of the sphere. Its grid is
+  built once and its heights are read off the same field the map was sampled
+  from, so the panel it feeds shows four times the detail without the world
+  taking longer to generate.
+- Sea level and the heights on screen now come off one height field instead of
+  one each. That was the same expensive work done twice on every redraw, and it
+  is what paid for the globe above.
+- **A lit 3d view of the local patch**, on a switch beside the panel's heading
+  next to the contours one. The same ground seen from thirty degrees above and
+  lit by a low sun: a block of land with the sea filled in at its own level and
+  cut earth down the sides. The surface runs smoothly through the same heights
+  the hexes are coloured from, since a hillside is not made of hexagons. The
+  flat view is the hex map; this is the country it stands for.
+- Height in that view is exaggerated by a fixed amount rather than stretched to
+  fill the panel, so gentle ground reads as gentle ground and two patches of one
+  world can be compared. Distance across the panel stays true, which is why the
+  scale bar stands in it unchanged.
+- Points of interest are marked and named in the 3d view but cannot be placed
+  there, and the contours switch greys out while it is on.
 - The local panel's scale bar stands in the bottom left corner of the panel,
   under the hex readout in the top left, rather than floating in from the edge
   by however much the patch's shape differed from the panel's.

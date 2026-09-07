@@ -90,11 +90,15 @@
         <section class="panel panel-local" id="local-panel">
           <h2>
             Local detail
-            <!-- The one view option this panel carries, so it sits on the panel it
-                 changes rather than among the planet's own fields. Spec 4.5.8. -->
+            <!-- The panel's own view options, so they sit on the panel they change
+                 rather than among the planet's own fields. Spec 4.5.8 and 4.5.9. -->
             <label class="inline heading-toggle">
               <input id="show-contours" type="checkbox" />
               contours
+            </label>
+            <label class="inline heading-toggle">
+              <input id="show-3d" type="checkbox" />
+              3d
             </label>
           </h2>
           <div class="localview-wrap" id="local-view">
@@ -169,7 +173,10 @@
           <dt>Middle</dt>
           <dd>The flat map, with the worked-out figures for the world beneath it.</dd>
           <dt>Right, top</dt>
-          <dd>The globe, drawn at the size and the axial tilt the profile gives it.</dd>
+          <dd>
+            The globe, drawn at the size and the axial tilt the profile gives it,
+            and always at the finest detail whatever the slider says.
+          </dd>
           <dt>Right, bottom</dt>
           <dd>
             Local detail: the hex you are pointing at and the ground around it,
@@ -192,10 +199,12 @@
           pressure size the ice caps.
         </p>
         <p>
-          <b>Detail</b> chooses how finely the world is drawn: 362, 1442, 5762, or
-          23042 hexes. It does not change the world. A coarser setting draws fewer
-          hexes of the same planet, so the slider is safe to move and safe to move
-          back.
+          <b>Detail</b> chooses how finely the map draws the world: 362, 1442,
+          5762, or 23042 hexes. It does not change the world. A coarser setting
+          draws fewer hexes of the same planet, so the slider is safe to move and
+          safe to move back. The globe ignores it and is always at the finest
+          level, since a hex of the coarse settings covers a swathe of a sphere
+          you are seeing all of at once.
         </p>
         <p>
           The <b>World</b> figures &mdash; tilt, day, orbit, temperature &mdash;
@@ -219,8 +228,8 @@
           <dt>Local detail</dt>
           <dd>
             Click one of the fine hexes to put a point of interest on it, or to
-            open the one already there. <b>contours</b> beside the heading draws
-            the height lines described below.
+            open the one already there. <b>contours</b> and <b>3d</b> beside the
+            heading change how the ground is drawn, as described below.
           </dd>
         </dl>
 
@@ -241,6 +250,32 @@
           height. The seams between hexes step aside while the lines are on, which
           leaves the contours as the only lines on the patch; switch them off and
           the hexes come back.
+        </p>
+
+        <h3>Relief</h3>
+        <p>
+          <b>3d</b> shows the same ground lit and standing up, seen from thirty
+          degrees above: a block of land with the sun low over your left shoulder,
+          the sea filled in at its own level, and cut earth down the sides. The
+          surface runs smoothly through the same heights the hexes are coloured
+          from, because a hillside is not made of hexagons. The flat view is the
+          hex map; this is the country it stands for.
+        </p>
+        <p>
+          Height is exaggerated by a fixed amount rather than stretched to fill the
+          panel, so gentle ground is drawn as gentle ground and two patches of one
+          world can be read against each other. Distance across the panel is still
+          true, which is why the scale bar stands in this view; distance up it is
+          foreshortened.
+        </p>
+        <p>
+          Contours belong to the flat view, and their switch greys out while
+          <b>3d</b> is on: what a contour says about a slope, a lit hillside shows. The outline round the selected
+          map hex goes too, since it is there to tie the patch to the map and this
+          view is not a map. Points of interest are still marked and named, but
+          they cannot be placed here — a click cannot be put back onto ground
+          that may be hidden behind nearer ground. Switch <b>3d</b> off to place
+          one.
         </p>
 
         <h3>Points of interest</h3>
