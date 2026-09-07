@@ -7,7 +7,7 @@ import {
   formatLattice,
   formatRef,
   latticeKey,
-  REFERENCE_SIZE,
+  SPHERE_SIZE,
   type LatticeRef,
   type RefCoord,
   type RefIndex,
@@ -80,6 +80,8 @@ interface State {
   verdancy: number;
   /** Polar ice, or null on a planet the profile does not cap. Spec 5.4. */
   caps: IceCaps | null;
+  /** Whether the map draws the ground without its hex seams. A view option. Spec 4.3.7.1. */
+  smooth: boolean;
   /** Whether the local panel draws contour lines. A view option, so not saved. Spec 4.5.8. */
   contours: boolean;
   /** Whether the local panel draws the patch in relief. Also a view option. Spec 4.5.9. */
@@ -115,8 +117,10 @@ const globe = createGlobe();
 el("globe-panel").append(globe.element);
 
 /**
- * The globe's own grid: always the finest level, whatever the map is drawing.
- * Spec 4.4.9.
+ * The globe's own grid: a fixed level of its own, whatever the map is drawing.
+ * Spec 4.4.9. Not the finest level, for the reason SPHERE_SIZE gives - a sphere
+ * a few hundred pixels across cannot show it, and its mesh is rebuilt at every
+ * redraw.
  *
  * Built once and kept, since it is the same grid for every world. It costs a
  * noticeable moment to build and nothing about it depends on the planet, so
@@ -124,11 +128,11 @@ el("globe-panel").append(globe.element);
  * built at all where the map is already at that level: then it is the map's own
  * grid, and the two panels share the one.
  */
-let finest: Grid | null = null;
+let sphere: Grid | null = null;
 function globeGrid(): Grid {
-  if (state.planet.size === REFERENCE_SIZE) return state.grid;
-  if (finest === null) finest = buildGrid(REFERENCE_SIZE);
-  return finest;
+  if (state.planet.size === SPHERE_SIZE) return state.grid;
+  if (sphere === null) sphere = buildGrid(SPHERE_SIZE);
+  return sphere;
 }
 
 const local = createLocalView();
@@ -147,6 +151,7 @@ const state: State = (() => {
     options: DEFAULT_FIELD_OPTIONS,
     verdancy: DEFAULT_VERDANCY,
     caps: null,
+    smooth: false,
     contours: false,
     isometric: false,
     selected: null,
@@ -631,6 +636,13 @@ function showFocus(): void {
   showTip(state.hovered);
 }
 
+// Smooth is a width rather than a shape, so the map that is already drawn answers
+// to it and nothing is built again. Spec 4.3.7.1.
+el<HTMLInputElement>("p-smooth").addEventListener("change", (event) => {
+  state.smooth = (event.target as HTMLInputElement).checked;
+  map.setSmooth(state.smooth);
+});
+
 // The two view options redraw the one panel they change, and nothing else: they
 // say nothing about the world, so they neither resurface it nor mark it unsaved.
 el<HTMLInputElement>("show-contours").addEventListener("change", (event) => {
@@ -994,7 +1006,7 @@ el("save").addEventListener("click", async () => {
     // goes down so a second click cannot start it all again underneath.
     save.disabled = true;
     say(`Saving to ${into}...`);
-    const images = await renderMaps(state.planet, currentDetail(), (size) =>
+    const images = await renderMaps(state.planet, currentDetail(), state.smooth, (size) =>
       say(`Drawing the ${size} row map for ${into}...`),
     );
     if (folder) {

@@ -273,7 +273,7 @@ input.overridden { border-color: var(--accent, #e0b341); }
 .hexmap.dragging { cursor: grabbing; }
 .hexmap polygon { stroke: #0d0f12; stroke-width: var(--hex-stroke, 0.006); }
 .hexmap .face-outline { fill: none; stroke: #f2f4f8; stroke-width: 0.012; opacity: 0.45; pointer-events: none; }
-.hexmap .selected-hex { fill: none; stroke: var(--select); stroke-width: var(--hex-stroke, 0.006); pointer-events: none; }
+.hexmap .selected-hex { fill: none; stroke: var(--select); stroke-width: var(--mark-stroke, 0.006); pointer-events: none; }
 
 .placeholder { color: var(--muted); }
 
@@ -302,7 +302,7 @@ input[type="range"] + .hint { white-space: nowrap; }
 .hexmap .poi-hex {
   fill: none;
   stroke: var(--poi);
-  stroke-width: var(--hex-stroke, 0.006);
+  stroke-width: var(--mark-stroke, 0.006);
   pointer-events: none;
 }
 /* In the seam, as 4.3.4.1 has it for the map, but at the map's proportion of a

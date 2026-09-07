@@ -50,8 +50,11 @@
         <div id="subsector" class="hint under"></div>
         <label>UWP<span class="row"><input id="p-uwp" type="text" autocomplete="off" /><button id="roll-uwp" type="button" title="Roll a new profile">Roll</button></span></label>
         <label>Seed<input id="p-seed" type="text" autocomplete="off" /></label>
-        <label>Detail<span class="row"><input id="p-size" type="range" min="0" max="3" step="1" list="detail-stops" /><span id="cell-count" class="hint"></span></span></label>
-        <datalist id="detail-stops"><option value="0"></option><option value="1"></option><option value="2"></option><option value="3"></option></datalist>
+        <label>Detail<span class="row"><input id="p-size" type="range" min="0" max="4" step="1" list="detail-stops" /><span id="cell-count" class="hint"></span></span></label>
+        <!-- Beside the slider, since what it is worth depends on the level: at the
+             fine ones a seam is thinner than a pixel. Spec 4.3.7.1. -->
+        <label class="inline under"><input id="p-smooth" type="checkbox" /> Smooth</label>
+        <datalist id="detail-stops"><option value="0"></option><option value="1"></option><option value="2"></option><option value="3"></option><option value="4"></option></datalist>
 
         <h2>
           World
@@ -200,11 +203,18 @@
         </p>
         <p>
           <b>Detail</b> chooses how finely the map draws the world: 362, 1442,
-          5762, or 23042 hexes. It does not change the world. A coarser setting
+          5762, 23042, or 92162 hexes. It does not change the world. A coarser setting
           draws fewer hexes of the same planet, so the slider is safe to move and
-          safe to move back. The globe ignores it and is always at the finest
-          level, since a hex of the coarse settings covers a swathe of a sphere
-          you are seeing all of at once.
+          safe to move back. The globe ignores it and draws at a level of its own,
+          since a hex of the coarse settings covers a swathe of a sphere you are
+          seeing all of at once.
+        </p>
+        <p>
+          <b>Smooth</b> beside the slider draws the ground without the seams
+          between its hexes. At the fine levels a seam is thinner than a pixel and
+          the map turns to haze; switch it on and the colours meet, switch it off
+          and the hexes come back. The selection and the point of interest rings
+          are drawn either way.
         </p>
         <p>
           The <b>World</b> figures &mdash; tilt, day, orbit, temperature &mdash;

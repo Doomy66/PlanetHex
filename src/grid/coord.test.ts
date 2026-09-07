@@ -138,7 +138,7 @@ describe("the written form", () => {
   it("refuses what is not a coordinate", () => {
     expect(parseRef("")).toBeNull();
     expect(parseRef("F20R00C00")).toBeNull();
-    expect(parseRef("F00R49C00")).toBeNull();
+    expect(parseRef(`F00R${REFERENCE_SIZE + 1}C00`)).toBeNull();
     expect(parseRef("F00R03C07")).toBeNull(); // column past the row
   });
 });

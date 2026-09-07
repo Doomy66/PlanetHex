@@ -1,7 +1,7 @@
 import { DETAIL_LEVELS } from "../grid/coord";
 import { poiPlacements } from "../poi";
 import { buildSurface } from "../surface";
-import { createHexMap, type PoiMark } from "../ui/map";
+import { createHexMap, strokeWidths, type PoiMark } from "../ui/map";
 import type { PlanetDetail } from "../gen/detail";
 import type { Planet } from "../planet";
 
@@ -25,10 +25,11 @@ const WIDTH = 2048;
  */
 const STYLES = `
   polygon { stroke: #0d0f12; stroke-width: var(--hex-stroke, 0.006); }
+  .selected-hex { fill: none; stroke-width: var(--mark-stroke, 0.006); }
   .face-outline { fill: none; stroke: #f2f4f8; stroke-width: 0.012; opacity: 0.45; }
   .poi-starport { --poi: #ff4d47; }
   .poi-comment { --poi: #d7dde6; }
-  .poi-hex { fill: none; stroke: var(--poi); stroke-width: var(--hex-stroke, 0.006); }
+  .poi-hex { fill: none; stroke: var(--poi); stroke-width: var(--mark-stroke, 0.006); }
   .scalebar path { fill: none; stroke: #dfe3ea; stroke-width: 3; vector-effect: non-scaling-stroke; }
   .scalebar text {
     fill: #dfe3ea;
@@ -53,6 +54,8 @@ export type MapImages = ReadonlyMap<number, Blob>;
 export async function renderMaps(
   planet: Planet,
   detail: PlanetDetail,
+  /** Whether the hex seams are off, as 4.3.7.1 has them on screen. */
+  smooth: boolean,
   onLevel?: (size: number) => void,
 ): Promise<MapImages> {
   const images = new Map<number, Blob>();
@@ -62,7 +65,7 @@ export async function renderMaps(
     // about the level being drawn is given a frame to reach the screen first.
     // Without this the whole run is one freeze with nothing said during it.
     await nextFrame();
-    images.set(size, await renderMap(planet, detail, size));
+    images.set(size, await renderMap(planet, detail, size, smooth));
   }
   return images;
 }
@@ -71,7 +74,12 @@ function nextFrame(): Promise<void> {
   return new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(() => resolve())));
 }
 
-async function renderMap(planet: Planet, detail: PlanetDetail, size: number): Promise<Blob> {
+async function renderMap(
+  planet: Planet,
+  detail: PlanetDetail,
+  size: number,
+  smooth: boolean,
+): Promise<Blob> {
   const surface = buildSurface(planet, detail, size);
   const map = createHexMap();
   map.render(
@@ -90,6 +98,14 @@ async function renderMap(planet: Planet, detail: PlanetDetail, size: number): Pr
   const box = (svg.getAttribute("viewBox") ?? "0 0 1 1").split(/\s+/).map(Number);
   const ratio = (box[3] ?? 1) / (box[2] ?? 1);
   const height = Math.round(WIDTH * ratio);
+
+  // The seams of 4.3.7 by the same rule the panel uses, at the width the picture
+  // is written at rather than the width of a panel this map was never in. What
+  // the picture cannot work out for itself is whether the reader asked for them,
+  // so that is handed to it: a save writes down the map that was on screen.
+  const { seam, mark } = strokeWidths(size, WIDTH / (box[2] ?? 1), smooth);
+  svg.style.setProperty("--hex-stroke", String(seam));
+  svg.style.setProperty("--mark-stroke", String(mark));
 
   const style = document.createElementNS(SVG_NS, "style");
   style.textContent = STYLES;

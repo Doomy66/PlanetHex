@@ -17,11 +17,15 @@ import {
   existsAtSize,
   formatLattice,
   latticeRef,
+  latticeKey,
   parseLattice,
   REFERENCE_SIZE,
   type LatticeRef,
 } from "./grid/coord";
 import { hexRound } from "./ui/local";
+
+/** The lattice a saved coordinate with no depth on it is counted on. Spec 2.2.2.5. */
+const DEPTHLESS = 48;
 
 /** A point of the reference lattice, which is what a display hex is. */
 const ref = (face: number, i: number, j: number, size = REFERENCE_SIZE): LatticeRef =>
@@ -100,21 +104,31 @@ describe("reading POIs back off a save", () => {
       { kind: "comment", name: "C", narrative: "", ref: { face: 2, i: 41, j: 20, size: 128 } },
     ]);
     expect(pois).toHaveLength(3);
-    expect(pois[0]!.ref).toEqual(ref(2, 12, 6));
-    expect(pois[1]!.ref).toEqual(ref(2, 12, 7));
+    expect(pois[0]!.ref).toEqual(ref(2, 12, 6, DEPTHLESS));
+    expect(pois[1]!.ref).toEqual(ref(2, 12, 7, DEPTHLESS));
     expect(pois[2]!.ref).toEqual(latticeRef(2, 41, 20, 128));
   });
 
   // Spec 6.5.5: every POI in a save written before the fine lattice sat on a
-  // display hex, so a coordinate with no depth means the reference lattice.
-  it("reads a coordinate with no depth as a reference point", () => {
+  // display hex, so a coordinate with no depth is a point of the lattice those
+  // saves were written on. That lattice is 48 rows and stays 48 whatever level is
+  // added to the slider, or the point would move. Spec 2.2.2.5.
+  it("reads a coordinate with no depth on the lattice it was written on", () => {
     const pois = parsePois([{ kind: "comment", ref: { face: 0, i: 24, j: 12 } }]);
-    expect(pois[0]!.ref).toEqual(ref(0, 24, 12));
+    expect(pois[0]!.ref).toEqual(ref(0, 24, 12, DEPTHLESS));
+    // Which is a different place from the same numbers read on the finest lattice,
+    // and that is the whole point of pinning it.
+    expect(pois[0]!.ref).not.toEqual(ref(0, 24, 12, REFERENCE_SIZE));
   });
 
   it("fills in the text a save left out", () => {
     const pois = parsePois([{ kind: "comment", ref: { face: 0, i: 1, j: 0 } }]);
-    expect(pois[0]).toEqual({ kind: "comment", name: "", narrative: "", ref: ref(0, 1, 0) });
+    expect(pois[0]).toEqual({
+      kind: "comment",
+      name: "",
+      narrative: "",
+      ref: ref(0, 1, 0, DEPTHLESS),
+    });
   });
 
   // Unlike the seed of 6.4.3, a POI is not something the planet cannot be rebuilt
@@ -293,5 +307,27 @@ describe("the starport a reroll speaks for", () => {
     const { pois } = rerollStarport(before, null, there);
     expect(pois).not.toBe(before);
     expect(pois).toEqual(before);
+  });
+});
+
+describe("a saved ref with no depth on it", () => {
+  /**
+   * Saves written before points of interest could sit on the fine lattice carry
+   * no depth. They mean the lattice of the day they were written, which was 48
+   * rows, and a level added to the slider must not move them. Spec 2.2.2.5.
+   */
+  it("is read on the lattice it was written on, not on the finest one", () => {
+    const bare = parsePois([{ ref: { face: 7, i: 33, j: 8 }, kind: "starport", name: "Old" }]);
+    const named = parsePois([{ ref: "F07R33C08", kind: "starport", name: "Older" }]);
+    const explicit = parsePois([
+      { ref: { face: 7, i: 33, j: 8, size: 48 }, kind: "starport", name: "New" },
+    ]);
+    expect(bare).toHaveLength(1);
+    expect(named).toHaveLength(1);
+    expect(explicit).toHaveLength(1);
+    // All three name one place on the world.
+    expect(latticeKey(bare[0]!.ref)).toBe(latticeKey(explicit[0]!.ref));
+    expect(latticeKey(named[0]!.ref)).toBe(latticeKey(explicit[0]!.ref));
+    expect(poiPosition(bare[0]!.ref)).toEqual(poiPosition(explicit[0]!.ref));
   });
 });

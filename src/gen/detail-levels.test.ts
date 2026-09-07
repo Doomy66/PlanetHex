@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { buildGrid } from "../grid/grid";
-import { buildRefIndex, DETAIL_LEVELS, REFERENCE_SIZE } from "../grid/coord";
+import { buildRefIndex, DETAIL_LEVELS, REFERENCE_SIZE, SEA_SAMPLE_SIZE } from "../grid/coord";
 import { generateHeights, referenceHeights, seaLevelFor } from "./height";
 import { fieldOptionsFor } from "./shape";
 import { planetDetail } from "./detail";
@@ -64,7 +64,10 @@ describe("detail levels", () => {
     }
   });
 
-  it("counts each point of the reference lattice once", () => {
-    expect(referenceHeights(SEED).length).toBe(10 * REFERENCE_SIZE * REFERENCE_SIZE + 2);
+  it("counts each point of the lattice sea level is measured on once", () => {
+    // The count of distinct points on a closed lattice of n rows, by 2.2.1. Read
+    // off SEA_SAMPLE_SIZE rather than the finest level, for the reason 5.2.4.1
+    // gives: a level added to the slider must not move any coastline.
+    expect(referenceHeights(SEED).length).toBe(10 * SEA_SAMPLE_SIZE * SEA_SAMPLE_SIZE + 2);
   });
 });
