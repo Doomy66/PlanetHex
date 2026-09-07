@@ -1,5 +1,5 @@
 import "./style.css";
-import { buildGrid, cellCount, type Grid } from "./grid/grid";
+import { buildGrid, cellCount, nearestCell, type Grid } from "./grid/grid";
 import {
   asLatticeRef,
   buildRefIndex,
@@ -7,11 +7,12 @@ import {
   formatLattice,
   formatRef,
   latticeKey,
+  REFERENCE_SIZE,
   type LatticeRef,
   type RefCoord,
   type RefIndex,
 } from "./grid/coord";
-import { generateHeights } from "./gen/height";
+import { generateHeights, heightsOn } from "./gen/height";
 import { isIced, type IceCaps } from "./gen/ice";
 import { DEFAULT_FIELD_OPTIONS, type HeightFieldOptions } from "./gen/field";
 import { newPlanet, parseUwp, rollUwp, type Planet } from "./planet";
@@ -81,6 +82,8 @@ interface State {
   caps: IceCaps | null;
   /** Whether the local panel draws contour lines. A view option, so not saved. Spec 4.5.8. */
   contours: boolean;
+  /** Whether the local panel draws the patch in relief. Also a view option. Spec 4.5.9. */
+  isometric: boolean;
   selected: number | null;
   /**
    * The hex under the pointer on the map, which the local panels follow in
@@ -111,6 +114,23 @@ el("map-panel").append(map.element);
 const globe = createGlobe();
 el("globe-panel").append(globe.element);
 
+/**
+ * The globe's own grid: always the finest level, whatever the map is drawing.
+ * Spec 4.4.9.
+ *
+ * Built once and kept, since it is the same grid for every world. It costs a
+ * noticeable moment to build and nothing about it depends on the planet, so
+ * building it per redraw would be paying that over and over for one answer. Not
+ * built at all where the map is already at that level: then it is the map's own
+ * grid, and the two panels share the one.
+ */
+let finest: Grid | null = null;
+function globeGrid(): Grid {
+  if (state.planet.size === REFERENCE_SIZE) return state.grid;
+  if (finest === null) finest = buildGrid(REFERENCE_SIZE);
+  return finest;
+}
+
 const local = createLocalView();
 el("local-view").append(local.element);
 
@@ -128,6 +148,7 @@ const state: State = (() => {
     verdancy: DEFAULT_VERDANCY,
     caps: null,
     contours: false,
+    isometric: false,
     selected: null,
     hovered: null,
     selectedRef: null,
@@ -178,9 +199,13 @@ function resurface(): void {
     state.caps,
     state.verdancy,
   );
+  // The finest grid the application has, read off the field the surface was just
+  // sampled from rather than off one built again for it. Where the map is already
+  // at that level this is the map's own grid and heights, untouched. Spec 4.4.9.1.
+  const shown = globeGrid();
   globe.render(
-    state.grid,
-    state.heights,
+    shown,
+    shown === state.grid ? state.heights : heightsOn(surface.field, shown),
     state.seaLevel,
     state.diameterKm,
     state.caps,
@@ -574,7 +599,10 @@ function select(cell: number | null): void {
 function showSelection(cell: number | null): void {
   state.selected = cell;
   map.setSelected(cell);
-  globe.setSelected(cell);
+  // By its corners rather than by its index: the globe is drawing a different grid
+  // under 4.4.9 and has no index to be given. The hex marked is still the display
+  // hex, which is the hex the user selected. Spec 4.4.9.2.
+  globe.setSelected(cell === null ? null : (state.grid.cells[cell]?.corners ?? null));
   showFocus();
 }
 
@@ -597,20 +625,33 @@ function showFocus(): void {
     caps: state.caps,
     verdancy: state.verdancy,
     contours: state.contours,
+    isometric: state.isometric,
   });
   showHex(cell);
   showTip(state.hovered);
 }
 
-// The contour option redraws the one panel it changes, and nothing else: it says
-// nothing about the world, so it neither resurfaces it nor marks it unsaved.
+// The two view options redraw the one panel they change, and nothing else: they
+// say nothing about the world, so they neither resurface it nor mark it unsaved.
 el<HTMLInputElement>("show-contours").addEventListener("change", (event) => {
   state.contours = (event.target as HTMLInputElement).checked;
   showFocus();
 });
 
+el<HTMLInputElement>("show-3d").addEventListener("change", (event) => {
+  state.isometric = (event.target as HTMLInputElement).checked;
+  // The lines are the flat view's, under 4.5.9.6, so while the panel is in relief
+  // the switch for them is turned off rather than left offering something it
+  // would not do. Its setting is kept, and comes back with the flat view.
+  el<HTMLInputElement>("show-contours").disabled = state.isometric;
+  showFocus();
+});
+
 map.onSelect(select);
-globe.onSelect(select);
+// The globe answers with the point of the sphere the click landed on, since it is
+// drawing hexes of its own that the other panels know nothing about. The hex
+// selected is the display hex covering that point. Spec 4.4.9.2.
+globe.onSelect((at) => select(nearestCell(state.grid, at)));
 
 map.onHover((cell) => {
   state.hovered = cell;
@@ -665,7 +706,12 @@ function showPois(): void {
     kind: here.some((poi) => poi.kind === "starport") ? "starport" : "comment",
   }));
   map.setPois(marks);
-  globe.setPois(marks);
+  globe.setPois(
+    marks.flatMap(({ cell, kind }) => {
+      const corners = state.grid.cells[cell]?.corners;
+      return corners === undefined ? [] : [{ corners, kind }];
+    }),
+  );
 
   const list = el("poi-list");
   list.replaceChildren(

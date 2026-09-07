@@ -117,6 +117,9 @@ body {
 .heading-toggle { font-size: inherit; letter-spacing: inherit; color: var(--muted); }
 .heading-toggle:hover { color: var(--text); }
 .heading-toggle input { transform: scale(0.85); }
+/* A view option the other view has no use for. Spec 4.5.9.6. */
+.heading-toggle:has(input:disabled) { opacity: 0.4; }
+.heading-toggle:has(input:disabled):hover { color: var(--muted); }
 .localview-wrap { position: relative; flex: 1; min-height: 0; display: flex; }
 
 /* The hex readout sits over the panel that draws the hex, rather than across the
@@ -125,7 +128,7 @@ body {
   position: absolute;
   top: 0;
   left: 0;
-  z-index: 1;
+  z-index: 2;
   min-width: 132px;
   padding: 6px 9px;
   font-size: 11px;
@@ -136,7 +139,14 @@ body {
 }
 .hex-overlay[hidden] { display: none; }
 .hex-overlay div { gap: 16px; padding: 1px 0; }
-.localview { width: 100%; height: 100%; }
+/* The panel's two layers: the lit ground of 4.5.9 in a canvas, and the SVG over it
+   with the flat view's hexes and, in either view, the marks and the scale bar. */
+.localview-stack { position: relative; flex: 1; min-height: 0; }
+.localview-stack > * { position: absolute; inset: 0; }
+.relief { z-index: 0; }
+.relief[hidden] { display: none; }
+.relief canvas { display: block; width: 100%; height: 100%; }
+.localview { width: 100%; height: 100%; z-index: 1; }
 .localview polygon { stroke: #0d0f12; stroke-width: 0.04; }
 .localview .localview-hex {
   fill: none;

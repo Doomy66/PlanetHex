@@ -1,7 +1,7 @@
 import type { Grid } from "../grid/grid";
 import { latticePosition, REFERENCE_SIZE } from "../grid/coord";
 import { positionKey } from "../grid/vec3";
-import type { HeightFieldOptions } from "./field";
+import type { HeightField, HeightFieldOptions } from "./field";
 import { buildHeightField, DEFAULT_FIELD_OPTIONS } from "./field";
 
 /**
@@ -23,7 +23,18 @@ export function generateHeights(
   seed: string,
   options: HeightOptions = DEFAULT_FIELD_OPTIONS,
 ): Float64Array {
-  const field = buildHeightField(seed, REFERENCE_SIZE, options);
+  return heightsOn(buildHeightField(seed, REFERENCE_SIZE, options), grid);
+}
+
+/**
+ * The same, off a field already built.
+ *
+ * Building the field is most of the work and is the same work whatever grid is
+ * being sampled, so a caller wanting two grids of one world - the display grid and
+ * the finest grid the globe of 4.4.9 draws - reads them both off one field rather
+ * than paying for it twice.
+ */
+export function heightsOn(field: HeightField, grid: Grid): Float64Array {
   // NaN marks a cell nothing has written to, so a gap shows up as a gap rather
   // than as a plausible sea-level zero.
   const heights = new Float64Array(grid.cells.length).fill(Number.NaN);
@@ -58,7 +69,11 @@ export function referenceHeights(
   seed: string,
   options: HeightOptions = DEFAULT_FIELD_OPTIONS,
 ): Float64Array {
-  const field = buildHeightField(seed, REFERENCE_SIZE, options);
+  return referenceHeightsOn(buildHeightField(seed, REFERENCE_SIZE, options));
+}
+
+/** The same, off a field already built, for the reason heightsOn gives. */
+export function referenceHeightsOn(field: HeightField): Float64Array {
   const seen = new Set<string>();
   const values: number[] = [];
   for (let f = 0; f < 20; f++) {

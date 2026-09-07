@@ -55,6 +55,8 @@ A browser application that generates planet surfaces procedurally and shows them
 
 2.2.2.3 The word detail is already doing two other jobs here: the detail values of 6.12, and the local detail panel of 4.5. This one is written detail level throughout, and the other two are never shortened to it.
 
+2.2.2.4 The slider is the map's. The sphere of 4.4.9 stands outside it and is always drawn at the finest of the four, and the local detail panel follows it at a fixed distance below under 4.5.6.
+
 2.2.3 Hex scale in miles or kilometres follows from the planet radius and the hex count, and is shown rather than entered. At the default level on an Earth sized world, that is roughly 430 miles per hex.
 
 ### 2.3 Coordinates
@@ -255,6 +257,16 @@ A browser application that generates planet surfaces procedurally and shows them
 
 4.4.8.2 The rings turn with the surface, since they are drawn on the ground rather than over the picture of it, and a ring on the far side of the world is hidden by the world. The selection is not: it is the one thing the user is looking for, and hiding it would leave them turning the globe to find out where it went.
 
+4.4.9 The sphere is always drawn at the finest detail level of 2.2.2, whatever the slider is set to. The globe is a picture of the world rather than a picture of the hex map: the whole planet is on screen at once, so at the coarse levels a single hex covers a swathe of it and a coastline comes out as a handful of blocky steps. The map is where the grid is read hex by hex; the sphere is where the shape of the world is read, and the finest grid is the one that shows it.
+
+4.4.9.1 The heights on that grid are read off the same field the surface on screen was sampled from rather than off a field built again for it. Building the field is the expensive half of the work and is the same work whichever grid is being sampled. Spec 3.2.4 is what makes reading it twice sound: a point has one height at any depth, so the two grids cannot disagree about the ground they share.
+
+4.4.9.2 The grid itself is built once and kept, since it is the same grid for every world and nothing about it depends on the planet. Where the map is already at that level the two panels share the map's own grid rather than holding two copies of it.
+
+4.4.9.3 The panel therefore knows nothing of display hexes. What is marked on it arrives as the corners of a hex rather than as a hex of some grid, and a click leaves it as the point of the sphere it landed on. Both are directions, which mean the same thing at every level, and it is the caller that knows which level it is asking about.
+
+4.4.9.4 What is marked is still the display hex. The selection of 4.4.4 is the hex the user chose in the other panels, a click on the sphere selects the display hex covering the point by the rule 6.6.1.1 already uses for a point of interest, and the rings of 4.4.8 go round the covering hex as they do on the map. A mark the size of a finest-level hex would be a dot on a globe, and one selection shown in all three panels under 4.1.3 has to be the hex all three of them can name.
+
 ### 4.5 Local detail panel
 
 4.5.1 Beneath the globe, the selected hex and the ground around it, drawn at a finer subdivision than the display grid under 3.5.
@@ -308,6 +320,30 @@ A browser application that generates planet surfaces procedurally and shows them
 4.5.8.7 With the lines drawn, the seams between the hexes give way to them. A seam left under a contour is the same mark saying less, and a seam anywhere else is the one thing on the panel competing with the lines for the reader's eye. What the seams say about where one hex ends, the lines now say where it matters, so the patch is drawn as continuous ground with the contours the only lines on it. With the lines off the panel is drawn exactly as it was: the seams are how the panel says it is a hex map at all, and they are only worth trading for something that says it better.
 
 4.5.8.7.1 Two fills sharing an exact edge still leave a hairline of the ground behind showing between them, so with the seams off the fills are drawn a hair large and overlap. The margin is far below what would move a colour boundary away from the line drawn on it.
+
+4.5.9 The panel offers a second view of the same ground: lit, standing up, and seen from over it rather than from above it. Off until asked for, by a switch beside the panel's heading as 4.5.8.1 has it. The flat view is the hex map; this is the country the map stands for, and a reader who wants to know what a stretch of ground is like rather than what its heights are is asking for this one.
+
+4.5.9.1 It is seen from thirty degrees above the ground, and without perspective. At that angle a step of depth into the drawing is worth the sine of it and a step of height the cosine, so distance stays true across the drawing and is foreshortened up it. That is what lets the scale bar of 4.6 stand in this view unchanged: the bar is horizontal, along the axis that kept its scale.
+
+4.5.9.2 The surface runs smoothly through the same heights the flat view colours its hexes from, on the triangles the lattice already makes between neighbouring hexes. It is not stepped. A hillside is not made of hexagons, and a picture of one should not be either: the hexes are how the map is drawn, not how the ground is shaped. The two views are two readings of one field, so they cannot disagree about where the coast is.
+
+4.5.9.2.1 A hex on the rim of the patch has only part of a ring of triangles round it, so the slope worked out there leans out over the edge and the outermost strip of ground comes out as a row of dark teeth. Each rim hex is lit as the hex one step inside it is instead, which is the ground it is the edge of.
+
+4.5.9.3 Height is exaggerated by a fixed amount rather than stretched to fill the panel. Some exaggeration there must be: a patch is hundreds of kilometres across and its ground rises by single kilometres, so drawn to the truth of it a mountain range would be a flat sheet. Fixed, though, so that gentle ground is drawn as gentle ground and two patches of one world can be read against each other. The figure is set where rough ground reads as hills rather than as spikes.
+
+4.5.9.3.1 The ground stands on a block: the patch's own hexagonal footprint, walled down to a floor under the lowest ground in view and cut earth down the sides. Without it the surface would be a sheet hanging in the panel with nothing under it.
+
+4.5.9.3.2 The sea is a sheet at sea level rather than a colour painted on the ground, and the water at the sides of the block is walled like the earth is. The block is a piece cut out of the world, so where the sea is deep at the edge of it the cut goes through water as well as through earth. A sheet with nothing under it at the rim would hang over the walls instead of standing on them.
+
+4.5.9.4 The lit ground is drawn in its own canvas, with the same library the globe of 4.4 uses. What has to go over it is drawn in the panel's own SVG through the projection of 4.5.9.1 written out as arithmetic, so that a mark sits on the ground it is about rather than near it. This is why the view is drawn without perspective: the two would otherwise part company by however far from the middle of the panel a mark fell.
+
+4.5.9.4.1 The outline round the selected display hex of 4.5.3 is not drawn in this view. It is there to say which hex of the map the patch is of, which is a question about the map; over lit ground it is a wire hoop standing in front of the thing the view was turned on to look at.
+
+4.5.9.5 Points of interest are marked and named here as 4.5.7.4 has them, but cannot be placed. A click would have to be put back through the projection onto ground that may be hidden behind nearer ground, and a point landing on a hex the reader did not mean is worse than a panel that does not take the click. The flat view is where they are placed, and it is one switch away.
+
+4.5.9.6 The contour lines of 4.5.8 belong to the flat view, and their switch is turned off while this view is on rather than left offering something it would not do. What a contour says about a slope, a lit hillside shows. The setting is kept, and comes back with the flat view.
+
+4.5.9.7 Like the contours, this is a view of the planet and not part of it: it neither redraws the surface nor counts as an unsaved change under 6.4.4, and it is not saved with the planet.
 
 ### 4.6 Scale
 
