@@ -27,8 +27,12 @@ user. Dates are the day the release was tagged.
 - **A fifth detail level: 96 rows, 92162 hexes.** Twice as fine as the old
   finest, which puts a hex at a few tens of kilometres across on an Earth
   sized world. It costs about a second to draw, where the other levels are a
-  fraction of one, and nothing else in the application pays for it: the globe
-  keeps its own level and so does the lattice sea level is measured on.
+  fraction of one.
+- The globe draws at that level too, so its coastlines are as fine as the map's.
+  Four times the hexes costs about a sixth of a second on a redraw, taking one
+  from roughly 0.57s to 0.74s, since the mesh is only a part of what a redraw
+  does. The lattice sea level is measured on keeps its own coarser level, since a
+  quantile gains nothing from four times the samples.
 - **A Smooth switch beside the Detail slider**, which draws the ground without
   the seams between its hexes. At the fine levels a seam is thinner than a pixel,
   which cannot be drawn and is spread instead, so the finest level arrives as a

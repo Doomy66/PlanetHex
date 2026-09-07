@@ -269,7 +269,7 @@ A browser application that generates planet surfaces procedurally and shows them
 
 4.4.8.2 The rings turn with the surface, since they are drawn on the ground rather than over the picture of it, and a ring on the far side of the world is hidden by the world. The selection is not: it is the one thing the user is looking for, and hiding it would leave them turning the globe to find out where it went.
 
-4.4.9 The sphere is drawn at a fixed level of its own, whatever the slider is set to, and that level is 48. The globe is a picture of the world rather than a picture of the hex map: the whole planet is on screen at once, so at the coarse levels a single hex covers a swathe of it and a coastline comes out as a handful of blocky steps. The map is where the grid is read hex by hex; the sphere is where the shape of the world is read.
+4.4.9 The sphere is drawn at a fixed level of its own, whatever the slider is set to, and that level is the finest of 2.2.2. The globe is a picture of the world rather than a picture of the hex map: the whole planet is on screen at once, so at the coarse levels a single hex covers a swathe of it and a coastline comes out as a handful of blocky steps. The map is where the grid is read hex by hex; the sphere is where the shape of the world is read.
 
 4.4.9.1 The heights on that grid are read off the same field the surface on screen was sampled from rather than off a field built again for it. Building the field is the expensive half of the work and is the same work whichever grid is being sampled. Spec 3.2.4 is what makes reading it twice sound: a point has one height at any depth, so the two grids cannot disagree about the ground they share.
 
@@ -279,7 +279,7 @@ A browser application that generates planet surfaces procedurally and shows them
 
 4.4.9.4 What is marked is still the display hex. The selection of 4.4.4 is the hex the user chose in the other panels, a click on the sphere selects the display hex covering the point by the rule 6.6.1.1 already uses for a point of interest, and the rings of 4.4.8 go round the covering hex as they do on the map. A mark the size of a finest-level hex would be a dot on a globe, and one selection shown in all three panels under 4.1.3 has to be the hex all three of them can name.
 
-4.4.9.5 Not the finest level, though. Twenty three thousand hexes on a sphere a few hundred pixels across are already smaller than a pixel, so the finest level is four times the mesh for a coastline with no more shape to it. The sphere's mesh is rebuilt at every redraw, unlike its grid, so that four times would be paid at every touch of the UWP. A level the panel cannot show is not detail, it is arithmetic.
+4.4.9.5 The finest level, and four times the hexes turns out not to be four times the cost. The grid is built once a session and kept; the mesh is rebuilt at every redraw, but that is a fraction of what a redraw does, and against half this level it adds about a sixth of a second to one, some thirty parts in a hundred. What it buys is the coastline, which is drawn hex by hex and is the one thing on this panel that shows the difference. The reader has no slider here to trade the one for the other, so the choice is made for them, and it is made in favour of the picture.
 
 ### 4.5 Local detail panel
 
