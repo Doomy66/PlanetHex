@@ -298,8 +298,9 @@ export function createHexMap(): HexMap {
         : [
             scaleBar({
               ...scaleOf,
-              // Smaller than the local panel's, and sitting on the view's left
-              // edge rather than inset from it. Spec 4.6.5.
+              // Smaller than the local panel's. Both sit on their left edge, but
+              // this is the busier panel and can afford the less furniture.
+              // Spec 4.6.5.
               fontScale: 0.5,
               inset: 0.01,
               width: view.w,

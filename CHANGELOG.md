@@ -4,6 +4,21 @@ The version in [package.json](package.json) is what the Windows installer of
 `npm run package` names itself after, so it is the one number that reaches a
 user. Dates are the day the release was tagged.
 
+## Unreleased
+
+- **Contour lines over the local detail panel**, off until asked for by the
+  switch beside the panel's heading. The colours say what height the ground is;
+  the lines say how fast it changes, which is the thing a walking map is read
+  for. Each runs along the sides between the hexes it separates, counted from
+  sea level so one line always lies on the coast, and spaced at whatever round
+  interval suits the ground in view. The interval is given under the scale bar.
+- While the lines are on, the seams between the hexes give way to them, so the
+  contours are the only lines on the patch. Switched off, the panel is drawn
+  exactly as it was.
+- The local panel's scale bar stands in the bottom left corner of the panel,
+  under the hex readout in the top left, rather than floating in from the edge
+  by however much the patch's shape differed from the panel's.
+
 ## 1.0.1 — 2026-09-06
 
 - **Saving and loading no longer need Chromium.** The File System Access API is

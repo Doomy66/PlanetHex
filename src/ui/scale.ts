@@ -55,9 +55,11 @@ export interface ScaleBarOptions {
   readonly bottom: number;
   /** Across one hex as this panel draws it, in km. Omitted if not known. */
   readonly hexKm?: number;
+  /** A further scale of the panel's own, such as the contour interval of 4.5.8. */
+  readonly note?: string;
   /** Label size, as a multiple of the default. The flat map wants it smaller. */
   readonly fontScale?: number;
-  /** Gap from the left edge, as a fraction of the width. Zero sits on the edge. */
+  /** Gap from the left edge, as a fraction of the width. Both panels sit on it. */
   readonly inset?: number;
 }
 
@@ -82,8 +84,9 @@ export function scaleBar(options: ScaleBarOptions): SVGGElement {
   );
   group.append(line);
 
-  // Both labels sit above the bar. The bar's own figure goes nearest to it, and
-  // the hex size above that, where there is room in every panel's viewBox.
+  // The labels stack above the bar. The bar's own figure goes nearest to it, the
+  // hex size above that, and a panel's further scale above again, where there is
+  // room in every panel's viewBox.
   const fontSize = options.width * 0.028 * (options.fontScale ?? 1);
   const text = (content: string, above: number, faint: boolean) => {
     const label = document.createElementNS(SVG_NS, "text");
@@ -97,6 +100,9 @@ export function scaleBar(options: ScaleBarOptions): SVGGElement {
   group.append(text(formatDistance(km), 0, false));
   if (options.hexKm !== undefined && options.hexKm > 0) {
     group.append(text(`1 hex = ${formatPrecise(options.hexKm)}`, 1.15, true));
+  }
+  if (options.note !== undefined && options.note !== "") {
+    group.append(text(options.note, 2.3, true));
   }
   return group;
 }

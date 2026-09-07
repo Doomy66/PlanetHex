@@ -88,7 +88,15 @@
       <div class="panel-right">
         <section class="panel panel-globe" id="globe-panel"></section>
         <section class="panel panel-local" id="local-panel">
-          <h2>Local detail</h2>
+          <h2>
+            Local detail
+            <!-- The one view option this panel carries, so it sits on the panel it
+                 changes rather than among the planet's own fields. Spec 4.5.8. -->
+            <label class="inline heading-toggle">
+              <input id="show-contours" type="checkbox" />
+              contours
+            </label>
+          </h2>
           <div class="localview-wrap" id="local-view">
             <dl id="hex-props" class="props hex-overlay" hidden>
               <div><dt>Hex</dt><dd id="h-id">&mdash;</dd></div>
@@ -211,9 +219,29 @@
           <dt>Local detail</dt>
           <dd>
             Click one of the fine hexes to put a point of interest on it, or to
-            open the one already there.
+            open the one already there. <b>contours</b> beside the heading draws
+            the height lines described below.
           </dd>
         </dl>
+
+        <h3>Contours</h3>
+        <p>
+          <b>contours</b> over the local panel draws lines through the ground at a
+          fixed height apart, the way a walking map does: close together is steep,
+          far apart is gentle, and a closed ring is a summit or a hollow. One line
+          always lies on the coast, since the lines are counted from sea level, and
+          the rest are drawn at whatever round interval suits the ground in view.
+          The figure is given under the scale bar, in the same heights the readout
+          shows. Lines under water are drawn pale and lines above it dark, so that
+          neither is lost in the colour behind it.
+        </p>
+        <p>
+          Each line runs between the hexes it separates rather than across them, so
+          the ground either side of it is entirely above or entirely below that
+          height. The seams between hexes step aside while the lines are on, which
+          leaves the contours as the only lines on the patch; switch them off and
+          the hexes come back.
+        </p>
 
         <h3>Points of interest</h3>
         <p>

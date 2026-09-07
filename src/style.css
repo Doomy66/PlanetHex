@@ -111,7 +111,12 @@ body {
   padding: 8px 10px 10px;
   overflow: hidden;
 }
-.panel-local h2 { margin: 0 0 6px; }
+.panel-local h2 { margin: 0 0 6px; display: flex; align-items: center; gap: 10px; }
+/* A view option beside a heading, set in the heading's own small type rather than
+   the body's, so it reads as part of the heading. */
+.heading-toggle { font-size: inherit; letter-spacing: inherit; color: var(--muted); }
+.heading-toggle:hover { color: var(--text); }
+.heading-toggle input { transform: scale(0.85); }
 .localview-wrap { position: relative; flex: 1; min-height: 0; display: flex; }
 
 /* The hex readout sits over the panel that draws the hex, rather than across the
@@ -139,6 +144,20 @@ body {
   stroke-width: 0.5;
   pointer-events: none;
 }
+/* Contour lines. Spec 4.5.8. Each half of the ramp gets the line it can carry,
+   dark over land and pale over water, and neither is opaque: the colour beneath
+   is what says which way the ground falls. */
+.localview .contours path { fill: none; stroke-width: 0.13; stroke-linejoin: round; }
+.localview .contour-land { stroke: rgba(12, 16, 22, 0.8); }
+/* Keyed to water rather than to snow. A near-white line reads as bright on the
+   deep sea, where there is least colour behind it to hold it down, and the lines
+   then shout loudest exactly where they say least. Spec 4.5.8.5. */
+.localview .contour-sea { stroke: rgba(150, 194, 236, 0.62); }
+/* With contours on, the seams between hexes give way to the lines: a seam left
+   under a contour line is the same mark saying less. The fills themselves carry
+   no class; the selection outline and the POI rings do, and keep their strokes.
+   Spec 4.5.8.7. */
+.localview.contoured polygon:not([class]) { stroke: none; }
 .localview .localview-empty {
   fill: var(--muted);
   font-size: 7px;
