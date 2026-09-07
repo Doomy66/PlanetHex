@@ -79,6 +79,8 @@ interface State {
   verdancy: number;
   /** Polar ice, or null on a planet the profile does not cap. Spec 5.4. */
   caps: IceCaps | null;
+  /** Whether the local panel draws contour lines. A view option, so not saved. Spec 4.5.8. */
+  contours: boolean;
   selected: number | null;
   /**
    * The hex under the pointer on the map, which the local panels follow in
@@ -125,6 +127,7 @@ const state: State = (() => {
     options: DEFAULT_FIELD_OPTIONS,
     verdancy: DEFAULT_VERDANCY,
     caps: null,
+    contours: false,
     selected: null,
     hovered: null,
     selectedRef: null,
@@ -593,10 +596,18 @@ function showFocus(): void {
     diameterKm: state.diameterKm,
     caps: state.caps,
     verdancy: state.verdancy,
+    contours: state.contours,
   });
   showHex(cell);
   showTip(state.hovered);
 }
+
+// The contour option redraws the one panel it changes, and nothing else: it says
+// nothing about the world, so it neither resurfaces it nor marks it unsaved.
+el<HTMLInputElement>("show-contours").addEventListener("change", (event) => {
+  state.contours = (event.target as HTMLInputElement).checked;
+  showFocus();
+});
 
 map.onSelect(select);
 globe.onSelect(select);

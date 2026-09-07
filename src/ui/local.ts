@@ -7,6 +7,7 @@ import { fieldSizeFor, openHeightField, type HeightFieldOptions } from "../gen/f
 import { heightColour } from "./colour";
 import { scaleBar, stepKm } from "./scale";
 import { isIced, type IceCaps } from "../gen/ice";
+import { planContours, traceContours } from "./contour";
 
 /**
  * The local view: the selected hex and its surroundings, at a depth the whole
@@ -31,6 +32,13 @@ export const ZOOM = 8;
 /** How far the patch reaches, in display hexes. */
 export const RINGS = 2.5;
 
+/**
+ * How much larger than its own hexagon a fill is drawn when the seams are off.
+ * Enough to close the hairline between two of them, and far too little to move
+ * where the colour turns by anything a contour line could sit beside.
+ */
+const OVERLAP = 1.04;
+
 export interface LocalInput {
   readonly grid: Grid;
   readonly selected: number | null;
@@ -43,6 +51,8 @@ export interface LocalInput {
   readonly verdancy: number;
   /** The planet's POIs. Those the patch reaches are drawn on their own fine hex. */
   readonly pois: readonly Poi[];
+  /** Whether to draw contour lines over the patch. Spec 4.5.8. */
+  readonly contours: boolean;
 }
 
 /** A hex of the patch the user clicked. Spec 4.5.7. */
@@ -68,6 +78,8 @@ export function createLocalView(): LocalView {
   let lastSeed = "";
   let field = openHeightField("");
   let pickHandlers: ((pick: Pick) => void)[] = [];
+  /** What was last drawn, so a change of the panel's shape can be redrawn. */
+  let last: LocalInput | null = null;
   /** The grid the patch was last drawn from, so a click can be placed on it. */
   let lastGrid: Grid | null = null;
   /** What the last render makes of a point in the patch. */
@@ -85,6 +97,7 @@ export function createLocalView(): LocalView {
 
   function render(input: LocalInput): void {
     const { grid, selected, seaLevel, verdancy } = input;
+    last = input;
     lastGrid = grid;
     if (selected === null) {
       pickAt = null;
@@ -116,6 +129,13 @@ export function createLocalView(): LocalView {
     const outline = hexOffsets(e1, e2);
     const reach = Math.round(ZOOM * RINGS);
 
+    // With contours on, the seams give way to the lines under 4.5.8.7, and two
+    // hexes sharing an exact edge still leave a hairline of the ground behind
+    // showing between them. So the fills are drawn a hair large and overlap
+    // instead. Off, the panel is drawn exactly as it always was.
+    svg.classList.toggle("contoured", input.contours);
+    const fill = input.contours ? hexOffsets(times(e1, OVERLAP), times(e2, OVERLAP)) : outline;
+
     // The patch is drawn by walking the lattice out from the centre, so a point
     // in it is placed by walking that the other way: undo the basis to get where
     // it fell in lattice steps, round to the hex that owns it, and read off both
@@ -137,7 +157,15 @@ export function createLocalView(): LocalView {
       };
     };
 
+    /** A fractional lattice offset as a point in the drawing. */
+    const place = (at: readonly [number, number]): string =>
+      `${(at[0] * e1[0] + at[1] * e2[0]).toFixed(4)} ${(at[0] * e1[1] + at[1] * e2[1]).toFixed(4)}`;
+
     const hexes: SVGPolygonElement[] = [];
+    /** Every height the patch found, kept for the contours of 4.5.8 to cut. */
+    const heights = new Map<string, number>();
+    let low = Infinity;
+    let high = -Infinity;
     let minX = Infinity;
     let maxX = -Infinity;
     let minY = Infinity;
@@ -158,15 +186,47 @@ export function createLocalView(): LocalView {
         const poly = document.createElementNS(SVG_NS, "polygon");
         poly.setAttribute(
           "points",
-          outline.map(([dx, dy]) => `${(x + dx).toFixed(4)},${(y + dy).toFixed(4)}`).join(" "),
+          fill.map(([dx, dy]) => `${(x + dx).toFixed(4)},${(y + dy).toFixed(4)}`).join(" "),
         );
         poly.setAttribute("fill", heightColour(sample.height, seaLevel, isIced(input.caps, sample.y), verdancy));
         hexes.push(poly);
+        heights.set(`${dp},${dq}`, sample.height);
+        if (sample.height < low) low = sample.height;
+        if (sample.height > high) high = sample.height;
         if (x < minX) minX = x;
         if (x > maxX) maxX = x;
         if (y < minY) minY = y;
         if (y > maxY) maxY = y;
       }
+    }
+
+    // Contour lines, drawn along the sides between hexes whose heights fall either
+    // side of a level, so a line lies exactly on the colour it separates. Spec 4.5.8.
+    const lines: SVGElement[] = [];
+    let interval = 0;
+    if (input.contours && heights.size > 0) {
+      const plan = planContours(low, high, seaLevel);
+      interval = plan.step;
+      const traced = traceContours(
+        (dp, dq) => heights.get(`${dp},${dq}`) ?? null,
+        reach,
+        plan.levels,
+      );
+      const group = document.createElementNS(SVG_NS, "g");
+      group.setAttribute("class", "contours");
+      for (const line of traced) {
+        if (line.segments.length === 0) continue;
+        const path = document.createElementNS(SVG_NS, "path");
+        path.setAttribute(
+          "d",
+          line.segments.map(({ from, to }) => `M${place(from)}L${place(to)}`).join(""),
+        );
+        // A dark line is lost on the deep sea and a light one on snow, so each
+        // level is drawn against the half of the ramp it belongs to.
+        path.setAttribute("class", line.level >= seaLevel ? "contour-land" : "contour-sea");
+        group.append(path);
+      }
+      lines.push(group);
     }
 
     // The clicked hex, outlined at its own size so the patch can be read against
@@ -212,24 +272,54 @@ export function createLocalView(): LocalView {
       }
     }
 
+    // The window the patch is drawn into is given the panel's own proportions
+    // rather than the patch's, by growing the shorter side of it. An SVG centres a
+    // viewBox that does not match its element, which would leave the scale bar
+    // floating in from the edge of the panel instead of standing on it. Spec 4.6.5.
     const pad = 1;
-    const width = maxX - minX + pad * 2;
-    const height = maxY - minY + pad * 2;
-    svg.setAttribute("viewBox", `${minX - pad} ${minY - pad} ${width} ${height}`);
-    svg.replaceChildren(...hexes, marker, ...marks);
+    let left = minX - pad;
+    let top = minY - pad;
+    let width = maxX - minX + pad * 2;
+    let height = maxY - minY + pad * 2;
+    const shape = svg.clientWidth > 0 && svg.clientHeight > 0 ? svg.clientWidth / svg.clientHeight : width / height;
+    if (width / height < shape) {
+      const grown = height * shape;
+      left -= (grown - width) / 2;
+      width = grown;
+    } else {
+      const grown = width / shape;
+      top -= (grown - height) / 2;
+      height = grown;
+    }
+    svg.setAttribute("viewBox", `${left} ${top} ${width} ${height}`);
+    svg.replaceChildren(...hexes, ...lines, marker, ...marks);
 
     if (input.diameterKm !== null) {
       svg.append(
         scaleBar({
           kmPerUnit: stepKm(input.diameterKm, fine),
           hexKm: stepKm(input.diameterKm, fine),
+          // The panel's own place for saying what its scales are, which is where
+          // the height between two lines belongs as well. Spec 4.6.3.3.
+          note: interval > 0 ? `contours ${trimZeros(interval)}` : undefined,
+          // In the bottom left corner of the panel, under the readout that stands
+          // in the top left of it. The patch is a hexagon, so its own corners are
+          // empty ground and the bar stands clear of the hexes there. Spec 4.6.5.
+          inset: 0.01,
           width,
-          left: minX - pad,
-          bottom: maxY + pad,
+          left,
+          bottom: top + height,
         }),
       );
     }
   }
+
+  // The patch is laid out to the proportions of the panel, so a panel that
+  // changes shape is drawn again rather than left to the SVG to letterbox. The
+  // globe watches its own element for the same reason.
+  new ResizeObserver(() => {
+    if (last !== null) render(last);
+  }).observe(svg);
 
   return {
     element: svg,
@@ -356,6 +446,18 @@ function latticeBasis(grid: Grid, face: number): [Pt2, Pt2] {
 }
 
 const times = (p: Pt2, k: number): Pt2 => [p[0] * k, p[1] * k];
+
+/**
+ * A contour interval as short as it can be written. Heights are the unitless
+ * figures the hex readout gives, so the interval is one of those and is shown to
+ * however many places it actually has rather than to a fixed three. Ground flat
+ * enough for an interval too small to write that way is given in exponent form
+ * rather than rounded away to nothing.
+ */
+function trimZeros(step: number): string {
+  const plain = step.toFixed(6).replace(/0+$/, "").replace(/\.$/, "");
+  return Number(plain) === step ? plain : step.toExponential(0);
+}
 
 /** Hexagon outline for a lattice with steps e1 and e2, as in the grid's dual. */
 function hexOffsets(e1: Pt2, e2: Pt2): readonly Pt2[] {

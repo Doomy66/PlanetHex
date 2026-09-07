@@ -289,6 +289,26 @@ A browser application that generates planet surfaces procedurally and shows them
 
 4.5.7.6 The name is set small and clear of the ring rather than against it, so it reads as a label on a hex instead of another line drawn across it.
 
+4.5.8 The panel offers contour lines over the patch, off until asked for. The colours of section 5 say what height a piece of ground is; what they cannot say is how quickly it changes, and lines through the ground at a fixed height apart are how a walking map says it: close together is steep, far apart is gentle, and a closed ring is a summit or a hollow.
+
+4.5.8.1 The switch sits beside the panel's own heading rather than among the fields of 4.2. It changes how this panel draws, and nothing about the world, so it neither redraws the surface nor counts as an unsaved change under 6.4.4. It is a view of the planet and not part of it, so it is not saved with it either.
+
+4.5.8.2 A line is drawn between two neighbouring hexes whose heights fall either side of a level, along the side they share. So it runs on the hex boundaries and every hex is wholly on one side of it, which is the truth about a hex map: the ground is known a hex at a time, and a smooth line drawn through the middle of them would claim to know whereabouts inside a hex the height is passed. The line steps from side to side instead, and lies exactly on the colour it separates.
+
+4.5.8.3 The interval is a round figure at or above the span of the ground in view divided by the number of lines wanted, for the reason 4.6.3 gives the scale bar. A fixed interval draws one line across a plain and fifty down a mountainside, and neither of those is a map.
+
+4.5.8.4 Levels are counted from sea level rather than from the lowest sample in view. That puts a line on the coast, and it holds the lines still as the pointer moves from one patch to the next, where counting from the patch would slide every line each time the window moved.
+
+4.5.8.5 Lines below sea level are drawn light and lines above it dark. A dark line is lost on the deep sea and a light one on snow, so each half of the ramp gets the line it can carry. Neither is opaque: the colour underneath is what says which way the ground falls, and the line only says where it passes a height.
+
+4.5.8.5.1 The light line is keyed to water rather than to snow. A near-white line reads brightest on the deep sea, where there is least colour behind it to hold it down, so the lines would shout loudest exactly where they say least. Every line under water is drawn the same, whatever depth it is at.
+
+4.5.8.6 A hex at exactly a level counts as at it rather than below it, so the line runs along that hex's near side. Two hexes of the same height are parted by nothing, whatever that height is, which is what makes a level lying exactly on the ground no more trouble than any other. A flat patch at the height of a level therefore carries no line, and correctly: there is nothing there to cross.
+
+4.5.8.7 With the lines drawn, the seams between the hexes give way to them. A seam left under a contour is the same mark saying less, and a seam anywhere else is the one thing on the panel competing with the lines for the reader's eye. What the seams say about where one hex ends, the lines now say where it matters, so the patch is drawn as continuous ground with the contours the only lines on it. With the lines off the panel is drawn exactly as it was: the seams are how the panel says it is a hex map at all, and they are only worth trading for something that says it better.
+
+4.5.8.7.1 Two fills sharing an exact edge still leave a hairline of the ground behind showing between them, so with the seams off the fills are drawn a hair large and overlap. The margin is far below what would move a colour boundary away from the line drawn on it.
+
 ### 4.6 Scale
 
 4.6.1 The flat map and the local detail panel each carry a scale bar. Both are drawn in map units, so they scale with their panel and keep their length relative to the hexes.
@@ -301,9 +321,15 @@ A browser application that generates planet surfaces procedurally and shows them
 
 4.6.3.2 A hex width keeps a decimal below 100km. Rounding is right for a bar labelled in round numbers and wrong for a hex 2.7km across.
 
+4.6.3.3 A panel with a further scale of its own puts it under the other two, which is where the contour interval of 4.5.8 is given. The interval is a height rather than a distance, and it is shown in the same figures the readout of 4.5.6 gives the hex, to however many places it has.
+
 4.6.4 An unreadable UWP has no diameter, so neither panel shows a bar rather than showing a wrong one.
 
-4.6.5 The flat map's bar carries labels at half the size of the local panel's, and sits on the left edge of the net rather than inset from it. The map is the busier of the two panels and can afford the less furniture.
+4.6.5 Both bars stand in the bottom left corner of their panel rather than inset from it. On the local panel that is under the readout of 4.5.6, which stands in the top left of the same panel: the two are the panel's furniture and belong at its edges, not out over the ground it draws. The patch is a hexagon, so its own corners are empty and the bar stands clear of the hexes there anyway.
+
+4.6.5.1 That means the local panel's drawing is given the panel's proportions rather than the patch's, by growing the shorter side of the window the patch is drawn into. A drawing whose shape does not match its panel is centred in it, which would leave the bar floating in from the panel's edge by however much the shapes differ. The panel is redrawn when it changes shape, for the same reason the globe watches its own element.
+
+4.6.5.2 The flat map's bar carries labels at half the size of the local panel's. The map is the busier of the two panels and can afford the less furniture.
 
 ### 4.8 Help
 
