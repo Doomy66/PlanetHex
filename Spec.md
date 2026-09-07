@@ -45,17 +45,19 @@ A browser application that generates planet surfaces procedurally and shows them
 
 2.2.1.1 That count follows from 2.1.3 rather than being chosen. Once hexes on a shared edge belong to both faces, and the twelve corner hexes belong to five faces each, a face no longer owns a whole number of hexes, so 20 × something is not available. The reference form's 500 is a count of drawn cells on a flat sheet, not of distinct hexes on a closed surface.
 
-2.2.1.2 The default is 24 rows, giving 5762 hexes.
+2.2.1.2 The default is 24 rows, giving 5762 hexes. It is the default rather than the finest because it is the level the map is worked on at, and 2.2.2.5 is what the finest level costs.
 
-2.2.2 Four levels are offered rather than a free choice of row count: 6, 12, 24, and 48, giving 362, 1442, 5762, and 23042 hexes. They sit on a slider in the left panel, labelled Detail.
+2.2.2 Five levels are offered rather than a free choice of row count: 6, 12, 24, 48, and 96, giving 362, 1442, 5762, 23042, and 92162 hexes. They sit on a slider in the left panel, labelled Detail.
 
-2.2.2.1 The four are a doubling chain, so each one divides every larger one. That is what 2.4 needs, and it is the only reason the set is closed. A free row count would leave most pairs of levels on lattices with nothing in common beyond the twelve corners, and a hex would then have no name that survived a change of level.
+2.2.2.1 The five are a doubling chain, so each one divides every larger one. That is what 2.4 needs, and it is the only reason the set is closed. A free row count would leave most pairs of levels on lattices with nothing in common beyond the twelve corners, and a hex would then have no name that survived a change of level.
 
 2.2.2.2 The control is called Detail rather than Size or Zoom. Size reads as the size of the planet, which is the UWP's business under 6.12. Zoom reads as magnification, which is the one thing this is not: under 3.2.4 a finer level resolves detail already present in the field rather than enlarging what is on screen, and 4.5.2 turns on the same distinction.
 
 2.2.2.3 The word detail is already doing two other jobs here: the detail values of 6.12, and the local detail panel of 4.5. This one is written detail level throughout, and the other two are never shortened to it.
 
-2.2.2.4 The slider is the map's. The sphere of 4.4.9 stands outside it and is always drawn at the finest of the four, and the local detail panel follows it at a fixed distance below under 4.5.6.
+2.2.2.4 The slider is the map's. The sphere of 4.4.9 stands outside it at a level of its own, and the local detail panel follows it at a fixed distance below under 4.5.6.
+
+2.2.2.5 The finest level is the one the set is open at the top for, and it is the only one that costs anything to reach: around a second to draw where the others are a fraction of one, on ninety thousand hexes drawn a pixel wide. It earns that by being the level at which a hex is a piece of country rather than a region - a few tens of kilometres across on an Earth - and by being where 4.3.6 has something worth zooming into. The panels that are not the map are not asked to pay it: the sphere keeps its own level under 4.4.9, and what sea level is measured on keeps its own under 5.2.4.1.
 
 2.2.3 Hex scale in miles or kilometres follows from the planet radius and the hex count, and is shown rather than entered. At the default level on an Earth sized world, that is roughly 430 miles per hex.
 
@@ -211,7 +213,7 @@ A browser application that generates planet surfaces procedurally and shows them
 
 4.3.5.1 Everything the hex covers is listed, not the first with the rest as a count. A hex covering several is exactly the case where the user cannot tell what is there by looking, so it is the case where naming one and counting the others answers the wrong question.
 
-4.3.6 The map can be zoomed and panned. At level 48 a hex is a few pixels across, which is enough to colour the world and not enough to work on it, so the panel has to be able to show a part of the net at a usable size.
+4.3.6 The map can be zoomed and panned. At the fine levels a hex is a pixel or two across, which is enough to colour the world and not enough to work on it, so the panel has to be able to show a part of the net at a usable size.
 
 4.3.6.1 Zooming holds whatever is under the pointer under the pointer, so the map moves towards what the user is looking at rather than towards its own middle.
 
@@ -220,6 +222,16 @@ A browser application that generates planet surfaces procedurally and shows them
 4.3.6.3 A drag is not a click, as 4.4.4 has it for the globe, so moving the map does not change the selection.
 
 4.3.6.4 The view survives a change of detail level. The net is the same size at every level, so a view taken over one part of the world still means that part of the world when the hexes under it are redrawn finer. New and Load put it back to the whole net, for the reason 4.4.5.2 puts the camera back.
+
+4.3.7 A hex is drawn with a seam between it and its neighbours, a fixed fraction of the distance between two hex centres, so the seams hold their proportion at every level rather than swallowing the fill at the fine ones.
+
+4.3.7.1 A switch beside the slider, Smooth, draws the ground without them. At the fine levels a seam is thinner than a pixel, which cannot be drawn: it is spread instead, and a map of hexes too small to make out becomes a grey haze of their own edges rather than a picture of a world. Which of those the reader wants is not for the panel to decide - the hexes are the thing the map is for, and they are also the thing in the way of seeing the ground - so it is asked rather than guessed at.
+
+4.3.7.1.1 The switch sits with the detail slider rather than with the panel, because what it is worth depends on the level: at level 6 a seam is a clean line around a hex you could work on, and at level 96 it is a fraction of a pixel over a hex you cannot see. It is a view of the world and not part of it, so it is not saved with the planet, and it changes a width rather than a shape: the map already drawn answers to it without being built again.
+
+4.3.7.1.2 The pictures of 6.4.5 are written the way the panel is drawing. They are wider than any panel, so their hexes are larger than the ones on screen and a level can carry a seam there that it cannot carry here, but whether the reader asked for seams at all is the same answer in both.
+
+4.3.7.2 A mark is floored rather than following the seams. The selection of 4.3.3 and the rings of 4.3.4 are drawn at the seam's width or at something visible, whichever is larger, and they are drawn whether the seams are or not: a seam nobody can see costs nothing, and a selection nobody can see is a panel that will not say what is selected.
 
 ### 4.4 Right panel
 
@@ -257,7 +269,7 @@ A browser application that generates planet surfaces procedurally and shows them
 
 4.4.8.2 The rings turn with the surface, since they are drawn on the ground rather than over the picture of it, and a ring on the far side of the world is hidden by the world. The selection is not: it is the one thing the user is looking for, and hiding it would leave them turning the globe to find out where it went.
 
-4.4.9 The sphere is always drawn at the finest detail level of 2.2.2, whatever the slider is set to. The globe is a picture of the world rather than a picture of the hex map: the whole planet is on screen at once, so at the coarse levels a single hex covers a swathe of it and a coastline comes out as a handful of blocky steps. The map is where the grid is read hex by hex; the sphere is where the shape of the world is read, and the finest grid is the one that shows it.
+4.4.9 The sphere is drawn at a fixed level of its own, whatever the slider is set to, and that level is 48. The globe is a picture of the world rather than a picture of the hex map: the whole planet is on screen at once, so at the coarse levels a single hex covers a swathe of it and a coastline comes out as a handful of blocky steps. The map is where the grid is read hex by hex; the sphere is where the shape of the world is read.
 
 4.4.9.1 The heights on that grid are read off the same field the surface on screen was sampled from rather than off a field built again for it. Building the field is the expensive half of the work and is the same work whichever grid is being sampled. Spec 3.2.4 is what makes reading it twice sound: a point has one height at any depth, so the two grids cannot disagree about the ground they share.
 
@@ -266,6 +278,8 @@ A browser application that generates planet surfaces procedurally and shows them
 4.4.9.3 The panel therefore knows nothing of display hexes. What is marked on it arrives as the corners of a hex rather than as a hex of some grid, and a click leaves it as the point of the sphere it landed on. Both are directions, which mean the same thing at every level, and it is the caller that knows which level it is asking about.
 
 4.4.9.4 What is marked is still the display hex. The selection of 4.4.4 is the hex the user chose in the other panels, a click on the sphere selects the display hex covering the point by the rule 6.6.1.1 already uses for a point of interest, and the rings of 4.4.8 go round the covering hex as they do on the map. A mark the size of a finest-level hex would be a dot on a globe, and one selection shown in all three panels under 4.1.3 has to be the hex all three of them can name.
+
+4.4.9.5 Not the finest level, though. Twenty three thousand hexes on a sphere a few hundred pixels across are already smaller than a pixel, so the finest level is four times the mesh for a coastline with no more shape to it. The sphere's mesh is rebuilt at every redraw, unlike its grid, so that four times would be paid at every touch of the UWP. A level the panel cannot show is not detail, it is arithmetic.
 
 ### 4.5 Local detail panel
 
@@ -283,7 +297,7 @@ A browser application that generates planet surfaces procedurally and shows them
 
 4.5.6.1 Where the hex covers several points of interest, the readout names them all, one to a line and each in the colour of its kind, for the reason 4.3.5.1 gives for the tooltip. A count says something is there without saying what, which is the one thing the reader cannot work out by looking.
 
-4.5.6 The panel's own subdivision follows the detail level, staying a fixed number of levels below it, so it always draws the same number of fine cells over the same number of display hexes. The four levels of 2.2.2 all give the same ratio, so the panel keeps its proportions across the slider and only its absolute scale moves.
+4.5.6 The panel's own subdivision follows the detail level, staying a fixed number of levels below it, so it always draws the same number of fine cells over the same number of display hexes. The levels of 2.2.2 all give the same ratio, so the panel keeps its proportions across the slider and only its absolute scale moves.
 
 4.5.6.1 That is not the drift 3.2.4 rules out. Under 3.5.2 a point has one height at any depth it is evaluated at, so what changes here is how finely the patch is drawn and never what is under it. The bar of 4.6.3.1 says which scale the panel is currently at.
 
@@ -397,7 +411,9 @@ A browser application that generates planet surfaces procedurally and shows them
 
 5.2.3 An unreadable UWP has no hydrographics to work from, so sea level falls back to the midpoint.
 
-5.2.4 The fraction is measured against the lattice of the finest level rather than against the hexes on screen. The same quantile taken from 362 hexes and from 23042 does not land in the same place, so reading it off the current level would let the coastline move when the detail level moved, which is the one thing 3.2.4 is arranged to prevent.
+5.2.4 The fraction is measured against one fixed lattice rather than against the hexes on screen. The same quantile taken from 362 hexes and from 23042 does not land in the same place, so reading it off the current level would let the coastline move when the detail level moved, which is the one thing 3.2.4 is arranged to prevent.
+
+5.2.4.1 The lattice is 48 rows, which is not the finest level. A quantile is settled by twenty three thousand samples: measured on the finest lattice instead, the answer moves by under a thousandth of the height range, which is a small fraction of one contour interval and cannot be seen on a coastline. What it does cost is four times the sampling, and this is worked out again at every touch of the UWP. The finest level is where the world is drawn; this is where it is measured, and only one of those two jobs gets better with more samples.
 
 5.3 The reference images use flat colour per hex rather than a smooth gradient. The hex should stay legible as a discrete game unit.
 

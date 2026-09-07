@@ -35,12 +35,31 @@ export interface Surface {
 
 /** The surface on a grid already built. Spec 3.4: the UWP shapes the terrain, so
  *  editing a digit redraws the world without rebuilding the hexes under it. */
+/**
+ * The field last built, and what it was built from. Spec 3.2.4.1.
+ *
+ * A field is decided by the seed and the two knobs the UWP sets, and by nothing
+ * else: not by the detail level, not by the tilt, not by the hydrographics digit.
+ * So moving the slider, leaning the axis, or drying the world out asks for a field
+ * that has just been built, and building it again is the most expensive thing the
+ * application does. One is kept, since one is all a redraw ever wants.
+ */
+let held: { readonly key: string; readonly field: HeightField } | null = null;
+
+function fieldFor(seed: string, options: HeightFieldOptions): HeightField {
+  const key = `${seed}|${options.roughness}|${options.persistence}|${options.seedSpread}`;
+  if (held?.key === key) return held.field;
+  const field = buildHeightField(seed, REFERENCE_SIZE, options);
+  held = { key, field };
+  return field;
+}
+
 export function surfaceOn(planet: Planet, detail: PlanetDetail, grid: Grid): Surface {
   const options = fieldOptionsFor(detail, planet.uwp);
-  // One field, sampled for the cells on screen and for the reference lattice sea
-  // level is read off. Both used to build their own, which was the same expensive
-  // work done twice.
-  const field = buildHeightField(planet.seed, REFERENCE_SIZE, options);
+  // One field, sampled for the cells on screen and for the lattice sea level is
+  // read off. Both used to build their own, which was the same expensive work
+  // done twice, and it is kept between redraws for the same reason.
+  const field = fieldFor(planet.seed, options);
   return {
     grid,
     options,

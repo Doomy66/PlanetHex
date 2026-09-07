@@ -1,5 +1,5 @@
 import type { Grid } from "../grid/grid";
-import { latticePosition, REFERENCE_SIZE } from "../grid/coord";
+import { latticePosition, REFERENCE_SIZE, SEA_SAMPLE_SIZE } from "../grid/coord";
 import { positionKey } from "../grid/vec3";
 import type { HeightField, HeightFieldOptions } from "./field";
 import { buildHeightField, DEFAULT_FIELD_OPTIONS } from "./field";
@@ -58,12 +58,18 @@ function clamp01(v: number): number {
  *
  * Taking the quantile from the cells on screen would make the coastline depend on
  * how many are on screen, and the whole point of a fixed field is that it does
- * not. So the fraction is measured against the reference lattice at every detail
- * level, and the coastline sits in the same place on all four.
+ * not. So the fraction is measured against one fixed lattice whatever the detail
+ * level, and the coastline sits in the same place on every one of them.
+ *
+ * Fixed, and not the finest level, for the reason SEA_SAMPLE_SIZE gives: a
+ * quantile is settled by twenty three thousand samples, and measuring it on four
+ * times as many moves the answer by under a thousandth while costing four times
+ * the work, on a figure that is worked out again at every touch of the UWP.
+ * Spec 5.2.4.1.
  *
  * The grid is not built to do it. Only the sample values are wanted, and a face
  * lattice walked directly gives those without the neighbour sets and outlines a
- * grid of 23042 cells would carry.
+ * grid of tens of thousands of cells would carry.
  */
 export function referenceHeights(
   seed: string,
@@ -77,14 +83,14 @@ export function referenceHeightsOn(field: HeightField): Float64Array {
   const seen = new Set<string>();
   const values: number[] = [];
   for (let f = 0; f < 20; f++) {
-    for (let i = 0; i <= REFERENCE_SIZE; i++) {
+    for (let i = 0; i <= SEA_SAMPLE_SIZE; i++) {
       for (let j = 0; j <= i; j++) {
         // Seams and corners are produced by every face that meets there, and a
         // point counted twice would weight that part of the world twice.
-        const key = positionKey(latticePosition(f, REFERENCE_SIZE, i, j));
+        const key = positionKey(latticePosition(f, SEA_SAMPLE_SIZE, i, j));
         if (seen.has(key)) continue;
         seen.add(key);
-        values.push(clamp01(field.sample(f, i, j, REFERENCE_SIZE)));
+        values.push(clamp01(field.sample(f, i, j, SEA_SAMPLE_SIZE)));
       }
     }
   }

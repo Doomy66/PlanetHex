@@ -24,6 +24,31 @@ user. Dates are the day the release was tagged.
 - Sea level and the heights on screen now come off one height field instead of
   one each. That was the same expensive work done twice on every redraw, and it
   is what paid for the globe above.
+- **A fifth detail level: 96 rows, 92162 hexes.** Twice as fine as the old
+  finest, which puts a hex at a few tens of kilometres across on an Earth
+  sized world. It costs about a second to draw, where the other levels are a
+  fraction of one, and nothing else in the application pays for it: the globe
+  keeps its own level and so does the lattice sea level is measured on.
+- **A Smooth switch beside the Detail slider**, which draws the ground without
+  the seams between its hexes. At the fine levels a seam is thinner than a pixel,
+  which cannot be drawn and is spread instead, so the finest level arrives as a
+  grey haze of its own hex edges rather than as a map. Which of the two the reader
+  wants is now asked rather than guessed at. Selection and point of interest rings
+  are floored at something visible and drawn either way, and the saved pictures
+  follow the switch.
+- Hex names count on the new finest lattice, so every one of them has doubled:
+  the hex that was `F07R33C08` is now `F07R66C16`. It is the same hex, named on a
+  lattice twice as fine. Saved planets are unaffected - a point of interest
+  carries the lattice it was placed on, and a save old enough to carry none is
+  read on the 48 row lattice those files were written on - but a hex name written
+  down by hand, or typed into a narrative, now names somewhere else.
+- The height field is kept between redraws instead of being rebuilt each time.
+  It depends on the seed and the two knobs the UWP sets and on nothing else, so
+  moving the slider, leaning the axis or drying the world out was rebuilding a
+  field that had just been built. This is what 3.2.4.3 already said the cost
+  was. Levels 6 to 48 now redraw faster than they did before the fifth level
+  was added.
+
 - **A lit 3d view of the local patch**, on a switch beside the panel's heading
   next to the contours one. The same ground seen from thirty degrees above and
   lit by a low sun: a block of land with the sea filled in at its own level and

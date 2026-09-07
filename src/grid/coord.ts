@@ -18,10 +18,39 @@ import type { CellId, Grid } from "./grid";
  */
 
 /** The detail levels the application offers. Each one divides REFERENCE_SIZE. */
-export const DETAIL_LEVELS = [6, 12, 24, 48] as const;
+export const DETAIL_LEVELS = [6, 12, 24, 48, 96] as const;
 
 /** The finest level, and so the lattice every cell coordinate is expressed on. */
-export const REFERENCE_SIZE = 48;
+export const REFERENCE_SIZE = 96;
+
+/**
+ * The lattice the water fraction of 5.2 is measured against, which divides
+ * REFERENCE_SIZE but is not it. Spec 5.2.4.1.
+ *
+ * Twenty three thousand samples settle a quantile: measured on the finest lattice
+ * instead, the answer moves by under a thousandth of the height range, which is a
+ * small fraction of one contour interval and cannot be seen on a coastline. What
+ * it does cost is four times the sampling, around a tenth of a second, and the
+ * sea level is worked out again every time a digit of the UWP is touched.
+ *
+ * So the finest level is where the world is drawn, and this is where it is
+ * measured. The two are different jobs and only one of them gets better with more
+ * samples.
+ */
+export const SEA_SAMPLE_SIZE = 48;
+
+/**
+ * The level the sphere of 4.4.9 is drawn at, which divides REFERENCE_SIZE but is
+ * not it. Spec 4.4.9.5.
+ *
+ * The sphere stands outside the slider because a hex of the coarse levels covers
+ * a swathe of a world seen whole. Twenty three thousand hexes is where that stops
+ * being true: on a sphere a few hundred pixels across they are already smaller
+ * than a pixel, and the finest level is four times the mesh for a coastline
+ * nobody can see the difference in. The sphere is rebuilt at every redraw, so
+ * that four times is paid at every touch of the UWP.
+ */
+export const SPHERE_SIZE = 48;
 
 export const DEFAULT_DETAIL = 24;
 
@@ -152,12 +181,18 @@ export function formatLattice(ref: LatticeRef): string {
   return `${formatRef({ face: ref.face, i: ref.i, j: ref.j })}/${ref.size}`;
 }
 
-export function parseLattice(text: string): LatticeRef | null {
+/**
+ * The written form back. A name with no depth on it is counted on `depthless`,
+ * which is the reference lattice unless the caller knows better: a saved file
+ * written before depths existed means the lattice of the day it was written, not
+ * whatever the finest level has since become. Spec 2.2.2.5.
+ */
+export function parseLattice(text: string, depthless: number = REFERENCE_SIZE): LatticeRef | null {
   const [head, tail] = text.trim().split("/");
   if (head === undefined) return null;
   if (tail === undefined) {
     const ref = parseRef(head);
-    return ref === null ? null : latticeRef(ref.face, ref.i, ref.j, REFERENCE_SIZE);
+    return ref === null ? null : latticeRef(ref.face, ref.i, ref.j, depthless);
   }
   const size = Number(tail);
   if (!Number.isInteger(size) || size < 1) return null;

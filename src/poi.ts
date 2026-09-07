@@ -3,7 +3,6 @@ import {
   latticeRef,
   latticeRefPosition,
   parseLattice,
-  REFERENCE_SIZE,
   type LatticeRef,
 } from "./grid/coord";
 import { nearestCell, type CellId, type Grid } from "./grid/grid";
@@ -180,8 +179,19 @@ function readPoi(raw: unknown): Poi | null {
  * before POIs could sit on the fine lattice carries no depth, and every one of
  * those was a display hex, so the reference lattice is what it means.
  */
+/**
+ * The lattice a saved ref with no depth on it is counted on.
+ *
+ * Fixed at 48, and it must not follow REFERENCE_SIZE. Those files were written
+ * when 48 was the finest level, so 48 is what their coordinates mean; read on a
+ * finer lattice the same numbers name a different place, and every point of
+ * interest in every old save would quietly move the day a level was added to the
+ * slider. Spec 2.2.2.5.
+ */
+const DEPTHLESS_SIZE = 48;
+
 function readRef(raw: unknown): LatticeRef | null {
-  if (typeof raw === "string") return parseLattice(raw);
+  if (typeof raw === "string") return parseLattice(raw, DEPTHLESS_SIZE);
   if (typeof raw !== "object" || raw === null) return null;
   const r = raw as Record<string, unknown>;
   const whole = (key: string) =>
@@ -191,7 +201,7 @@ function readRef(raw: unknown): LatticeRef | null {
   const face = whole("face");
   const i = whole("i");
   const j = whole("j");
-  const size = whole("size") ?? REFERENCE_SIZE;
+  const size = whole("size") ?? DEPTHLESS_SIZE;
   if (face === null || i === null || j === null) return null;
   if (face > 19 || j > i || i > size || size < 1) return null;
   // Canonical, so what a save holds and what a click makes are the same name.

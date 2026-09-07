@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { buildGrid } from "../grid/grid";
+import { strokeWidths } from "./map";
 
 /**
  * Geometry checks for the flat net. Nothing here draws anything, but a hex
@@ -61,5 +62,47 @@ describe("net tiling", () => {
     }
     expect(maxX).toBeCloseTo(grid.netWidth, 9);
     expect(maxY).toBeCloseTo(grid.netHeight, 9);
+  });
+});
+
+describe("stroke widths", () => {
+  it("keeps a seam at the same fraction of a hex, level to level", () => {
+    const perUnit = 4000;
+    for (const size of [6, 12, 24, 48, 96]) {
+      const { seam } = strokeWidths(size, perUnit);
+      expect(seam * size).toBeCloseTo(strokeWidths(6, perUnit).seam * 6, 12);
+    }
+  });
+
+  it("drops the seam when asked to draw the ground smooth", () => {
+    const perUnit = 549 / 5.74;
+    for (const size of [6, 24, 96]) {
+      expect(strokeWidths(size, perUnit, false).seam).toBeGreaterThan(0);
+      expect(strokeWidths(size, perUnit, true).seam).toBe(0);
+    }
+  });
+
+  it("keeps a mark visible whether the seams are drawn or not", () => {
+    const perUnit = 549 / 5.74;
+    for (const smooth of [false, true]) {
+      for (const size of [6, 24, 96]) {
+        const { mark } = strokeWidths(size, perUnit, smooth);
+        expect(mark * perUnit).toBeGreaterThanOrEqual(1);
+      }
+    }
+  });
+
+  it("holds a mark at the seam's own fraction where a hex is large", () => {
+    // Zoomed in, the floor stops mattering and a mark sits in the seam as 4.3.4.1
+    // has it rather than standing out of it.
+    const { seam, mark } = strokeWidths(24, 40000);
+    expect(mark).toBeCloseTo(seam, 12);
+  });
+
+  it("has a width for a map nothing has measured, as a picture is drawn", () => {
+    for (const perUnit of [0, Number.NaN]) {
+      expect(strokeWidths(96, perUnit).seam).toBeGreaterThan(0);
+      expect(strokeWidths(96, perUnit).mark).toBeGreaterThan(0);
+    }
   });
 });

@@ -32,6 +32,39 @@ const RING = 1;
 const MAX_ZOOM = 40;
 /** A pointer that moved further than this was a drag, not a click. */
 const DRAG_SLOP_PX = 4;
+/** A hex seam, as a fraction of the distance between two hex centres. */
+const SEAM = 0.15;
+
+/** The least a mark on the map may be drawn at, so it is visible at any level. */
+const MARK_MIN_PX = 1.3;
+
+/**
+ * The widths the map draws its lines at, in map units, for a level drawn at so
+ * many pixels per map unit. Spec 4.3.7.
+ *
+ * A seam is a fraction of a hex, so it holds its proportion at every level, and
+ * `smooth` is what drops it: the reader says whether they are looking at a hex map
+ * or at the ground it covers. A mark - the selection, a point of interest - keeps
+ * that fraction as its width but is floored at something visible, since a seam
+ * nobody can see costs nothing and a selection nobody can see is a panel that
+ * will not say what is selected.
+ *
+ * Written out here rather than inside the panel because the pictures of 6.4.5 are
+ * drawn at their own width, on a map that was never on screen to be measured, and
+ * both have to draw the same map.
+ */
+export function strokeWidths(
+  size: number,
+  perUnit: number,
+  smooth = false,
+): { seam: number; mark: number } {
+  const fraction = SEAM / size;
+  return {
+    seam: smooth ? 0 : fraction,
+    mark: perUnit > 0 ? Math.max(fraction, MARK_MIN_PX / perUnit) : fraction,
+  };
+}
+
 /** Wheel notches to zoom, tuned so one notch is a comfortable step. */
 const WHEEL_RATE = 0.0015;
 
@@ -53,6 +86,12 @@ export interface HexMap {
     verdancy: number,
   ): void;
   setSelected(cell: number | null): void;
+  /**
+   * Draw the ground without the seams between its hexes, or with them. Spec
+   * 4.3.7.1. A seam is a width rather than a shape, so this changes one number and
+   * the map that is already drawn answers to it: nothing is built again.
+   */
+  setSmooth(on: boolean): void;
   /** Back to the whole net, fitted to the panel. Spec 4.3.6.2. */
   resetView(): void;
   /** The hexes carrying a POI, marked in the colour of their kind. Spec 5.5. */
@@ -97,6 +136,26 @@ export function createHexMap(): HexMap {
     return [p.x, p.y];
   }
 
+  /** The level last drawn, since the seams of 4.3.7 are a fraction of its hexes. */
+  let drawnSize = 0;
+  /** Whether the reader has asked for the ground without the hexes. Spec 4.3.7.1. */
+  let smooth = false;
+
+  /** The widths of 4.3.7, at whatever size the panel is drawing the map. */
+  function drawStrokes(): void {
+    if (drawnSize === 0) return;
+    const across = svg.clientWidth;
+    const perUnit = across > 0 && view.w > 0 ? across / view.w : 0;
+    const { seam, mark } = strokeWidths(drawnSize, perUnit, smooth);
+    svg.style.setProperty("--hex-stroke", String(seam));
+    svg.style.setProperty("--mark-stroke", String(mark));
+  }
+
+  // The panel's own width is half of what decides the seams, so a panel that
+  // changes shape has them worked out again. The map itself is drawn in map units
+  // and does not need redrawing for it.
+  new ResizeObserver(drawStrokes).observe(svg);
+
   /**
    * Puts a view on screen, held inside the fitted view first. Spec 4.3.6.1: the
    * map cannot be pulled out past the whole world, and cannot be pushed off the
@@ -113,6 +172,9 @@ export function createHexMap(): HexMap {
     };
     svg.setAttribute("viewBox", `${view.x} ${view.y} ${view.w} ${view.h}`);
     drawScale();
+    // The seams follow the zoom as well as the level, since what decides them is
+    // how large a hex is on screen. Spec 4.3.4.2.
+    drawStrokes();
   }
 
   /**
@@ -227,11 +289,8 @@ export function createHexMap(): HexMap {
       view = { ...base };
       framed = true;
     }
-    // Hex borders in map units, so they stay the same fraction of a hex at every
-    // detail level. A fixed width is a seam at level 6 and swallows the fill at
-    // level 48, where a hex is a quarter the width it is at the default.
-    svg.style.setProperty("--hex-stroke", String(0.15 / grid.size));
-    svg.style.setProperty("--select-stroke", String(0.7 / grid.size));
+    drawnSize = grid.size;
+    drawStrokes();
     const hexes: SVGPolygonElement[] = [];
     const outlines: SVGPolygonElement[] = [];
     placementsByCell = new Map();
@@ -353,6 +412,10 @@ export function createHexMap(): HexMap {
     element: svg,
     render,
     setSelected,
+    setSmooth(on) {
+      smooth = on;
+      drawStrokes();
+    },
     setPois,
     resetView() {
       show(base);
