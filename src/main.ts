@@ -7,6 +7,7 @@ import {
   formatLattice,
   formatRef,
   latticeKey,
+  REFERENCE_SIZE,
   SPHERE_SIZE,
   type LatticeRef,
   type RefCoord,
@@ -50,12 +51,16 @@ import {
   loadFromInput,
   PickerCancelled,
   pickFolder,
+  planetFile,
   saveName,
   saveTo,
+  stemFor,
   zipSave,
   type DirectoryHandle,
+  type SaveFile,
 } from "./io/files";
-import { renderMaps } from "./io/images";
+import { nextFrame, renderMaps } from "./io/images";
+import { EXPORT_FORMATS, manifest, type ExportContext } from "./io/export";
 import { surfaceOn } from "./surface";
 
 const el = <T extends HTMLElement>(id: string): T => {
@@ -992,7 +997,191 @@ el("new").addEventListener("click", () => {
   say(`New planet, seed ${state.planet.seed}.`);
 });
 
-el("save").addEventListener("click", async () => {
+/* Saving. Spec 6.4.1 and 6.23 ------------------------------------------- */
+
+const saveDialog = el<HTMLDialogElement>("save-dialog");
+
+/**
+ * What the last save wrote, so the next one offers the same again. Spec 6.23.4.
+ *
+ * Kept in local storage rather than in the planet, because this is about the user
+ * and not about the world: somebody who wants GeoJSON wants it for every world
+ * they draw, and a planet handed to somebody else should not arrive telling them
+ * what to export. A browser that refuses storage loses nothing but the memory.
+ */
+const CHOICE_KEY = "planethex.save.choices";
+
+interface SaveChoices {
+  /** Detail levels to write the map picture at, as row counts. Spec 6.4.5. */
+  readonly levels: number[];
+  /** Ids of the export formats of 6.17 that are ticked. */
+  readonly formats: string[];
+}
+
+function defaultChoices(): SaveChoices {
+  return {
+    // Every level, which is what a save wrote before there was anything to
+    // choose. The dialogue is there to take some away, not to start with less
+    // than a save used to give.
+    levels: [...DETAIL_LEVELS],
+    formats: EXPORT_FORMATS.filter((format) => format.byDefault).map((format) => format.id),
+  };
+}
+
+function readChoices(): SaveChoices {
+  const fallback = defaultChoices();
+  try {
+    const raw = window.localStorage.getItem(CHOICE_KEY);
+    if (raw === null) return fallback;
+    const parsed = JSON.parse(raw) as Partial<SaveChoices>;
+    // A list that has been emptied is a choice and is kept; one that is missing
+    // or is not a list at all is a browser with nothing stored, which is the
+    // default rather than a save of nothing. Anything in it that this build does
+    // not recognise is dropped, so a level or a format that goes away later
+    // cannot come back as a tick with nothing behind it.
+    return {
+      levels: Array.isArray(parsed.levels)
+        ? parsed.levels.filter((level) => DETAIL_LEVELS.includes(level as never))
+        : fallback.levels,
+      formats: Array.isArray(parsed.formats)
+        ? parsed.formats.filter((id) => EXPORT_FORMATS.some((format) => format.id === id))
+        : fallback.formats,
+    };
+  } catch {
+    return fallback;
+  }
+}
+
+function writeChoices(choices: SaveChoices): void {
+  try {
+    window.localStorage.setItem(CHOICE_KEY, JSON.stringify(choices));
+  } catch {
+    // Storage refused, which costs the memory of the choice and nothing else.
+  }
+}
+
+/** A checkbox with its label and a line under it saying who would want it. */
+function saveOption(label: string, note: string): HTMLLabelElement {
+  const wrap = document.createElement("label");
+  wrap.className = "save-option";
+  const box = document.createElement("input");
+  box.type = "checkbox";
+  const text = document.createElement("span");
+  const title = document.createElement("span");
+  title.className = "save-option-label";
+  title.textContent = label;
+  const hint = document.createElement("span");
+  hint.className = "hint";
+  hint.textContent = note;
+  text.append(title, hint);
+  wrap.append(box, text);
+  return wrap;
+}
+
+const levelBoxes = new Map<number, HTMLInputElement>();
+const formatBoxes = new Map<string, HTMLInputElement>();
+
+// Built from the ladder of 2.2.2 and the formats of 6.17 rather than written out
+// in the document, so adding either adds a line to the dialogue and nothing else.
+(function buildSaveDialog(): void {
+  const levels = el("save-levels");
+  for (const size of DETAIL_LEVELS) {
+    const option = saveOption(
+      `${cellCount(size).toLocaleString("en-GB")} hexes`,
+      `${size} rows to a face${size === REFERENCE_SIZE ? ", the finest the application draws" : ""}`,
+    );
+    levels.append(option);
+    levelBoxes.set(size, option.querySelector("input")!);
+  }
+
+  const formats = el("save-formats");
+  for (const format of EXPORT_FORMATS) {
+    const option = saveOption(format.label, format.note);
+    formats.append(option);
+    formatBoxes.set(format.id, option.querySelector("input")!);
+  }
+
+  for (const box of allBoxes()) box.addEventListener("change", showSaveSummary);
+})();
+
+function allBoxes(): HTMLInputElement[] {
+  return [...levelBoxes.values(), ...formatBoxes.values()];
+}
+
+function chosen(): SaveChoices {
+  return {
+    levels: [...levelBoxes].filter(([, box]) => box.checked).map(([size]) => size),
+    formats: [...formatBoxes].filter(([, box]) => box.checked).map(([id]) => id),
+  };
+}
+
+/**
+ * What the ticked boxes add up to, said while the ticks are still the user's to
+ * change. Spec 6.23.5: the finest level is tens of seconds on its own, and the
+ * moment to know that is before the drawing starts rather than during it.
+ */
+function showSaveSummary(): void {
+  const choices = chosen();
+  const wanted = EXPORT_FORMATS.filter((format) => choices.formats.includes(format.id));
+  // The planet's JSON, a picture per level, whatever each format writes, and the
+  // manifest of 6.22 where anything at all was exported.
+  const count =
+    1 +
+    choices.levels.length +
+    wanted.reduce((total, format) => total + format.files, 0) +
+    (wanted.length > 0 ? 1 : 0);
+  const slow =
+    choices.levels.filter((size) => size >= SLOW_LEVEL).length +
+    (choices.formats.includes("plate") ? 1 : 0);
+  el("save-summary").textContent =
+    `${count} ${count === 1 ? "file" : "files"}. The planet's own JSON is always one of them.` +
+    (slow > 0 ? " The finest levels and the plate take a few seconds each." : "");
+}
+
+/** The level at which drawing a map stops being instant. Spec 6.4.5.3. */
+const SLOW_LEVEL = 48;
+
+function openSaveDialog(): void {
+  const choices = readChoices();
+  for (const [size, box] of levelBoxes) box.checked = choices.levels.includes(size);
+  for (const [id, box] of formatBoxes) box.checked = choices.formats.includes(id);
+  el("save-where").textContent = state.folder
+    ? `Into ${state.folder.name}, over whatever this planet last wrote there.`
+    : isSupported()
+      ? "You will be asked for the folder to save into."
+      : `This browser saves as one download: ${saveName(state.planet)}, holding the lot.`;
+  showSaveSummary();
+  if (!saveDialog.open) saveDialog.showModal();
+}
+
+el("save").addEventListener("click", () => {
+  if (!el<HTMLButtonElement>("save").disabled) openSaveDialog();
+});
+el("save-cancel").addEventListener("click", () => saveDialog.close());
+
+el("save-all").addEventListener("click", () => {
+  for (const box of allBoxes()) box.checked = true;
+  showSaveSummary();
+});
+
+el("save-none").addEventListener("click", () => {
+  for (const box of allBoxes()) box.checked = false;
+  showSaveSummary();
+});
+
+// The form's own submit, so Enter anywhere in the dialogue saves as the button
+// does. The dialogue is closed before the work starts: the folder picker below
+// needs this click as its gesture, and a modal left up while the maps draw hides
+// the one line saying how far along they are.
+el<HTMLFormElement>("save-form").addEventListener("submit", (event) => {
+  event.preventDefault();
+  const choices = chosen();
+  writeChoices(choices);
+  saveDialog.close();
+  void runSave(choices);
+});
+
+async function runSave(choices: SaveChoices): Promise<void> {
   const save = el<HTMLButtonElement>("save");
   if (save.disabled) return;
   try {
@@ -1002,23 +1191,21 @@ el("save").addEventListener("click", async () => {
     // picker has nothing to ask for and goes straight to drawing.
     const folder = isSupported() ? (state.folder ?? (await pickFolder())) : null;
     const into = folder?.name ?? saveName(state.planet);
-    // Level 48 is 23,042 hexes, and there are four levels to draw. The button
-    // goes down so a second click cannot start it all again underneath.
+    // The finest level is 92,162 hexes and there may be five levels to draw. The
+    // button goes down so a second click cannot start it all again underneath.
     save.disabled = true;
     say(`Saving to ${into}...`);
-    const images = await renderMaps(state.planet, currentDetail(), state.smooth, (size) =>
-      say(`Drawing the ${size} row map for ${into}...`),
-    );
+    const files = await gather(choices, into);
     if (folder) {
-      await saveTo(folder, state.planet, images);
+      await saveTo(folder, files);
       state.folder = folder;
     } else {
       // A download cannot be rewritten in place, so state.folder stays null and
       // the next Save is another file rather than the same one again.
-      download(await zipSave(state.planet, images), into);
+      download(await zipSave(files), into);
     }
     markClean();
-    say(`Saved to ${into}, with ${images.size} maps.`);
+    say(`Saved to ${into}: ${files.length} ${files.length === 1 ? "file" : "files"}.`);
   } catch (error) {
     if (error instanceof PickerCancelled) {
       say("");
@@ -1028,7 +1215,55 @@ el("save").addEventListener("click", async () => {
   } finally {
     save.disabled = false;
   }
-});
+}
+
+/**
+ * Everything the save is to write. The planet first, then a picture per level,
+ * then whatever the formats of 6.17 make of the world, and the manifest of 6.22
+ * last, since it lists what came before it.
+ */
+async function gather(choices: SaveChoices, into: string): Promise<SaveFile[]> {
+  const stem = stemFor(state.planet);
+  const files: SaveFile[] = [planetFile(state.planet)];
+
+  const images = await renderMaps(
+    state.planet,
+    currentDetail(),
+    state.smooth,
+    choices.levels,
+    (size) => say(`Drawing the ${size} row map for ${into}...`),
+  );
+  for (const [size, png] of images) files.push({ name: `${stem}-${size}.png`, data: png });
+
+  const wanted = EXPORT_FORMATS.filter((format) => choices.formats.includes(format.id));
+  if (wanted.length === 0) return files;
+
+  // Every export describes the level on screen rather than the levels the
+  // pictures were drawn at. A hex table of a level nobody is looking at is a
+  // table of a map nobody has, and the reader has the map in front of them.
+  const context: ExportContext = {
+    planet: state.planet,
+    detail: currentDetail(),
+    size: state.planet.size,
+    smooth: state.smooth,
+    say,
+  };
+  for (const format of wanted) {
+    say(`Writing the ${format.label} for ${into}...`);
+    await nextFrame();
+    for (const file of await format.produce(context)) {
+      files.push({ name: `${stem}${file.suffix}`, data: file.data });
+    }
+  }
+  files.push({
+    name: `${stem}-export.json`,
+    data: manifest(
+      context,
+      files.map((file) => file.name),
+    ),
+  });
+  return files;
+}
 
 el("load").addEventListener("click", async () => {
   if (!confirmDiscard("Load another planet")) return;
@@ -1083,6 +1318,10 @@ function typing(target: EventTarget | null): boolean {
 window.addEventListener("keydown", (event) => {
   const asked = event.key === "F1" || (event.key === "?" && !typing(event.target));
   if (!asked || event.ctrlKey || event.altKey || event.metaKey) return;
+  // Not over another dialogue. Help on top of the save dialogue would bury the
+  // choices the user is in the middle of making, and Escape would then shut the
+  // wrong one.
+  if (saveDialog.open || poiFields.dialog.open) return;
   event.preventDefault();
   if (helpDialog.open) helpDialog.close();
   else openHelp();

@@ -4,6 +4,45 @@ The version in [package.json](package.json) is what the Windows installer of
 `npm run package` names itself after, so it is the one number that reaches a
 user. Dates are the day the release was tagged.
 
+## Unreleased
+
+- **Save now asks what to write.** A dialogue lists the map images, one line per
+  detail level, and the export formats below, with a line under each saying who
+  would want it. The planet's own JSON is not among them: a save without it is
+  not a save. What you tick is remembered between sessions, and the dialogue
+  says how many files it is about to write before it starts, since the finest
+  levels take a few seconds each.
+- **Seven export formats**, for the tools that are not PlanetHex. A picture of a
+  map cannot be queried, projected, styled, or put on a chart, and until now a
+  picture was all a save could hand over.
+  - **Vector map (SVG)** — the hex map as lines rather than pixels, from the same
+    detached renderer the pictures come from.
+  - **Equirectangular plate and heightmap (PNG)** — the world drawn again with
+    longitude across and latitude down, pixel by pixel off the surface rather
+    than hex by hex, so the coastline is the one the world actually has. The grey
+    heightmap beside it runs from the lowest a world can go to the highest, so
+    two worlds can be read against each other.
+  - **Virtual tabletop scene (PNG)** — the map at a hundred pixels to the hex,
+    the size a Foundry or Roll20 scene starts at.
+  - **Hex polygons (GeoJSON)** — every hex as a shape in latitude and longitude
+    with its height and terrain, and every point of interest as its own point. A
+    hex on the antimeridian is written as one ring rather than a shape stretched
+    round the world, and the two pole hexes are closed over the pole.
+  - **Hex table (CSV)** — the same again for a spreadsheet or a script.
+  - **Traveller sector line** — the world as one tab separated line with its
+    trade codes worked out, ready to paste into a sector file. Bases, zone and
+    stars are left blank, since PlanetHex describes the world and not the system;
+    PBG is rolled from the seed.
+  - **World sheet (Markdown and HTML)** — one page with the profile spelled out
+    position by position, the worked figures, the narrative, and every point of
+    interest by name and by hex. The HTML carries its own styling and prints.
+- A small `-export.json` goes in beside them holding what a picture cannot say
+  for itself: which world it is, how many kilometres a hex covers, and which
+  shade of grey the heightmap puts sea level at.
+- A save no longer stalls when the tab is put in the background. The pauses that
+  let the progress message reach the screen waited on an animation frame, and a
+  browser gives none to a tab nobody is looking at.
+
 ## 1.1.0 — 2026-09-11
 
 - **Contour lines over the local detail panel**, off until asked for by the

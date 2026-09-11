@@ -33,10 +33,15 @@ of writing, this is 100% Claude generated to my exacting requirements.
   prose, pinned to a hex by a name that survives a change of detail level. A new
   world arrives with the starport its profile says it has, placed on coastal
   land near the equator.
-- **Saving** writes a folder holding the planet's JSON and the flat map as a PNG
-  at each of the four detail levels. On a browser without the File System Access
-  API the same five files arrive as one zip download instead. No server is
-  involved either way, and nothing leaves the machine.
+- **Saving** writes a folder holding the planet's JSON and whatever else you
+  ticked: the flat map as a PNG at any of the five detail levels, and any of the
+  export formats below. On a browser without the File System Access API the same
+  files arrive as one zip download instead. No server is involved either way, and
+  nothing leaves the machine.
+- **Exports** for the tools that are not PlanetHex: the map as SVG, an
+  equirectangular plate and a grey heightmap, a virtual tabletop scene, the hexes
+  as GeoJSON polygons or a CSV table, a Traveller sector line with its trade
+  codes worked out, and a printable world sheet in Markdown and HTML.
 
 Every hex has a stable name of the form `F07R33C08` — face, row, and column
 counted on the finest lattice — so a hex can be written in a save file or read
@@ -55,7 +60,7 @@ application; the two save paths differ.
 | Browser | Save | Load |
 | --- | --- | --- |
 | Chrome, Edge | Writes a folder in place, and rewrites it on the next Save. | Opens the planet's JSON through the file picker. |
-| Firefox, Safari | Downloads the same five files as one zip. Each Save is a new file. | Opens either the zip or the JSON inside it. |
+| Firefox, Safari | Downloads the same files as one zip. Each Save is a new file. | Opens either the zip or the JSON inside it. |
 
 The difference is the File System Access API, which is Chromium only. Where it
 is missing the application says so on the status line rather than failing at the
@@ -96,7 +101,7 @@ which electron-builder cannot package onto, so the build has to land elsewhere.
 | `src/grid/` | The icosahedral grid: coordinates, neighbours, hex geometry, and picking. |
 | `src/gen/` | Generation: the height field, climate, ice, life, tilt, starport siting, and the world description. |
 | `src/ui/` | The three panels: flat map, globe, local detail, plus colour and scale bars. |
-| `src/io/` | Save, load, and the map images. |
+| `src/io/` | Save, load, the map images, and the export formats in `src/io/export/`. |
 | `electron/` | The desktop shell and its packaging script. |
 | `Spec.md` | The specification. Every decision, and why. |
 

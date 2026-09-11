@@ -147,6 +147,37 @@
     </dialog>
 
 
+    <!-- Spec 6.23: what a save writes is the user's to choose. The lists inside
+         are built by main.ts from the detail levels of 2.2.2 and the formats of
+         6.17, so neither is written down twice. -->
+    <dialog id="save-dialog" class="save-dialog">
+      <form id="save-form" method="dialog">
+        <h2>Save</h2>
+        <p class="hint" id="save-where"></p>
+
+        <fieldset>
+          <legend>Map images</legend>
+          <p class="hint">The flat map as a picture, 2048 pixels wide, one per level.</p>
+          <div id="save-levels" class="save-list"></div>
+        </fieldset>
+
+        <fieldset>
+          <legend>Other formats</legend>
+          <p class="hint">The world for something other than PlanetHex to read.</p>
+          <div id="save-formats" class="save-list"></div>
+        </fieldset>
+
+        <p class="hint" id="save-summary"></p>
+
+        <div class="actions">
+          <button id="save-go" type="submit" value="save">Save</button>
+          <button id="save-all" type="button" title="Tick everything">All</button>
+          <button id="save-none" type="button" title="Untick everything but the planet">None</button>
+          <button id="save-cancel" type="button">Cancel</button>
+        </div>
+      </form>
+    </dialog>
+
     <!-- Spec 4.8: the help travels inside the program, because the packaged
          build is one executable and a user has nothing else beside it. The text
          is written here rather than fetched, so it cannot fail to arrive and
@@ -313,15 +344,81 @@
 
         <h3>Saving</h3>
         <p>
-          A save is a folder holding one planet: its JSON, and the flat map as a
-          picture at each of the four detail levels. The first <b>Save</b> asks
-          where the planet goes and later ones do not ask again. <b>Load</b> opens
-          the JSON. Nothing is sent anywhere &mdash; no server is involved and no
-          planet leaves this machine.
+          A save is a folder holding one planet. <b>Save</b> asks first what to put
+          in it: the planet's own JSON always, the flat map as a picture at any of
+          the five detail levels, and any of the other formats below. The first
+          Save also asks where the planet goes, and later ones do not ask again.
+          <b>Load</b> opens the JSON. Nothing is sent anywhere &mdash; no server is
+          involved and no planet leaves this machine.
         </p>
         <p>
-          Drawing four maps takes a few seconds, most of it the finest one and its
-          23,042 hexes. The panel says what it is doing while it works.
+          What you tick is remembered, so the save you want is the save you get
+          next time without setting it up again. The dialogue says how many files
+          it is about to write, since the finest levels take a few seconds each.
+        </p>
+
+        <h3>Exporting</h3>
+        <p>
+          The other formats are there so the world can be read by something that
+          is not PlanetHex. They all describe the world at the detail level the
+          Detail slider is on, since that is the map in front of you.
+        </p>
+        <dl class="help-list">
+          <dt>Vector map</dt>
+          <dd>
+            The hex map as an SVG: lines rather than pixels, so it prints at any
+            size and can be taken apart in Inkscape, Illustrator, or Affinity.
+          </dd>
+          <dt>Equirectangular plate</dt>
+          <dd>
+            The world drawn again with longitude across and latitude down, which
+            is the one layout every mapping program, globe renderer, and terrain
+            tool understands. It is drawn pixel by pixel off the surface rather
+            than hex by hex, so it shows the coastline the world actually has. A
+            grey heightmap comes with it for the tools that want to build the
+            ground themselves.
+          </dd>
+          <dt>Virtual tabletop scene</dt>
+          <dd>
+            The map as a large picture with the grid figures a Foundry or Roll20
+            scene asks for written beside it. The hex grid lines up within a face
+            of the net and not across the seams between faces, which is what
+            unfolding an icosahedron costs.
+          </dd>
+          <dt>Hex polygons</dt>
+          <dd>
+            Every hex as a shape in latitude and longitude, with its height,
+            terrain, and whatever sits on it. GeoJSON, so QGIS, Leaflet, and
+            anything else that reads it opens the world as a map rather than as a
+            picture of one. Points of interest come as their own points.
+          </dd>
+          <dt>Hex table</dt>
+          <dd>
+            The same again as a CSV: one row per hex, for a spreadsheet or for a
+            few lines of your own script.
+          </dd>
+          <dt>Traveller sector line</dt>
+          <dd>
+            The world as one line of a sector file, tab separated, with the trade
+            codes worked out from the profile. Paste it into a sector file among
+            its neighbours and the world appears on the chart. Bases, travel zone,
+            and stars are left blank, because PlanetHex describes the world and not
+            the system; the population multiplier, belts, and gas giants are rolled
+            from the seed.
+          </dd>
+          <dt>World sheet</dt>
+          <dd>
+            One page about the world in Markdown and in HTML: the profile spelled
+            out position by position, the worked figures, your narrative, and every
+            point of interest by name and by hex. The HTML carries its own styling
+            and prints.
+          </dd>
+        </dl>
+        <p>
+          Where anything but the planet is exported, a small
+          <code>-export.json</code> goes in with it holding what a picture cannot
+          say for itself: which world it is, how many kilometres a hex is, and
+          which shade of grey the heightmap puts sea level at.
         </p>
         <p>
           <b>unsaved</b> appears at the top of the left panel when the open planet

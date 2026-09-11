@@ -153,3 +153,72 @@ function join(parts: string[]): string {
 function digit(value: number): string {
   return value.toString(36).toUpperCase();
 }
+
+/** One position of the UWP, its digit, and what that digit means. Spec 6.19.2. */
+export interface UwpPosition {
+  readonly label: string;
+  readonly digit: string;
+  readonly meaning: string;
+}
+
+/**
+ * The eight positions read out one at a time, for the world sheet of 6.19.
+ *
+ * The prose of describeUwp reads the profile as a paragraph, which is how a
+ * referee wants it at the table. A sheet somebody is going to print wants the
+ * same knowledge as a column they can run a finger down, and wants it to line up
+ * with the digits in the field above. So the same tables are read again, one
+ * position at a time, and the positions that stand for a figure rather than a
+ * word take the figure the panel already worked out.
+ */
+export function uwpBreakdown(uwp: string, detail: PlanetDetail): UwpPosition[] | null {
+  const p = parseUwp(uwp);
+  if (p === null) return null;
+  const figure = (value: number | null, format: (v: number) => string): string =>
+    value === null ? "not worked out" : format(value);
+  return [
+    { label: "Starport", digit: p.starport, meaning: STARPORT[p.starport] ?? "no starport" },
+    {
+      label: "Size",
+      digit: digit(p.size),
+      meaning: figure(detail.diameterKm, (v) => `${km(v)} across, ${
+        detail.gravityG === null ? "unknown gravity" : `${detail.gravityG.toFixed(2)}g`
+      }`),
+    },
+    {
+      label: "Atmosphere",
+      digit: digit(p.atmosphere),
+      meaning:
+        (at(ATMOSPHERE, p.atmosphere) ?? "an atmosphere off the scale") +
+        (p.atmosphere === 0 || detail.pressureAtm === null
+          ? ""
+          : `, ${detail.pressureAtm.toFixed(2)} atmospheres`),
+    },
+    {
+      label: "Hydrographics",
+      digit: digit(p.hydrographics),
+      meaning: figure(detail.hydrographicsPct, (v) => `${v.toFixed(0)}% of the surface under water`),
+    },
+    {
+      label: "Population",
+      digit: digit(p.population),
+      meaning:
+        detail.population === null
+          ? "an unrecorded population"
+          : detail.population < 1
+            ? "nobody lives there"
+            : count(detail.population),
+    },
+    {
+      label: "Government",
+      digit: digit(p.government),
+      meaning: at(GOVERNMENT, p.government) ?? "an unrecorded government",
+    },
+    {
+      label: "Law level",
+      digit: digit(p.law),
+      meaning: at(LAW, p.law) ?? "restrictions off the scale",
+    },
+    { label: "Tech level", digit: digit(p.tech), meaning: `tech level ${digit(p.tech)}` },
+  ];
+}

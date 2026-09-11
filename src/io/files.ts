@@ -1,6 +1,5 @@
 import type { Planet } from "../planet";
 import { parsePlanet } from "../planet";
-import type { MapImages } from "./images";
 import { buildZip, readZip, type ZipEntry } from "./zip";
 
 /**
@@ -70,18 +69,33 @@ export async function pickFolder(): Promise<DirectoryHandle> {
   }
 }
 
-/** The planet and its map images, written into a folder already chosen. */
-export async function saveTo(
-  dir: DirectoryHandle,
-  planet: Planet,
-  images: MapImages,
-): Promise<void> {
-  const stem = sanitise(planet.name);
-  await write(dir, `${stem}.json`, JSON.stringify(planet, null, 2));
-  for (const [size, png] of images) {
-    // The row count of 2.2.2 names the file, since that is what the level is.
-    await write(dir, `${stem}-${size}.png`, png);
-  }
+/**
+ * One file of a save, named in full. Spec 6.23.3.
+ *
+ * The save used to know what it wrote: a planet and four pictures. Now the user
+ * chooses, and a format can write two files or none, so what arrives here is a
+ * list rather than a planet and a map of images. Both halves of 6.4.1 take the
+ * same list, which is what keeps a folder save and an archive save holding the
+ * same files under the same names.
+ */
+export interface SaveFile {
+  readonly name: string;
+  readonly data: string | Blob;
+}
+
+/** The name a planet's files are built on. Spec 6.4.1. */
+export function stemFor(planet: Planet): string {
+  return sanitise(planet.name);
+}
+
+/** The planet's own JSON, which every save writes whatever else it does. */
+export function planetFile(planet: Planet): SaveFile {
+  return { name: `${stemFor(planet)}.json`, data: JSON.stringify(planet, null, 2) };
+}
+
+/** The chosen files, written into a folder already chosen. */
+export async function saveTo(dir: DirectoryHandle, files: readonly SaveFile[]): Promise<void> {
+  for (const file of files) await write(dir, file.name, file.data);
 }
 
 async function write(dir: DirectoryHandle, name: string, data: string | Blob): Promise<void> {
@@ -109,20 +123,23 @@ export async function load(): Promise<{ planet: Planet; name: string }> {
 /* The fallback, for a browser without the API above --------------------- */
 
 /**
- * The save of 6.4.1 as a single archive: the planet's JSON and the images of
- * 6.4.5 under the same names a folder would have given them, so a save made in
- * Firefox and a save made in Chrome hold the same files.
+ * The save of 6.4.1 as a single archive, holding exactly the files a folder save
+ * would have held, under the same names. A save made in Firefox and a save made
+ * in Chrome hold the same things.
  *
  * Separate from handing it to the browser so the archive can be tested without
  * a document to download it into.
  */
-export async function zipSave(planet: Planet, images: MapImages): Promise<Blob> {
-  const stem = sanitise(planet.name);
-  const entries: ZipEntry[] = [
-    { name: `${stem}.json`, data: new TextEncoder().encode(JSON.stringify(planet, null, 2)) },
-  ];
-  for (const [size, png] of images) {
-    entries.push({ name: `${stem}-${size}.png`, data: new Uint8Array(await png.arrayBuffer()) });
+export async function zipSave(files: readonly SaveFile[]): Promise<Blob> {
+  const entries: ZipEntry[] = [];
+  for (const file of files) {
+    entries.push({
+      name: file.name,
+      data:
+        typeof file.data === "string"
+          ? new TextEncoder().encode(file.data)
+          : new Uint8Array(await file.data.arrayBuffer()),
+    });
   }
   return buildZip(entries);
 }
