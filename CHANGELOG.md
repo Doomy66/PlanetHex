@@ -4,7 +4,7 @@ The version in [package.json](package.json) is what the Windows installer of
 `npm run package` names itself after, so it is the one number that reaches a
 user. Dates are the day the release was tagged.
 
-## Unreleased
+## 1.1.0 — 2026-09-11
 
 - **Contour lines over the local detail panel**, off until asked for by the
   switch beside the panel's heading. The colours say what height the ground is;
