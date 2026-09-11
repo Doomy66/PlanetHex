@@ -4,7 +4,7 @@ The version in [package.json](package.json) is what the Windows installer of
 `npm run package` names itself after, so it is the one number that reaches a
 user. Dates are the day the release was tagged.
 
-## Unreleased
+## 1.2.0 — 2026-09-11
 
 - **Save now asks what to write.** A dialogue lists the map images, one line per
   detail level, and the export formats below, with a line under each saying who
