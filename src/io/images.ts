@@ -1,21 +1,24 @@
 import { DETAIL_LEVELS } from "../grid/coord";
 import { poiPlacements } from "../poi";
-import { buildSurface } from "../surface";
+import { buildSurface, type Surface } from "../surface";
 import { createHexMap, strokeWidths, type PoiMark } from "../ui/map";
 import type { PlanetDetail } from "../gen/detail";
 import type { Planet } from "../planet";
 
 /**
- * The flat map, drawn to a PNG at every detail level. Spec 6.4.5.
+ * The flat map, drawn to a PNG at a detail level. Spec 6.4.5.
  *
  * The same renderer draws these as draws the panel, on a map that is never put
  * in the document. A fresh map frames itself on the whole net at its first
  * render, so what comes out is the world entire rather than wherever the user
  * happens to have zoomed to.
+ *
+ * The same detached map is what the vector export of 6.17.1 writes out, since a
+ * picture and its vector original should not be drawn two different ways.
  */
 
 /** Wide enough to tell one hex from the next at level 48. Spec 6.4.5.2. */
-const WIDTH = 2048;
+export const WIDTH = 2048;
 
 /**
  * The stylesheet rules the map leans on, repeated here because a serialised SVG
@@ -44,22 +47,27 @@ const STYLES = `
 `;
 
 /** The panel colour the map is normally seen against. Matches --bg. */
-const BACKGROUND = "#14161a";
+export const BACKGROUND = "#14161a";
 
 const SVG_NS = "http://www.w3.org/2000/svg";
 
 /** One PNG per level, keyed by the row count that produced it. */
 export type MapImages = ReadonlyMap<number, Blob>;
 
+/**
+ * Draw the map at each of the levels asked for. Spec 6.4.5.4: which levels a save
+ * writes is the user's to choose, and the ladder of 2.2.2 is only the default.
+ */
 export async function renderMaps(
   planet: Planet,
   detail: PlanetDetail,
   /** Whether the hex seams are off, as 4.3.7.1 has them on screen. */
   smooth: boolean,
+  sizes: readonly number[] = DETAIL_LEVELS,
   onLevel?: (size: number) => void,
 ): Promise<MapImages> {
   const images = new Map<number, Blob>();
-  for (const size of DETAIL_LEVELS) {
+  for (const size of sizes) {
     onLevel?.(size);
     // Drawing a level holds the thread for as long as it takes, so the message
     // about the level being drawn is given a frame to reach the screen first.
@@ -70,17 +78,44 @@ export async function renderMaps(
   return images;
 }
 
-function nextFrame(): Promise<void> {
+/**
+ * Hand the thread back, so a message about what is being drawn can reach the
+ * screen before the next thing that holds it for seconds is started.
+ *
+ * A frame where there is a screen to reach: two of them, since the first only
+ * gets as far as the style being recalculated. A plain turn where there is not,
+ * because a browser stops giving frames to a tab nobody is looking at, and a
+ * save that stops the moment the user goes to another tab is worse than a save
+ * that draws on quietly and is finished when they come back.
+ */
+export function nextFrame(): Promise<void> {
+  if (typeof document !== "undefined" && document.hidden) {
+    return new Promise((resolve) => setTimeout(resolve, 0));
+  }
   return new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(() => resolve())));
 }
 
-async function renderMap(
+/** A detached, self-contained map, and the pixel size it is written at. */
+export interface MapDrawing {
+  readonly svg: SVGSVGElement;
+  readonly width: number;
+  readonly height: number;
+}
+
+/**
+ * The map as an SVG that carries everything it needs: its own copy of the rules
+ * it reads out of style.css, its stroke widths worked out for the width it is
+ * being written at, and a size in pixels so a reader that ignores the viewBox
+ * still gets the right shape.
+ */
+export function drawMap(
   planet: Planet,
   detail: PlanetDetail,
   size: number,
   smooth: boolean,
-): Promise<Blob> {
-  const surface = buildSurface(planet, detail, size);
+  width = WIDTH,
+  surface: Surface = buildSurface(planet, detail, size),
+): MapDrawing {
   const map = createHexMap();
   map.render(
     surface.grid,
@@ -90,31 +125,57 @@ async function renderMap(
     surface.caps,
     surface.verdancy,
   );
-  map.setPois(marksFor(planet, surface.grid));
-
   // A point of interest is one hex among thousands, and the marks are what say
   // where. Spec 5.5.
+  map.setPois(marksFor(planet, surface.grid));
+
   const svg = map.element.cloneNode(true) as SVGSVGElement;
   const box = (svg.getAttribute("viewBox") ?? "0 0 1 1").split(/\s+/).map(Number);
   const ratio = (box[3] ?? 1) / (box[2] ?? 1);
-  const height = Math.round(WIDTH * ratio);
+  const height = Math.round(width * ratio);
 
   // The seams of 4.3.7 by the same rule the panel uses, at the width the picture
   // is written at rather than the width of a panel this map was never in. What
   // the picture cannot work out for itself is whether the reader asked for them,
   // so that is handed to it: a save writes down the map that was on screen.
-  const { seam, mark } = strokeWidths(size, WIDTH / (box[2] ?? 1), smooth);
+  const { seam, mark } = strokeWidths(size, width / (box[2] ?? 1), smooth);
   svg.style.setProperty("--hex-stroke", String(seam));
   svg.style.setProperty("--mark-stroke", String(mark));
 
   const style = document.createElementNS(SVG_NS, "style");
   style.textContent = STYLES;
   svg.insertBefore(style, svg.firstChild);
-  svg.setAttribute("width", String(WIDTH));
+  svg.setAttribute("width", String(width));
   svg.setAttribute("height", String(height));
   svg.setAttribute("xmlns", SVG_NS);
+  // The hexes do not fill the net, and an SVG with nothing behind it is drawn on
+  // whatever the reader's page happens to be. The raster path paints the same
+  // colour onto its canvas.
+  svg.style.setProperty("background-color", BACKGROUND);
 
-  return rasterise(svg, WIDTH, height);
+  return { svg, width, height };
+}
+
+async function renderMap(
+  planet: Planet,
+  detail: PlanetDetail,
+  size: number,
+  smooth: boolean,
+  width = WIDTH,
+): Promise<Blob> {
+  const drawing = drawMap(planet, detail, size, smooth, width);
+  return rasterise(drawing);
+}
+
+/** The map as a picture at a width of the caller's choosing. Spec 6.20. */
+export function renderMapAt(
+  planet: Planet,
+  detail: PlanetDetail,
+  size: number,
+  smooth: boolean,
+  width: number,
+): Promise<Blob> {
+  return renderMap(planet, detail, size, smooth, width);
 }
 
 function marksFor(planet: Planet, grid: Parameters<typeof poiPlacements>[0]): PoiMark[] {
@@ -126,23 +187,28 @@ function marksFor(planet: Planet, grid: Parameters<typeof poiPlacements>[0]): Po
   return [...byCell].map(([cell, kind]) => ({ cell, kind }));
 }
 
+/** A detached map as the text of an SVG file. */
+export function serialise(drawing: MapDrawing): string {
+  return `<?xml version="1.0" encoding="UTF-8"?>\n${new XMLSerializer().serializeToString(drawing.svg)}\n`;
+}
+
 /** Draw a detached SVG onto a canvas and take the PNG off it. */
-async function rasterise(svg: SVGSVGElement, width: number, height: number): Promise<Blob> {
-  const markup = new XMLSerializer().serializeToString(svg);
+export async function rasterise(drawing: MapDrawing): Promise<Blob> {
+  const markup = new XMLSerializer().serializeToString(drawing.svg);
   // A blob URL rather than a data URL: at level 48 the markup runs to megabytes,
   // and encoding all of it into a URL is wasted work.
   const url = URL.createObjectURL(new Blob([markup], { type: "image/svg+xml" }));
   try {
     const image = await load(url);
     const canvas = document.createElement("canvas");
-    canvas.width = width;
-    canvas.height = height;
+    canvas.width = drawing.width;
+    canvas.height = drawing.height;
     const context = canvas.getContext("2d");
     if (!context) throw new Error("This browser cannot draw the map to an image.");
     // The map is drawn against the panel, and the hexes do not fill the net.
     context.fillStyle = BACKGROUND;
-    context.fillRect(0, 0, width, height);
-    context.drawImage(image, 0, 0, width, height);
+    context.fillRect(0, 0, drawing.width, drawing.height);
+    context.drawImage(image, 0, 0, drawing.width, drawing.height);
     return await toPng(canvas);
   } finally {
     URL.revokeObjectURL(url);
@@ -158,7 +224,7 @@ function load(url: string): Promise<HTMLImageElement> {
   });
 }
 
-function toPng(canvas: HTMLCanvasElement): Promise<Blob> {
+export function toPng(canvas: HTMLCanvasElement): Promise<Blob> {
   return new Promise((resolve, reject) => {
     canvas.toBlob((blob) => {
       if (blob) resolve(blob);

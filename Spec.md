@@ -488,7 +488,7 @@ A browser application that generates planet surfaces procedurally and shows them
 
 6.4 Save writes the planet out, Load reads one back, and New starts a fresh planet with a new random seed.
 
-6.4.1 A save is a folder on the local disk holding one planet: its JSON, and the map images of 6.4.5 beside it. No server is involved and nothing about a planet leaves the machine.
+6.4.1 A save is a folder on the local disk holding one planet: its JSON, the map images of 6.4.5 at the levels asked for, and whatever else the dialogue of 6.23 was asked for. No server is involved and nothing about a planet leaves the machine.
 
 6.4.1.1 The application uses the File System Access API. The first Save of a planet asks for the folder to save into. Load opens a file picker on the JSON.
 
@@ -496,7 +496,7 @@ A browser application that generates planet surfaces procedurally and shows them
 
 6.4.1.3 The API is Chromium only and needs a user gesture plus a permission grant. Firefox and Safari cannot run the application as specified. If that becomes a problem, a download and file picker fallback is the way out, and it changes only 6.4.1.1 and 6.4.1.2.
 
-6.4.1.4 A folder rather than a file because 6.4.5 puts more than one file in a save. The API gives no route from a file handle to the folder holding it, so a planet picked as a file cannot have its images written next to it. That is also why Load leaves the folder unset: it can read the file the user chose, but it cannot tell where that file lives, so the next Save asks.
+6.4.1.4 A folder rather than a file because 6.4.5 and 6.17 put more than one file in a save. The API gives no route from a file handle to the folder holding it, so a planet picked as a file cannot have its images written next to it. That is also why Load leaves the folder unset: it can read the file the user chose, but it cannot tell where that file lives, so the next Save asks.
 
 6.4.4 The application tracks whether the open planet has unsaved edits, and warns before anything discards them.
 
@@ -518,13 +518,13 @@ A browser application that generates planet surfaces procedurally and shows them
 
 6.4.3.1 A detail level that is not one of the four in 2.2.2 is snapped to the nearest that is, rather than refused. Under 3.2.4 the field is the same at every level, so this changes how much of the world is drawn and not which world it is, which is not the kind of mismatch 6.4.3 is guarding against.
 
-6.4.5 A save also writes the flat map as a PNG at each of the four detail levels of 2.2.2, named for the planet and the row count that drew it.
+6.4.5 A save also writes the flat map as a PNG, named for the planet and the row count that drew it, at each of the detail levels of 2.2.2 the dialogue of 6.23 was asked for.
 
-6.4.5.1 The images are drawn by the renderer that draws the panel, on a map framed on the whole net rather than on wherever the user has zoomed to. Under 3.2.4 the four are the one world at four resolutions, not four worlds.
+6.4.5.1 The images are drawn by the renderer that draws the panel, on a map framed on the whole net rather than on wherever the user has zoomed to. Under 3.2.4 they are the one world at several resolutions, not several worlds. The same detached map is what the vector export of 6.17 writes out, so a picture and its vector original are not drawn two different ways.
 
-6.4.5.2 Each is 2048 pixels wide, which is enough to tell one hex from the next at level 48, where there are 23,042 of them.
+6.4.5.2 Each is 2048 pixels wide, which is enough to tell one hex from the next at level 48, where there are 23,042 of them. The scene of 6.20 is the one picture drawn at another width, and it is drawn at a width the grid it is for asks for rather than at one chosen for reading.
 
-6.4.5.3 Drawing four levels takes seconds, level 48 most of them. Save says what it is doing and refuses a second start until the first has finished. The folder is asked for before the drawing begins, since the picker needs the gesture that opened it and would not survive the wait.
+6.4.5.3 Drawing every level takes seconds, the finest most of them. Save says what it is doing and refuses a second start until the first has finished. The folder is asked for before the drawing begins, since the picker needs the gesture that opened it and would not survive the wait.
 
 6.5 Generated hex information cannot be edited. Height and everything derived from it come from the seed, so there is no user override to store and no way for a saved planet to disagree with what the generator produces. What can be attached to a hex is a point of interest. It is user data rather than generated data, so a save stores it explicitly, keyed by the hex name from 2.4.
 
@@ -715,6 +715,94 @@ A browser application that generates planet surfaces procedurally and shows them
 6.15.10 Rotation sets how hard the wind blows, since spin drives the circulation. A fast rotator is windier and a world with its day locked to its year barely stirs. The effect is mild and logarithmic: the span from a six hour day to a locked one is three orders of magnitude, and what that does to rock is nothing like as much.
 
 6.15.11 What none of them touch is relief, which stays gravity's under 3.4.2, or continent spread, which stays the seed's under 3.4.4.
+
+### 6.16 Trade classifications
+
+6.16 The trade classifications are read off the UWP. Each is a test over the digits, so a world either meets one or it does not, and the same profile always earns the same list. Nothing is rolled and nothing is stored: the list is a view of the digits the user already has, as the description of 6.13 is.
+
+6.16.1 They are worked out because the sector line of 6.18 carries them, and because a world sheet that gives the profile and not what it amounts to has left the reading to the reader.
+
+6.16.2 The population multiplier, belts, and gas giants of a sector line are the one thing PlanetHex has nothing behind. No belt, gas giant, or population multiplier is anywhere in the surface or the profile. They are drawn from the seed rather than written as zeroes, so the same seed brings the same figures and anyone who wants different ones can type over them where they land. A world with nobody on it takes a multiplier of zero, since a tenth of nobody is still nobody.
+
+### 6.17 Exporting the world
+
+6.17 A save can also write the world in formats nothing in this application reads, for the tools that are not this application. The map images of 6.4.5 are pictures, and a picture cannot be queried, projected, styled, or put on a chart.
+
+6.17.1 Every export describes the world at the detail level on screen rather than at all of them. A table of a level nobody is looking at is a table of a map nobody has, and the reader has the map in front of them.
+
+6.17.1.1 A hex outline written in latitude and longitude has two problems a drawn hexagon does not, and both are dealt with on the way out. A hex straddling the antimeridian has corners at +179 and -179, which as a ring reads as a shape stretched round the whole world; its corners are brought within half a turn of the hex's own centre, which carries a few of them past 180. That is outside the range a coordinate is normally written in and is what mapping software wants: one unbroken ring, in the place the hex actually is. The two hexes on the poles have no outline that works at all, since the ring their corners make is a line across the top of the map rather than a cap over it; those two are closed over the pole itself.
+
+6.17.2 GeoJSON, under RFC 7946. One feature per hex, the outline as its geometry, and the height, terrain, colour, and points of interest as its properties.
+
+6.17.2.1 The collection carries which world it is as a foreign member, which the format allows and readers are asked to keep. A file that cannot say which world it is would have to be named carefully for ever after.
+
+6.17.2.2 A point of interest sits where it was placed, which under 2.4.8 is a point far finer than any hex. It comes as its own point feature rather than as a property of the hex covering it, since the hex is the shape and the point is the point.
+
+6.17.3 CSV, under RFC 4180. One row per hex, the header row, and the quoting the format asks for. A hex covering several points of interest is one row, since the row is about the hex, and their names are joined rather than one of them chosen: nothing written on the world is quietly dropped on the way out.
+
+### 6.18 The sector line
+
+6.18 The world as one line of a sector file, tab separated, with the header row the column format is identified by. A referee who has drawn a world usually wants it to appear on the sector map beside the others, and every tool that draws sector maps reads these columns.
+
+6.18.1 The header travels with the line because a file without one is guessed at and a file with one is read. A separate block of comment lines above it says which world this is and what was left out, for somebody who did not export it.
+
+6.18.2 Bases, travel zone, and stars are left blank rather than invented. PlanetHex describes the world, not the system it is in. Allegiance is the format's own placeholder for unaligned, which is what an unclaimed world is. PBG is the exception, under 6.16.2.
+
+6.18.3 A world whose hex is not a square on the chart of 6.14 is written at 0000 rather than refused, so the line is still a line and the user can put it where it belongs.
+
+### 6.19 The world sheet
+
+6.19 One page about the world, in Markdown and in HTML. Everything else a save writes is the ground; this is the world as a referee reads it out at the table.
+
+6.19.1 Two files rather than one because they are wanted in different places. The Markdown goes into a campaign wiki, a notes app, or a repository, where it is read as text and styled by whatever holds it. The HTML is for printing and for handing to a player, and carries its own styling, because a page that has to be paired with a stylesheet is a page that will be opened without one. Both are built from one description, so the two cannot drift apart.
+
+6.19.2 The profile is spelled out a position at a time as well as read as prose. The paragraph of 6.13 is how a referee wants it at the table; a sheet somebody is going to print wants the same knowledge as a column they can run a finger down, lined up with the digits in the field above.
+
+6.19.3 A section with nothing in it is left out rather than written empty. A world nobody has annotated has no points of interest, which is not the same as having a heading and a blank under it.
+
+6.19.4 The HTML page is light rather than the panel's dark. It is meant to be printed, and a dark page prints as a black page.
+
+### 6.20 The virtual tabletop scene
+
+6.20 The map drawn at a hundred pixels to the hex, which is what a virtual tabletop starts a scene at, so it arrives at the size the grid expects rather than needing to be scaled before anything lines up. The width follows from the level, and is capped, since at the finest level it would be a picture no browser will encode and no tabletop will load.
+
+6.20.1 A hex grid laid over it lines up within a face of the net and not across the seams between faces. That is what unfolding an icosahedron costs, and the manifest of 6.22 says so rather than leaving it to be discovered.
+
+### 6.21 The equirectangular plate
+
+6.21 The world drawn again with longitude across and latitude down. The hex map of section 4 is the world unfolded off an icosahedron, which is the right picture for a hex map and the wrong one for everything else: a globe texture, a projection in a mapping program, a terrain tool, and a tabletop showing the planet from orbit all want the layout nothing has to be told about.
+
+6.21.1 Drawn pixel by pixel rather than hex by hex. Each pixel is a direction, the direction is placed on the icosahedron lattice, and the height is read between the lattice points around it. That is finer than any hex grid the application draws, so the plate shows the coastline the surface actually has rather than the hexes' idea of it. Reading the nearest lattice point instead would come out in triangular facets, which is the lattice showing through a picture that is not about the lattice.
+
+6.21.2 Twice as wide as high, which is what the projection means, and the rows are sampled at their centres so a pole falls at the edge of the plate rather than half a row inside it.
+
+6.21.3 Two plates. One is coloured as the map is coloured, so the sea, the ground, and the ice read as they do on screen. The other is grey, the height alone, for the tools that want to build the terrain themselves. The grey runs from the lowest a world can go to the highest, not from this world's own lowest to its own highest, so two worlds can be read against each other; where sea level falls is in the manifest of 6.22, since a grey value means nothing without it.
+
+6.21.4 A plate is millions of pixels on the thread the panel draws on, so the thread is handed back often enough for the message saying how far along it is to reach the screen.
+
+6.21.4.1 Handed back as a frame where there is a screen to reach, and as a plain turn where there is not. A browser stops giving frames to a tab nobody is looking at, and a save that stops the moment the user goes to another tab is worse than one that draws on quietly and is finished when they come back. The same holds for the images of 6.4.5.
+
+### 6.22 The manifest
+
+6.22 Where anything but the planet's own JSON is exported, a small manifest goes in with it. Several of the exports are pictures, and a picture cannot say what it is of: a grey pixel is a height only if you know where sea level sits, a scene is a hex grid only if you know how many pixels a hex is, and a plate is a world only if you know which world.
+
+6.22.1 It holds which world it is, the detail level and hex count, the world's diameter and the kilometres a hex covers, sea level as both a height and a shade of grey, the plate's projection and extent, the scene's grid figures, and the names of the files written beside it.
+
+### 6.23 Choosing what a save writes
+
+6.23 Save opens a dialogue first. What goes in a save is the user's to choose: the map images of 6.4.5 at any of the levels of 2.2.2, and any of the formats of 6.17 to 6.21.
+
+6.23.1 The planet's own JSON is not among the choices. A save without it is not a save of a planet, so it is always written, and it is what marks the planet saved.
+
+6.23.2 The choices are grouped as the map images and everything else, and each carries a line saying who would want it. A format nobody can tell the use of is a format nobody ticks.
+
+6.23.3 A format writes files and knows nothing about where they go. The folder of 6.4.1 and the archive of the fallback both take the same list, which is what keeps a save made in Chrome and a save made in Firefox holding the same files under the same names.
+
+6.23.4 What was ticked is remembered between sessions, in the browser rather than in the planet. This is about the user and not about the world: somebody who wants GeoJSON wants it for every world they draw, and a planet handed to somebody else should not arrive telling them what to export. A browser that refuses storage loses the memory and nothing else.
+
+6.23.5 The dialogue says how many files it is about to write, and says that the finest levels and the plate take a few seconds each. The moment to know that is while the ticks are still the user's to change.
+
+6.23.6 The folder of 6.4.1.1 is asked for after the dialogue is dismissed rather than before it is opened, since the dialogue's own button is the gesture the picker needs and a picker cannot be opened from under a modal.
 
 ## 7. Reference material
 
