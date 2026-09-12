@@ -4,6 +4,44 @@ The version in [package.json](package.json) is what the Windows installer of
 `npm run package` names itself after, so it is the one number that reaches a
 user. Dates are the day the release was tagged.
 
+## 1.4.0 — 2026-09-12
+
+- **A Visible view.** Beside the terrain ramp, a second way to colour the world:
+  what an eye in orbit would see rather than how high the ground is. Green where
+  things grow, brown where the ground is bare but weathered, grey where it is bare
+  rock, white where water is frozen, and a darker sea than the map's. All three
+  panels draw it, and so do the saved pictures and the coloured exports, with the
+  manifest recording which view wrote them.
+  - **It reads temperature where the terrain ramp reads height.** The verdancy
+    that decided one colour for a whole world is now read a latitude at a time, so
+    a temperate world is jungle at its equator and tundra at sixty degrees.
+  - **Axial tilt sets how far apart those latitudes are.** Annual sunlight falls
+    off towards the poles by a factor that is full on an untilted world, nothing at
+    54.7 degrees, and negative past it — the same fact the ice caps are already
+    built on. So a world lying on its side comes out iced at its waist and green at
+    its ends. Thick air rubs the difference out: Venus is within a degree or two of
+    itself pole to pole, an airless world swings the whole way. Calibrated to
+    Earth, whose 23 degrees at one atmosphere give 30C at the equator and -18C at
+    the poles.
+  - **Brown or grey is about weather, not life.** A trace of air is enough to
+    oxidise a surface over four billion years, which is why Mars is red and Luna is
+    grey. A trace of water is not: a hydrographics digit of 0 leaves a rock a rock.
+  - **Dry belts in the subtropics**, because air that rose over the equator comes
+    down about 26 degrees out having already rained, and a world drawn without them
+    has a green waist no planet has.
+  - **Snow by local temperature**, permanent snow rather than snow that falls: the
+    line runs from the water's edge on ground averaging -15C to the summits alone
+    at 27C.
+- **The left panel folds.** Four sections — Profile, Display, World, Narrative —
+  so the part being worked on can be on screen with the points of interest under
+  it. The world settings start folded; the rest start open.
+- **The selection survives a coarser map.** Three hex names in four have nowhere
+  to go at level 12, and moving the slider down used to empty the selection and
+  blank the local panel with it. The ground has not gone anywhere, so the selection
+  moves to the hex covering it, and the name the user picked is held rather than
+  overwritten: the way back up the slider lands on their hex, not on the middle of
+  the one that stood in for it.
+
 ## 1.3.0 — 2026-09-12
 
 - **Craters.** Impacts are laid over the height field as a layer of their own
