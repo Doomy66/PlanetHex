@@ -86,6 +86,20 @@ const YEAR_AT_1AU_HOURS = 8766;
 const PRIMORDIAL_MEDIAN_HOURS = 18;
 const PRIMORDIAL_SPREAD = 0.5;
 
+/**
+ * Equator-to-pole temperature difference, in kelvin, on an untilted world whose
+ * air is too thin to carry any heat poleward. Spec 5.7.3.
+ */
+const POLE_CONTRAST_K = 90;
+
+/**
+ * The pressure at which air has moved a noticeable share of that heat. Thick air
+ * is a conveyor as well as a blanket: Venus runs the same temperature at its poles
+ * as at its equator, and an airless world swings the whole way. Set with the figure
+ * above so that Earth comes out at about 47K and Venus at a couple.
+ */
+const HEAT_TRANSPORT_ATM = 2.2;
+
 /** Obliquity spreads, in degrees. See 6.12.3 for where the three populations come from. */
 const SETTLED_SIGMA_DEG = 1;
 const ORDERED_SIGMA_DEG = 20;
@@ -101,6 +115,7 @@ const clamp01 = (v: number): number => (v < 0 ? 0 : v > 1 ? 1 : v);
 const clamp = (v: number, lo: number, hi: number): number => Math.min(hi, Math.max(lo, v));
 const lerp = (a: number, b: number, t: number): number => a + (b - a) * t;
 const degrees = (radians: number): number => (radians * 180) / Math.PI;
+const radians = (deg: number): number => (deg * Math.PI) / 180;
 
 /** Inverse Rayleigh CDF. The mode is sigma and the median about 1.18 of it. */
 function rayleigh(sigma: number, fraction: number): number {
@@ -278,6 +293,45 @@ export function isRetrograde(obliquityDeg: number): boolean {
 /** Whether tides have brought the world's day and year into step. */
 export function isTidallyLocked(rotationHours: number, orbitAu: number): boolean {
   return rotationHours >= orbitalPeriodHours(orbitAu) * 0.95;
+}
+
+/**
+ * How much colder a world's poles run than its equator, in kelvin. Spec 5.7.3.
+ *
+ * Two things decide it. The first is the tilt, and it is the same fact the ice
+ * caps of 5.4 are built on. Sunlight averaged over a year varies with latitude as
+ * the second Legendre polynomial, and the size of that term goes as one minus
+ * three halves of the square of the sine of the lean: full at no tilt, gone at
+ * 54.7 degrees, and negative past it. So a world lying on its side takes more
+ * sunlight at its poles than at its equator over a year, and the sign here says
+ * so. That is the same 54 degrees 5.4.2 puts the last permanent ice cap at,
+ * because it is the same fact about sunlight.
+ *
+ * The second is the air. Sunlight sets the contrast and winds spend the year
+ * rubbing it out, so the figure is divided down by the pressure. Calibrated to
+ * Earth: 23 degrees of tilt at one atmosphere gives about 47K, which puts the
+ * equator near 30C and the poles near -17C on a world whose mean is 14C.
+ */
+export function latitudeContrastK(seasonalTiltDeg: number, pressureAtm: number): number {
+  const lean = Math.sin(radians(seasonalTiltDeg));
+  const gradient = 1 - 1.5 * lean * lean;
+  return (POLE_CONTRAST_K * gradient) / (1 + Math.max(0, pressureAtm) / HEAT_TRANSPORT_ATM);
+}
+
+/**
+ * The mean temperature at one latitude, in kelvin, from the world's own mean and
+ * the contrast above. The shape is the second Legendre polynomial, which is what
+ * annual sunlight actually varies as, and it is written so that its average over
+ * the sphere is zero: warming a latitude here cools another, and the world's mean
+ * stays the number 6.15 worked out.
+ */
+export function temperatureAtLatitude(
+  meanTempK: number,
+  contrastK: number,
+  sinLat: number,
+): number {
+  const s = clamp(sinLat, -1, 1);
+  return meanTempK + contrastK * ((1 - 3 * s * s) / 3);
 }
 
 /* Assembly ----------------------------------------------------------------- */

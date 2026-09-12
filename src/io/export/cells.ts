@@ -1,8 +1,7 @@
 import { formatRef, type RefIndex } from "../../grid/coord";
 import { buildRefIndex } from "../../grid/coord";
 import { isIced } from "../../gen/ice";
-import { terrainBand } from "../../ui/colour";
-import { heightColour } from "../../ui/colour";
+import { terrainBand, type Shader } from "../../ui/colour";
 import { poiPlacements, type Poi } from "../../poi";
 import type { Surface } from "../../surface";
 import type { Vec3 } from "../../grid/vec3";
@@ -46,7 +45,12 @@ export function latLon(p: Vec3): readonly [number, number] {
   return [Math.asin(Math.max(-1, Math.min(1, p[1]))) * DEG, Math.atan2(p[2], p[0]) * DEG];
 }
 
-export function hexRecords(surface: Surface, pois: readonly Poi[], refs?: RefIndex): HexRecord[] {
+export function hexRecords(
+  surface: Surface,
+  pois: readonly Poi[],
+  shade: Shader,
+  refs?: RefIndex,
+): HexRecord[] {
   const grid = surface.grid;
   const index = refs ?? buildRefIndex(grid);
   const byCell = new Map<number, Poi[]>();
@@ -70,7 +74,7 @@ export function hexRecords(surface: Surface, pois: readonly Poi[], refs?: RefInd
       terrain: terrainBand(height, surface.seaLevel, iced),
       iced,
       land: height > surface.seaLevel,
-      colour: heightColour(height, surface.seaLevel, iced, surface.verdancy),
+      colour: shade(height, cell.centre[1], iced),
       sides: cell.isPentagon ? 5 : 6,
       outline: ring(cell.corners, longitude, latitude),
       pois: byCell.get(cell.id) ?? [],

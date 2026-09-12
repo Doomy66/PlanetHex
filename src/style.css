@@ -196,6 +196,44 @@ body {
 h1 { font-size: 15px; margin: 0 0 10px; letter-spacing: 0.06em; }
 h2 { font-size: 11px; margin: 18px 0 8px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.08em; }
 
+/* The folding sections of the left panel. Spec 4.2.6. A summary is given the
+   heading's own look, so folding the panel up changes what is on screen and not
+   what the panel reads like. */
+.section { border-top: 1px solid var(--line); }
+.section > summary {
+  font-size: 11px;
+  margin: 0;
+  padding: 10px 0 9px;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  cursor: pointer;
+  list-style: none;
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+.section > summary::-webkit-details-marker { display: none; }
+.section > summary:hover { color: var(--text); }
+/* A triangle of our own, since the browsers' own markers do not agree on size or
+   colour and this one has to sit on a line of small capitals. */
+.section > summary::before {
+  content: "";
+  width: 0;
+  height: 0;
+  margin-right: 7px;
+  border-left: 4px solid currentColor;
+  border-top: 3.5px solid transparent;
+  border-bottom: 3.5px solid transparent;
+  transition: transform 0.12s ease;
+}
+.section[open] > summary::before { transform: rotate(90deg); }
+.section-body { padding-bottom: 6px; }
+/* The narrative fills its section rather than standing in a label of its own. */
+#section-narrative textarea { margin-top: 0; }
+/* A field that needs air above it, where the one before it was a checkbox. */
+label.spaced { margin-top: 12px; }
+
 .dirty { color: var(--accent); font-size: 11px; }
 
 .actions { display: flex; gap: 6px; }

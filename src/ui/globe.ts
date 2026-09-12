@@ -2,7 +2,7 @@ import * as THREE from "three";
 import { OrbitControls } from "three/addons/controls/OrbitControls.js";
 import type { Grid } from "../grid/grid";
 import type { Vec3 } from "../grid/vec3";
-import { heightColour } from "./colour";
+import type { Shader } from "./colour";
 import { isIced, type IceCaps } from "../gen/ice";
 import type { PoiKind } from "../poi";
 
@@ -67,11 +67,10 @@ export interface Globe {
   render(
     grid: Grid,
     heights: Float64Array,
-    seaLevel: number,
     diameterKm: number | null,
     caps: IceCaps | null,
-    /** How green the land is drawn, from 0 for bare to 1 for an Earth. Spec 5.6. */
-    verdancy: number,
+    /** How the view of 5.7 colours a place on this world. */
+    shade: Shader,
     axialTiltDeg: number,
   ): void;
   /** The hex to mark, by its corners, or null for none. Spec 4.4.4. */
@@ -207,10 +206,9 @@ export function createGlobe(): Globe {
   function render(
     grid: Grid,
     heights: Float64Array,
-    seaLevel: number,
     diameterKm: number | null,
     caps: IceCaps | null,
-    verdancy: number,
+    shade: Shader,
     axialTiltDeg: number,
   ): void {
     disposeSurface();
@@ -236,7 +234,8 @@ export function createGlobe(): Globe {
     const colour = new THREE.Color();
     let t = 0;
     for (const cell of grid.cells) {
-      colour.setStyle(heightColour(heights[cell.id]!, seaLevel, isIced(caps, cell.centre[1]), verdancy));
+      const sinLat = cell.centre[1];
+      colour.setStyle(shade(heights[cell.id]!, sinLat, isIced(caps, sinLat)));
       colour.convertSRGBToLinear();
       const corners = cell.corners;
       const [ax, ay, az] = cell.centre;

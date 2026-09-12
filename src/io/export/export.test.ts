@@ -4,7 +4,7 @@ import { hexCsv } from "./csv";
 import { hexGeoJson } from "./geojson";
 import { sectorLine, sectorNotes } from "./sec";
 import { worldSheetHtml, worldSheetMarkdown } from "./sheet";
-import { buildSurface } from "../../surface";
+import { buildSurface, shaderFor } from "../../surface";
 import { planetDetail } from "../../gen/detail";
 import { latticeRef } from "../../grid/coord";
 import { newPlanet, type Planet } from "../../planet";
@@ -32,7 +32,8 @@ function surfaceOf(planet: Planet) {
 }
 
 function recordsOf(planet: Planet) {
-  return hexRecords(surfaceOf(planet), planet.pois);
+  const surface = surfaceOf(planet);
+  return hexRecords(surface, planet.pois, shaderFor(surface, "terrain"));
 }
 
 const poi = (kind: Poi["kind"], name: string): Poi => ({
@@ -168,7 +169,7 @@ describe("the hex polygons", () => {
   const parse = (planet: Planet) => {
     const surface = surfaceOf(planet);
     return JSON.parse(
-      hexGeoJson(hexRecords(surface, planet.pois), {
+      hexGeoJson(hexRecords(surface, planet.pois, shaderFor(surface, "terrain")), {
         planet,
         size: SIZE,
         seaLevel: surface.seaLevel,

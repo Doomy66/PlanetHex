@@ -5,7 +5,7 @@ import { poiPosition, type Poi } from "../poi";
 import { add, normalise, scale, type Vec3 } from "../grid/vec3";
 import { fieldSizeFor, openHeightField, type HeightFieldOptions } from "../gen/field";
 import { NO_CRATERS, type CraterField } from "../gen/crater";
-import { heightColour } from "./colour";
+import type { Shader } from "./colour";
 import { scaleBar, stepKm } from "./scale";
 import { isIced, type IceCaps } from "../gen/ice";
 import { planContours, traceContours, type Step } from "./contour";
@@ -53,8 +53,8 @@ export interface LocalInput {
   readonly seaLevel: number;
   readonly diameterKm: number | null;
   readonly caps: IceCaps | null;
-  /** How green the land is drawn, from 0 for bare to 1 for an Earth. Spec 5.6. */
-  readonly verdancy: number;
+  /** How the view of 5.7 colours a place on this world. */
+  readonly shade: Shader;
   /** The planet's POIs. Those the patch reaches are drawn on their own fine hex. */
   readonly pois: readonly Poi[];
   /** Whether to draw contour lines over the patch. Spec 4.5.8. */
@@ -115,7 +115,7 @@ export function createLocalView(): LocalView {
   });
 
   function render(input: LocalInput): void {
-    const { grid, selected, seaLevel, verdancy } = input;
+    const { grid, selected, seaLevel, shade } = input;
     last = input;
     lastGrid = grid;
     if (selected === null) {
@@ -211,6 +211,9 @@ export function createLocalView(): LocalView {
       readonly y: number;
       readonly height: number;
       readonly iced: boolean;
+      /** Where the hex sits between the equator and a pole, which is what the
+       *  visible view of 5.7 reads a temperature off. */
+      readonly sinLat: number;
     }
     const found: Found[] = [];
     let low = Infinity;
@@ -235,6 +238,7 @@ export function createLocalView(): LocalView {
           y: dp * e1[1] + dq * e2[1],
           height: sample.height,
           iced: isIced(input.caps, sample.y),
+          sinLat: sample.y,
         });
         heights.set(`${dp},${dq}`, sample.height);
         if (sample.height < low) low = sample.height;
@@ -299,7 +303,7 @@ export function createLocalView(): LocalView {
       for (const cell of found) {
         const poly = document.createElementNS(SVG_NS, "polygon");
         poly.setAttribute("points", points(fill.map(([dx, dy]) => [cell.x + dx, cell.y + dy])));
-        poly.setAttribute("fill", heightColour(cell.height, seaLevel, cell.iced, verdancy));
+        poly.setAttribute("fill", shade(cell.height, cell.sinLat, cell.iced));
         hexes.push(poly);
         note(cell.x, cell.y);
       }
@@ -391,7 +395,7 @@ export function createLocalView(): LocalView {
         cells: found,
         low,
         seaLevel,
-        verdancy,
+        shade,
         reach,
         basis: [e1, e2],
         frame: { left, top, width, height },

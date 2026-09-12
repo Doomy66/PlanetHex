@@ -83,7 +83,13 @@ A browser application that generates planet surfaces procedurally and shows them
 
 2.4.6 Read the other way, a name lands on a level only where that level's lattice reaches it. Three names in four have nowhere to go at level 12, and none at level 6 but the twelve corners. The honest answer there is that the level does not draw that hex, not the nearest hex it does draw. Snapping to a neighbour would move something the user placed, and then move it somewhere else again on the way back.
 
-2.4.7 The selection follows the name. Selecting a hex and then moving the slider keeps the selection at every level that still draws that hex, rather than landing on whatever hex inherited the old index. A level that does not draw it shows nothing selected, and the selection returns on the way back up: the name is held even where there is no hex to put it on, so passing through a coarse level does not lose the hex the user was looking at.
+2.4.6.1 That is about the name, and it holds. A point of interest keeps the name it was placed on and is drawn wherever the level can draw it, never moved onto a neighbour. The selection of 2.4.7 is the one thing read the other way round, because a selection is not something written down: it is where the user is looking.
+
+2.4.7 The selection follows the name. Selecting a hex and then moving the slider keeps the selection on that hex at every level that draws it, rather than landing on whatever hex inherited the old index.
+
+2.4.7.1 A level that does not draw the hex selects the hex covering the same ground. Under 2.4.6 three names in four have nowhere to go at level 12, and coarsening the map used to empty the selection and blank the local panel with it. The ground has not gone anywhere, though, and the coarse level is drawing it in some hex of its own, so that is the hex the selection moves to.
+
+2.4.7.2 The name is not overwritten with the covering hex's own. It is held exactly as the user picked it, so the way back up the slider lands on the hex they chose rather than on the middle of the one that stood in for it.
 
 2.4.8 A point finer than the reference lattice is named the same way, with the depth carried alongside: (face, i, j) counted on a lattice of that many rows. The local panel of 4.5 draws hexes far finer than the reference lattice, and a point of interest can sit on one of them, so those hexes need names too.
 
@@ -196,6 +202,12 @@ A browser application that generates planet surfaces procedurally and shows them
 4.2.2 The selected hex's properties are shown by 4.5.6 rather than here, so they sit beside the hex they describe instead of across the window from it.
 
 4.2.3 Holds the New, Save, and Load buttons.
+
+4.2.6 The panel is a name and then four sections that fold: Profile, holding sector, hex, UWP and seed; Display, holding the detail level, the seams of 4.3.7 and the view of 5.7; World, holding the settings of 6.15; and Narrative.
+
+4.2.6.1 Sections rather than one long column because the panel outgrew the window. A user working on the terrain has finished with the sector and the hex, and a user writing up a world is not moving the detail slider; folding away what is settled is what lets the part being worked on be on screen with the points of interest under it.
+
+4.2.6.2 The world settings start folded and the rest start open. They are the only section that arrives with every field already filled in correctly, so they are the section a user is least often opening. The reset of 4.2.1.2 stays in the heading, and a click on it resets the world rather than folding the section away.
 
 ### 4.7 Summary panel
 
@@ -484,6 +496,38 @@ A browser application that generates planet surfaces procedurally and shows them
 5.6.4 An unreadable UWP gives a middling world rather than a lush one, since nothing then says it has anything growing on it.
 
 5.6.5 This is not a claim about life. A world may carry things that are not photosynthetic, or a referee's may be covered in something that is not green. It is what a world with that profile most plausibly looks like from orbit.
+
+### 5.7 Views
+
+5.7.1 The world is drawn one of two ways, and which is a view option under 4.2.6: it says nothing about the planet, so it is not saved with it and does not mark it unsaved. Both views read the same heights, the same sea level and the same ice, and all three panels of section 4 draw whichever is chosen. The saved pictures and the coloured exports of 6.17 are drawn in it too, since a save writes down what was on screen, and the manifest of 6.22 records which it was.
+
+5.7.1.1 **Terrain** is 5.1 to 5.6, unchanged: height as colour, blue through the ground colour to grey and white. It is a map. It says how high the ground is, which is what a referee measuring a march across it wants, and its greys and whites climb with altitude whatever the world is made of.
+
+5.7.1.2 **Visible** is what an eye in orbit would see. It answers one question, what colour is that ground, and it reads temperature where the other reads height. Green where things grow, brown where the ground is bare and weathered, grey where it is bare and unweathered, white where water is frozen, and the sea a darker blue than the map's, because a sea drawn to be looked at is not a sea drawn to be read over.
+
+5.7.2 Ground cover is the verdancy of 5.6 taken a place at a time rather than once for the world. The air and water factors of 5.6.2 are the world's and do not vary; the warmth factor is read at the local temperature of 5.7.3. A world whose mean is temperate is jungle at its equator and tundra at sixty degrees, and one colour for the whole planet cannot say that.
+
+5.7.2.1 Bare ground comes in two colours, and what separates them is weather rather than life. Dust, sand and iron oxide are what a surface turns when air and water have worked on it over geological time; a world with neither keeps the colour of its own stone. Mars holds six thousandths of an atmosphere and is the reddest surface in the solar system, and Luna holds none and is grey, so a trace of air is enough and a vacuum is not. Water weathers faster but a trace of it will not do: a hydrographics digit of 0 still allows a few percent, and a few percent of frost on an airless rock leaves it an airless rock.
+
+5.7.2.2 The subtropics are drier than the latitudes either side of them. Air rising over the equator comes down about 26 degrees north and south of it, and it comes down having already rained: the Sahara, Arabia, the Kalahari, the Thar, the Atacama and the Australian interior are one band and the same band. A world drawn without them has an unbroken green waist that no planet has. It takes air to happen, so the belts are scaled by how much of it there is.
+
+### 5.7.3 Temperature by latitude
+
+5.7.3.1 The mean surface temperature of 6.15 is a mean. What the visible view needs is the temperature at a place, and that follows from the mean, the axial tilt and the pressure.
+
+5.7.3.2 Sunlight averaged over a year varies with latitude as the second Legendre polynomial, and the size of that term goes as one minus three halves of the square of the sine of the seasonal tilt of 6.12.3.7. It is full on an untilted world, nothing at 54.7 degrees, and negative past it: a world lying on its side takes more sunlight at its poles than at its equator over a year, and is drawn that way, ice at the waist and green at the ends. That is the same 54 degrees 5.4.2 puts the last permanent ice cap at, because it is the same fact about sunlight.
+
+5.7.3.3 Air rubs the difference out. Sunlight sets the contrast and a year of weather spends itself reducing it, so the figure is divided down by the pressure: Venus is within a degree or two of itself from equator to pole, and an airless world swings the whole way.
+
+5.7.3.4 Calibrated to Earth. Twenty three degrees of tilt at one atmosphere gives about 47K between equator and pole, which on a world averaging 14C is 30C at the equator and -18C at the poles.
+
+5.7.3.5 The profile has zero mean by construction, so warming one latitude cools another and the world's own mean is the figure 6.15 worked out. Leaning the axis redistributes heat; it does not add any.
+
+5.7.4 Snow is placed by the local temperature, and it is permanent snow rather than snow that falls. The line climbs from the water's edge on ground averaging -15C to the summits alone at 27C, which puts Earth's at about 5,000m at the equator, 2,700m at 45 degrees, and on the shore past 70. It is the one place this view still reads height, and it needs water: a world with a trace of it has no snowfields, however cold it is.
+
+5.7.5 The caps of 5.4 are drawn as ice rather than as pale ground. Frozen water is white, and it is white over sea and over land alike, so the cap reads as a sheet rather than as terrain seen through frost. This is the one thing the two views deliberately disagree about, and 5.4.5 gives the reason the map does it the other way: a map has to keep the terrain legible under the ice and a photograph does not.
+
+5.7.6 What does not change between the views: the coastline, the ice edge, the heights, the hex readout of 4.5.6, and the grey heightmap of 6.21. The view is paint. Nothing under it moves.
 
 ## 6. Planet data and persistence
 
