@@ -4,6 +4,30 @@ The version in [package.json](package.json) is what the Windows installer of
 `npm run package` names itself after, so it is the one number that reaches a
 user. Dates are the day the release was tagged.
 
+## 1.3.0 — 2026-09-12
+
+- **Craters.** Impacts are laid over the height field as a layer of their own
+  rather than folded into the subdivision that makes the ground, because a crater
+  is not a scale of terrain but an event at a place. The map, the globe and the
+  local panel all add the same function of position, so it is the same crater on
+  all three, and a hex still reads the same height at every detail level.
+  - **How many a world kept** is rolled from its seed and then scaled by the same
+    erosion figure that rounds off its ridges. An airless waterless rock keeps its
+    whole record; a world with a standard atmosphere and oceans keeps none. The
+    ceiling is a band rather than a figure, since two airless rocks with the same
+    profile have not been hit the same number of times and no digit of the profile
+    says which.
+  - **The count is a world setting**, beside axial tilt, day, orbit and mean
+    temperature. Type over it, or empty the field to put the rolled figure back.
+    A typed zero is a different thing from an empty field: it is a referee saying
+    this world's record has been wiped whatever its air and water work out to. The
+    line under it says how much ground is inside a rim, and what the seed rolls
+    once you have moved away from it. Saves carry the setting; a file written
+    before it existed loads on its rolled count.
+  - **Sea level is read with the craters already on it**, so a flooded basin is
+    sea and the coastline answers to the surface actually drawn.
+  - The world sheet lists the count with the other world settings.
+
 ## 1.2.0 — 2026-09-11
 
 - **Save now asks what to write.** A dialogue lists the map images, one line per
