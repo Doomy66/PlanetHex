@@ -157,6 +157,24 @@ A browser application that generates planet surfaces procedurally and shows them
 
 3.5.3 Lattice points beyond the edge of a face belong to the neighbouring face. A point is turned into a direction and the direction says which face holds it, which settles all thirty seams without a rule for each. At the twelve corners five faces meet and the lattice cannot continue straight; the point nearest the direction is used, so the patch stays whole rather than tearing.
 
+### 3.6 Craters
+
+3.6.1 Impacts are a second layer over the field of 3.2, added to a height after the field has been sampled rather than folded into the recurrence that produces it. A crater is not a scale of terrain but an event at a place: a circle of a definite size dropped on whatever was already there, and the subdivision has no way to say that. The map, the globe and the local panel all add the same function of position, so a crater is the same crater on all three.
+
+3.6.1.1 Keeping the layer separate is what leaves 3.2.4 and 3.3.4 untouched. The field is still the field; a hex drawn at two detail levels still reads the same height at both, because the crater layer is a function of the direction the hex sits in and not of the lattice it was counted on.
+
+3.6.2 How many impacts a world carries comes off the erosion figure of 3.4.3. Every world has been hit about as often for its size; what differs is whether the scars survived, and air and water are what remove them. An airless waterless rock keeps its whole record. A world with a standard atmosphere and oceans keeps none worth drawing, and the same figure that rounds off its ridges fills in its craters.
+
+3.6.2.1 How full a full record is, is drawn from the seed rather than fixed. Two airless rocks with the same profile have not been hit the same number of times: one sat in a crowded part of a young system and one did not, and no digit of the UWP speaks to that. So the ceiling is a band the seed draws from, and the erosion figure scales whatever it drew. It is a world setting under 6.15.12, so a referee who wants a particular surface can say so.
+
+3.6.3 Sizes follow a power law: the number of craters wider than a given size goes as the inverse square of that size, which is about what a real cratered surface counts out at. The largest is cut off so a world is not one basin, and the smallest is cut off where the finest map stops resolving a circle, since a crater below a hex across reads as noise rather than as a crater.
+
+3.6.4 A crater is a parabolic bowl to its rim, a lip that rises only near the rim so the floor is not raised by it, and an ejecta blanket outside that thins to nothing. Depth grows with width but more slowly, and stops at a ceiling: past a few degrees a real crater floor collapses back on itself, and without the ceiling the largest basin would punch through the range the colours of section 5 are drawn over. Depth is scaled by the same relief the gravity of 3.4.2 sets, so a crater stays in proportion to the ground it was dug out of.
+
+3.6.5 Sea level of 5.2 is read off the reference lattice with the craters already on it, so a flooded basin is sea and the coastline answers to the surface actually drawn.
+
+3.6.6 Impacts are filed on a coarse lattice of their own, eight rows to a face, and a hex tests only the impacts filed under the bucket it falls in. Every sample already knows its face and its place on that face's lattice, so the bucket costs two divisions and no search, and most of a world is ground nothing landed on and leaves without touching a crater at all. A thousand craters cost around ten milliseconds on a full redraw at the finest level, against the six hundred that level already spends drawing its hexes.
+
 ## 4. Display
 
 ### 4.1 General
@@ -666,11 +684,11 @@ A browser application that generates planet surfaces procedurally and shows them
 
 ### 6.15 World settings
 
-6.15 Four values sit beside the UWP: axial tilt, rotation period, orbital distance, and mean surface temperature. They are rolled when the planet is created and the user can then type over any of them, which puts them on the left panel under 4.2.1.1 rather than on the summary panel with the detail values of 6.12.
+6.15 Five values sit beside the UWP: axial tilt, rotation period, orbital distance, mean surface temperature, and the number of impact craters the surface carries. They are rolled when the planet is created and the user can then type over any of them, which puts them on the left panel under 4.2.1.1 rather than on the summary panel with the detail values of 6.12.
 
 6.15.1 They are one fact rather than four, and are worked out in the one order they can be. A world's orbit sets how much light it gets; the light and the air it holds set its temperature; how close in it sits sets how hard tides have worked on it, which decides both how fast it turns and how far its axis has been pulled upright. Deriving them in that order is what makes them consistent by construction instead of by luck: the model cannot produce a world locked to its sun with a 30° tilt and a twenty hour day, because a locked world is one tides have finished with and tides do not stop halfway on one axis.
 
-6.15.2 The temperature is not stored. It is what the orbit implies, so moving the orbit carries it, and a temperature typed in is answered by moving the world to where it would be that warm. The two fields are one number seen twice and cannot be made to disagree. That is also why the reset of 4.2.1.2 has three settings to clear and not four.
+6.15.2 The temperature is not stored. It is what the orbit implies, so moving the orbit carries it, and a temperature typed in is answered by moving the world to where it would be that warm. The two fields are one number seen twice and cannot be made to disagree. That is also why the reset of 4.2.1.2 has four settings to clear and not five.
 
 6.15.3 An empty field is not a value of zero. It is the user withdrawing a decision, and the rolled figure comes back.
 
@@ -715,6 +733,16 @@ A browser application that generates planet surfaces procedurally and shows them
 6.15.10 Rotation sets how hard the wind blows, since spin drives the circulation. A fast rotator is windier and a world with its day locked to its year barely stirs. The effect is mild and logarithmic: the span from a six hour day to a locked one is three orders of magnitude, and what that does to rock is nothing like as much.
 
 6.15.11 What none of them touch is relief, which stays gravity's under 3.4.2, or continent spread, which stays the seed's under 3.4.4.
+
+### Craters
+
+6.15.12 The crater count is the fifth setting, and it is the odd one out: it is not part of the chain of 6.15.1, since nothing about where a world sits says how often it was hit. It sits here rather than with the detail values of 6.12 for the reason the other four do - the seed rolls it and the referee may overrule it.
+
+6.15.12.1 The roll is a band scaled by the erosion figure of 3.4.3, which is 3.6.2. The band is where the randomness lives: two airless rocks with identical profiles have not taken the same number of hits, and the profile has nothing to say about which, so the seed says instead.
+
+6.15.12.2 An empty field returns the world to what the seed rolled, under 6.15.3. A typed zero is a different thing: a referee saying this world's record has been wiped, whatever its air and water work out to. The two are held apart the way the other settings hold them apart, so the field shows what the seed rolls alongside whatever has been typed over it.
+
+6.15.12.3 The field is capped. Past twenty thousand the layer costs a fifth of a redraw at the finest level for a surface that saturated thousands of impacts earlier, so the ceiling sits where the pictures stop improving rather than where the arithmetic stops working. Under it the field shows how much ground is inside a rim, since a count alone does not say what a world looks like: a thousand small craters and a thousand large ones are different surfaces.
 
 ### 6.16 Trade classifications
 

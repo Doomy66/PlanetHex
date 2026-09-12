@@ -14,6 +14,15 @@ import {
   type RefIndex,
 } from "./grid/coord";
 import { generateHeights, heightsOn } from "./gen/height";
+import {
+  craterList,
+  craterOptionsFor,
+  MAX_CRATERS,
+  NO_CRATERS,
+  rolledCraterCount,
+  saturationOf,
+  type CraterField,
+} from "./gen/crater";
 import { isIced, type IceCaps } from "./gen/ice";
 import { DEFAULT_FIELD_OPTIONS, type HeightFieldOptions } from "./gen/field";
 import { newPlanet, parseUwp, rollUwp, type Planet } from "./planet";
@@ -81,6 +90,8 @@ interface State {
   diameterKm: number | null;
   /** What the UWP made of the height field. Spec 3.4. */
   options: HeightFieldOptions;
+  /** The impacts laid over that field, which every panel reads. Spec 3.6. */
+  craters: CraterField;
   /** How green the land is drawn, from bare rock to an Earth. Spec 5.6. */
   verdancy: number;
   /** Polar ice, or null on a planet the profile does not cap. Spec 5.4. */
@@ -154,6 +165,7 @@ const state: State = (() => {
     seaLevel: DEFAULT_SEA_LEVEL,
     diameterKm: null,
     options: DEFAULT_FIELD_OPTIONS,
+    craters: NO_CRATERS,
     verdancy: DEFAULT_VERDANCY,
     caps: null,
     smooth: false,
@@ -196,6 +208,7 @@ function resurface(): void {
   // out is the world that was on screen rather than one worked out twice.
   const surface = surfaceOn(state.planet, detail, state.grid);
   state.options = surface.options;
+  state.craters = surface.craters;
   state.heights = surface.heights;
   state.seaLevel = surface.seaLevel;
   state.diameterKm = surface.diameterKm;
@@ -215,7 +228,7 @@ function resurface(): void {
   const shown = globeGrid();
   globe.render(
     shown,
-    shown === state.grid ? state.heights : heightsOn(surface.field, shown),
+    shown === state.grid ? state.heights : heightsOn(surface.field, shown, surface.craters),
     state.seaLevel,
     state.diameterKm,
     state.caps,
@@ -268,6 +281,7 @@ const fields = {
   rotation: el<HTMLInputElement>("p-rotation"),
   orbit: el<HTMLInputElement>("p-orbit"),
   temp: el<HTMLInputElement>("p-temp"),
+  craters: el<HTMLInputElement>("p-craters"),
   narrative: el<HTMLTextAreaElement>("p-narrative"),
 };
 
@@ -334,6 +348,7 @@ function showWorld(detail: PlanetDetail): void {
   set(fields.rotation, detail.rotationHours, 1, state.planet.rotationHours !== null);
   set(fields.orbit, detail.orbitAu, 2, state.planet.orbitAu !== null);
   set(fields.temp, detail.meanTempK - 273.15, 0, state.planet.orbitAu !== null);
+  showCraters(detail);
 
   const days = detail.rotationHours / 24;
   el("rotation-note").textContent = [
@@ -345,6 +360,52 @@ function showWorld(detail: PlanetDetail): void {
     .join(", ");
   const year = orbitalPeriodHours(detail.orbitAu) / (24 * 365.25);
   el("orbit-note").textContent = `year of ${year < 1 ? `${(year * 12).toFixed(1)} months` : `${year.toFixed(1)} years`}`;
+}
+
+/** The crater options the planet as it stands asks for. Spec 6.15.12. */
+function craterOptions(detail: PlanetDetail) {
+  return craterOptionsFor(state.planet.seed, detail, state.planet.uwp, state.planet.craters);
+}
+
+/** How many impacts the surface carries, once the ceiling has had its say. */
+function craterCountOf(detail: PlanetDetail): number {
+  return craterOptions(detail).count;
+}
+
+/**
+ * How much of the surface those impacts have taken, in words.
+ *
+ * The count on its own does not say what a world looks like, since a thousand
+ * small craters and a thousand large ones are different surfaces. The share of the
+ * ground inside a rim does say it, and once that passes one the world is saturated
+ * and further impacts land on older ones rather than on open ground.
+ */
+function craterCover(detail: PlanetDetail): string {
+  const cover = saturationOf(craterList(state.planet.seed, craterOptions(detail)));
+  if (cover >= 1) return "saturated";
+  if (cover >= 0.5) return "heavily cratered";
+  if (cover >= 0.15) return "well cratered";
+  return "a scattering";
+}
+
+/**
+ * The crater count and what it comes to. Shown with the world settings rather than
+ * with the detail values of 6.12, because it is a figure the seed rolled and the
+ * referee may overrule, which is what 6.15 is.
+ */
+function showCraters(detail: PlanetDetail): void {
+  const count = craterCountOf(detail);
+  if (document.activeElement !== fields.craters) fields.craters.value = String(count);
+  fields.craters.classList.toggle("overridden", state.planet.craters !== null);
+  const rolled = rolledCraterCount(state.planet.seed, detail, state.planet.uwp);
+  el("crater-note").textContent = [
+    count === 0 ? "none left" : craterCover(detail),
+    // What the seed gives, so a referee who has typed over it can see what they
+    // moved away from and how far. Nothing to say when nobody has moved it.
+    state.planet.craters === null ? "" : `seed rolls ${rolled.toLocaleString("en-GB")}`,
+  ]
+    .filter(Boolean)
+    .join(", ");
 }
 
 function showDetail(): void {
@@ -516,10 +577,27 @@ fields.temp.addEventListener("change", () => {
   );
 });
 
+fields.craters.addEventListener("change", () => {
+  setWorld(
+    fields.craters,
+    (v) => {
+      state.planet.craters =
+        v === null ? null : Math.min(MAX_CRATERS, Math.max(0, Math.round(v)));
+    },
+    (d) => {
+      const count = craterCountOf(d);
+      return count === 0
+        ? "Nothing left of the impact record."
+        : `${count.toLocaleString("en-GB")} impacts, ${craterCover(d)}.`;
+    },
+  );
+});
+
 el("reset-world").addEventListener("click", () => {
   state.planet.tiltDeg = null;
   state.planet.orbitAu = null;
   state.planet.rotationHours = null;
+  state.planet.craters = null;
   showWorld(currentDetail());
   showDetail();
   resurface();
@@ -630,6 +708,7 @@ function showFocus(): void {
     selected: cell,
     seed: state.planet.seed,
     options: state.options,
+    craters: state.craters,
     seaLevel: state.seaLevel,
     diameterKm: state.diameterKm,
     caps: state.caps,

@@ -4,6 +4,7 @@ import { latticeRef, type LatticeRef } from "../grid/coord";
 import { poiPosition, type Poi } from "../poi";
 import { add, normalise, scale, type Vec3 } from "../grid/vec3";
 import { fieldSizeFor, openHeightField, type HeightFieldOptions } from "../gen/field";
+import { NO_CRATERS, type CraterField } from "../gen/crater";
 import { heightColour } from "./colour";
 import { scaleBar, stepKm } from "./scale";
 import { isIced, type IceCaps } from "../gen/ice";
@@ -46,6 +47,9 @@ export interface LocalInput {
   readonly selected: number | null;
   readonly seed: string;
   readonly options: HeightFieldOptions;
+  /** The impacts the world carries, so a crater is the same crater here as on the
+   *  map. Spec 3.6.1: every view adds the same function of position. */
+  readonly craters: CraterField;
   readonly seaLevel: number;
   readonly diameterKm: number | null;
   readonly caps: IceCaps | null;
@@ -87,7 +91,9 @@ export function createLocalView(): LocalView {
   svg.setAttribute("class", "localview");
   element.append(relief.element, svg);
   let lastSeed = "";
-  let field = openHeightField("");
+  let open = openHeightField("");
+  /** The open field with the crater layer folded in, which is what a patch reads. */
+  let field: { heightAt(face: number, size: number, i: number, j: number): number } = open;
   let pickHandlers: ((pick: Pick) => void)[] = [];
   /** What was last drawn, so a change of the panel's shape can be redrawn. */
   let last: LocalInput | null = null;
@@ -95,6 +101,8 @@ export function createLocalView(): LocalView {
   let lastGrid: Grid | null = null;
   /** What the last render makes of a point in the patch. */
   let pickAt: ((x: number, y: number) => Pick) | null = null;
+  /** The crater layer the sampler above was wrapped around. */
+  let lastCraters: CraterField | null = null;
 
   // The fine hex is what a click is answered with, since that is what a POI hangs
   // on under 6.6. The display hex comes back with it, because that is what the
@@ -127,8 +135,18 @@ export function createLocalView(): LocalView {
     // computes are still there for the next one.
     const key = `${input.seed}|${input.options.roughness}|${input.options.persistence}`;
     if (key !== lastSeed) {
-      field = openHeightField(input.seed, input.options);
+      open = openHeightField(input.seed, input.options);
       lastSeed = key;
+      lastCraters = null;
+    }
+    if (input.craters !== lastCraters) {
+      lastCraters = input.craters;
+      const held = open;
+      const craters = input.craters;
+      field =
+        craters === NO_CRATERS
+          ? held
+          : { heightAt: (f, n, i, j) => held.heightAt(f, n, i, j) + craters.offsetAt(f, n, i, j) };
     }
 
     const fine = fieldSizeFor(grid.size) * ZOOM;

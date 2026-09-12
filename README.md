@@ -29,6 +29,12 @@ of writing, this is 100% Claude generated to my exacting requirements.
   it, hydrographics sets sea level, axial tilt and pressure size the ice caps,
   and the whole profile is rolled to Traveller's world creation rules and then
   editable digit by digit.
+- **Craters, where the world kept them.** Impacts are laid over the height field
+  as a layer of their own, so the same crater is on the map, on the globe and in
+  the local panel. How many a world carries is rolled from its seed and then
+  scaled by how much weather has been rubbing them out: an airless rock keeps its
+  whole record and an Earth keeps none. The count is a world setting, so it can be
+  typed over and reset with the rest.
 - **Points of interest.** Starports and comments, each with a name and free
   prose, pinned to a hex by a name that survives a change of detail level. A new
   world arrives with the starport its profile says it has, placed on coastal

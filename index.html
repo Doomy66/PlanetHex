@@ -70,6 +70,12 @@
           <label class="grow">Mean temp&deg;C<input id="p-temp" type="number" step="1" autocomplete="off" /></label>
         </div>
         <div id="orbit-note" class="hint under"></div>
+        <!-- Impacts. A count rather than a rate, because it is what the surface
+             carries now and not what fell on it. Spec 6.15.12. -->
+        <div class="row fields">
+          <label class="grow">Craters<input id="p-craters" type="number" min="0" max="20000" step="10" autocomplete="off" /></label>
+        </div>
+        <div id="crater-note" class="hint under"></div>
 
         <label>Narrative<textarea id="p-narrative" rows="6"></textarea></label>
 
