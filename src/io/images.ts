@@ -1,7 +1,8 @@
 import { DETAIL_LEVELS } from "../grid/coord";
 import { poiPlacements } from "../poi";
-import { buildSurface, type Surface } from "../surface";
+import { buildSurface, shaderFor, type Surface } from "../surface";
 import { createHexMap, strokeWidths, type PoiMark } from "../ui/map";
+import type { ViewMode } from "../ui/colour";
 import type { PlanetDetail } from "../gen/detail";
 import type { Planet } from "../planet";
 
@@ -63,6 +64,8 @@ export async function renderMaps(
   detail: PlanetDetail,
   /** Whether the hex seams are off, as 4.3.7.1 has them on screen. */
   smooth: boolean,
+  /** Which of the two views of 5.7 is on screen. A save writes down what was there. */
+  view: ViewMode,
   sizes: readonly number[] = DETAIL_LEVELS,
   onLevel?: (size: number) => void,
 ): Promise<MapImages> {
@@ -73,7 +76,7 @@ export async function renderMaps(
     // about the level being drawn is given a frame to reach the screen first.
     // Without this the whole run is one freeze with nothing said during it.
     await nextFrame();
-    images.set(size, await renderMap(planet, detail, size, smooth));
+    images.set(size, await renderMap(planet, detail, size, smooth, view));
   }
   return images;
 }
@@ -113,6 +116,7 @@ export function drawMap(
   detail: PlanetDetail,
   size: number,
   smooth: boolean,
+  view: ViewMode,
   width = WIDTH,
   surface: Surface = buildSurface(planet, detail, size),
 ): MapDrawing {
@@ -120,10 +124,9 @@ export function drawMap(
   map.render(
     surface.grid,
     surface.heights,
-    surface.seaLevel,
     surface.diameterKm,
     surface.caps,
-    surface.verdancy,
+    shaderFor(surface, view),
   );
   // A point of interest is one hex among thousands, and the marks are what say
   // where. Spec 5.5.
@@ -161,9 +164,10 @@ async function renderMap(
   detail: PlanetDetail,
   size: number,
   smooth: boolean,
+  view: ViewMode,
   width = WIDTH,
 ): Promise<Blob> {
-  const drawing = drawMap(planet, detail, size, smooth, width);
+  const drawing = drawMap(planet, detail, size, smooth, view, width);
   return rasterise(drawing);
 }
 
@@ -173,9 +177,10 @@ export function renderMapAt(
   detail: PlanetDetail,
   size: number,
   smooth: boolean,
+  view: ViewMode,
   width: number,
 ): Promise<Blob> {
-  return renderMap(planet, detail, size, smooth, width);
+  return renderMap(planet, detail, size, smooth, view, width);
 }
 
 function marksFor(planet: Planet, grid: Parameters<typeof poiPlacements>[0]): PoiMark[] {

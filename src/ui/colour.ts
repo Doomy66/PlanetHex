@@ -18,7 +18,23 @@
 /** Used when the UWP cannot be read, so there is no hydrographics to work from. */
 export const DEFAULT_SEA_LEVEL = 0.5;
 
-type Stop = readonly [number, readonly [number, number, number]];
+/**
+ * A ramp stop: a position and the colour there. The position is a height on the
+ * ramps below and a temperature on the ones the visible view of 5.7 reads, since
+ * sampling a ramp does not care what its axis means.
+ */
+export type Stop = readonly [number, readonly [number, number, number]];
+
+/** Which of the two views of 5.7 a panel is drawing. */
+export type ViewMode = "terrain" | "visible";
+
+/**
+ * A colour for one place on the world: how high it is, how far it sits from the
+ * equator, and whether ice covers it. Everything else a view needs is about the
+ * world rather than the place, so it is closed over rather than passed in, and the
+ * three panels of section 4 all colour a hex by calling one of these.
+ */
+export type Shader = (height: number, sinLat: number, iced: boolean) => string;
 
 const SEA: readonly Stop[] = [
   [0.0, [8, 34, 74]],
@@ -80,7 +96,7 @@ export function heightColour(
 }
 
 /** The colour a ramp gives at a point, clamped to its ends. */
-function sample(ramp: readonly Stop[], v: number): readonly number[] {
+export function sample(ramp: readonly Stop[], v: number): readonly number[] {
   const first = ramp[0]!;
   if (v <= first[0]) return first[1];
   for (let i = 1; i < ramp.length; i++) {
@@ -101,6 +117,22 @@ function under(rgb: readonly number[], iced: boolean): string {
   const shade = (i: number) =>
     Math.round(iced ? rgb[i]! + (ICE[i]! - rgb[i]!) * ICE_COVER : rgb[i]!);
   return `rgb(${shade(0)},${shade(1)},${shade(2)})`;
+}
+
+/** Two colours mixed, `t` of the way from the first to the second. */
+export function mix(a: readonly number[], b: readonly number[], t: number): readonly number[] {
+  const k = t < 0 ? 0 : t > 1 ? 1 : t;
+  return [0, 1, 2].map((i) => a[i]! + (b[i]! - a[i]!) * k);
+}
+
+/** A colour as the string an SVG fill or a three.js material will take. */
+export function rgbText(c: readonly number[]): string {
+  return `rgb(${Math.round(c[0]!)},${Math.round(c[1]!)},${Math.round(c[2]!)})`;
+}
+
+/** The height ramp above, as the shader the panels take. Spec 5.7.1. */
+export function terrainShader(seaLevel: number, verdancy: number): Shader {
+  return (height, _sinLat, iced) => heightColour(height, seaLevel, iced, verdancy);
 }
 
 /** The band a height falls in, for the hex properties readout. */

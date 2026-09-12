@@ -7,6 +7,7 @@ import {
   formatLattice,
   formatRef,
   latticeKey,
+  latticeRefPosition,
   REFERENCE_SIZE,
   SPHERE_SIZE,
   type LatticeRef,
@@ -51,7 +52,13 @@ import { describeUwp } from "./gen/describe";
 import { createHexMap, type PoiMark } from "./ui/map";
 import { createGlobe } from "./ui/globe";
 import { createLocalView } from "./ui/local";
-import { DEFAULT_SEA_LEVEL, terrainBand } from "./ui/colour";
+import {
+  DEFAULT_SEA_LEVEL,
+  terrainBand,
+  terrainShader,
+  type Shader,
+  type ViewMode,
+} from "./ui/colour";
 import { DEFAULT_VERDANCY } from "./gen/life";
 import {
   download,
@@ -70,7 +77,7 @@ import {
 } from "./io/files";
 import { nextFrame, renderMaps } from "./io/images";
 import { EXPORT_FORMATS, manifest, type ExportContext } from "./io/export";
-import { surfaceOn } from "./surface";
+import { shaderFor, surfaceOn } from "./surface";
 
 const el = <T extends HTMLElement>(id: string): T => {
   const node = document.getElementById(id);
@@ -94,6 +101,10 @@ interface State {
   craters: CraterField;
   /** How green the land is drawn, from bare rock to an Earth. Spec 5.6. */
   verdancy: number;
+  /** Which of the two views of 5.7 the three panels are drawing. */
+  view: ViewMode;
+  /** That view, as the function the panels colour a hex with. */
+  shade: Shader;
   /** Polar ice, or null on a planet the profile does not cap. Spec 5.4. */
   caps: IceCaps | null;
   /** Whether the map draws the ground without its hex seams. A view option. Spec 4.3.7.1. */
@@ -167,6 +178,8 @@ const state: State = (() => {
     options: DEFAULT_FIELD_OPTIONS,
     craters: NO_CRATERS,
     verdancy: DEFAULT_VERDANCY,
+    view: "terrain",
+    shade: terrainShader(DEFAULT_SEA_LEVEL, DEFAULT_VERDANCY),
     caps: null,
     smooth: false,
     contours: false,
@@ -193,8 +206,26 @@ function regenerate(): void {
   state.grid = buildGrid(state.planet.size);
   state.refs = buildRefIndex(state.grid);
   state.hovered = null;
-  state.selected = state.selectedRef === null ? null : state.refs.at(state.selectedRef);
+  state.selected = state.selectedRef === null ? null : cellForRef(state.selectedRef);
   resurface();
+}
+
+/**
+ * The hex the current grid draws a coordinate on. Spec 2.4.7.
+ *
+ * A coarse level draws a fraction of the hexes a fine one does, so most of the
+ * time the named hex is simply not there. It is still ground, though, and the
+ * coarse level is drawing that ground in some hex of its own: the selection moves
+ * to whichever hex covers the place, rather than going out.
+ *
+ * The name is not overwritten with the coarse hex's own. It is kept exactly as the
+ * user picked it, so going back up the slider lands on the hex they chose and not
+ * on the middle of the one that stood in for it.
+ */
+function cellForRef(ref: RefCoord): number | null {
+  const here = state.refs.at(ref);
+  if (here !== null) return here;
+  return nearestCell(state.grid, latticeRefPosition(asLatticeRef(ref)));
 }
 
 /**
@@ -214,14 +245,8 @@ function resurface(): void {
   state.diameterKm = surface.diameterKm;
   state.caps = surface.caps;
   state.verdancy = surface.verdancy;
-  map.render(
-    state.grid,
-    state.heights,
-    state.seaLevel,
-    state.diameterKm,
-    state.caps,
-    state.verdancy,
-  );
+  state.shade = shaderFor(surface, state.view);
+  map.render(state.grid, state.heights, state.diameterKm, state.caps, state.shade);
   // The finest grid the application has, read off the field the surface was just
   // sampled from rather than off one built again for it. Where the map is already
   // at that level this is the map's own grid and heights, untouched. Spec 4.4.9.1.
@@ -229,10 +254,9 @@ function resurface(): void {
   globe.render(
     shown,
     shown === state.grid ? state.heights : heightsOn(surface.field, shown, surface.craters),
-    state.seaLevel,
     state.diameterKm,
     state.caps,
-    state.verdancy,
+    state.shade,
     detail.axialTiltDeg,
   );
   showSelection(state.selected);
@@ -593,7 +617,11 @@ fields.craters.addEventListener("change", () => {
   );
 });
 
-el("reset-world").addEventListener("click", () => {
+el("reset-world").addEventListener("click", (event) => {
+  // The button sits in the section's summary, and a click on a summary folds the
+  // section. Resetting the world is not a request to put it away.
+  event.preventDefault();
+  event.stopPropagation();
   state.planet.tiltDeg = null;
   state.planet.orbitAu = null;
   state.planet.rotationHours = null;
@@ -712,7 +740,7 @@ function showFocus(): void {
     seaLevel: state.seaLevel,
     diameterKm: state.diameterKm,
     caps: state.caps,
-    verdancy: state.verdancy,
+    shade: state.shade,
     contours: state.contours,
     isometric: state.isometric,
   });
@@ -726,6 +754,25 @@ el<HTMLInputElement>("p-smooth").addEventListener("change", (event) => {
   state.smooth = (event.target as HTMLInputElement).checked;
   map.setSmooth(state.smooth);
 });
+
+// The view of 5.7 is about the drawing rather than about the world, so it neither
+// resurfaces the planet nor marks it unsaved. All three panels read it, so all
+// three are redrawn.
+const VIEW_NOTES: Readonly<Record<ViewMode, string>> = {
+  terrain: "Height: blue sea, ground, grey and white peaks.",
+  visible: "From orbit: green where things grow, brown desert, grey bare rock, white ice.",
+};
+
+function showView(): void {
+  el("view-note").textContent = VIEW_NOTES[state.view];
+}
+
+el<HTMLSelectElement>("p-view").addEventListener("change", (event) => {
+  state.view = (event.target as HTMLSelectElement).value === "visible" ? "visible" : "terrain";
+  showView();
+  resurface();
+});
+showView();
 
 // The two view options redraw the one panel they change, and nothing else: they
 // say nothing about the world, so they neither resurface it nor mark it unsaved.
@@ -1309,6 +1356,7 @@ async function gather(choices: SaveChoices, into: string): Promise<SaveFile[]> {
     state.planet,
     currentDetail(),
     state.smooth,
+    state.view,
     choices.levels,
     (size) => say(`Drawing the ${size} row map for ${into}...`),
   );
@@ -1325,6 +1373,7 @@ async function gather(choices: SaveChoices, into: string): Promise<SaveFile[]> {
     detail: currentDetail(),
     size: state.planet.size,
     smooth: state.smooth,
+    view: state.view,
     say,
   };
   for (const format of wanted) {

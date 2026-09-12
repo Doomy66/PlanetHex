@@ -29,6 +29,15 @@ of writing, this is 100% Claude generated to my exacting requirements.
   it, hydrographics sets sea level, axial tilt and pressure size the ice caps,
   and the whole profile is rolled to Traveller's world creation rules and then
   editable digit by digit.
+- **Two ways to look at it.** The terrain ramp says how high the ground is. The
+  Visible view says what colour it would be from orbit: green where things grow,
+  brown where the ground is bare but weathered, grey where it is bare rock, white
+  where water is frozen. It reads temperature rather than height, so a world is
+  jungle at its equator and tundra near its poles, with dry belts in the
+  subtropics — and the axial tilt decides how far apart those latitudes run. Lean
+  the axis past 54° and the poles take more sun over a year than the equator does,
+  and the world comes out iced at the waist and green at the ends. All three panels
+  follow the choice, and so does everything a save writes with colour in it.
 - **Craters, where the world kept them.** Impacts are laid over the height field
   as a layer of their own, so the same crater is on the map, on the globe and in
   the local panel. How many a world carries is rolled from its seed and then

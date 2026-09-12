@@ -1,6 +1,6 @@
 import { cellCount } from "../../grid/grid";
 import { stepKm } from "../../ui/scale";
-import { buildSurface } from "../../surface";
+import { buildSurface, shaderFor } from "../../surface";
 import { drawMap, renderMapAt, serialise, rasterise, WIDTH } from "../images";
 import { hexRecords } from "./cells";
 import { hexCsv } from "./csv";
@@ -8,6 +8,7 @@ import { hexGeoJson } from "./geojson";
 import { PLATE_WIDTH, renderPlates } from "./plate";
 import { sectorLine, sectorNotes } from "./sec";
 import { worldSheetHtml, worldSheetMarkdown } from "./sheet";
+import type { ViewMode } from "../../ui/colour";
 import type { PlanetDetail } from "../../gen/detail";
 import type { Planet } from "../../planet";
 
@@ -40,6 +41,9 @@ export interface ExportContext {
   readonly size: number;
   /** Whether the hex seams are off, as 4.3.7.1 has them on screen. */
   readonly smooth: boolean;
+  /** Which of the two views of 5.7 is on screen. What is written out is what
+   *  was being looked at, the way the seams above already are. */
+  readonly view: ViewMode;
   /** Somewhere to say what is being drawn, for the formats that take a while. */
   readonly say: (message: string) => void;
 }
@@ -82,6 +86,7 @@ export const EXPORT_FORMATS: readonly ExportFormat[] = [
         context.detail,
         context.size,
         context.smooth,
+        context.view,
         WIDTH,
         surfaceOnce(context),
       );
@@ -97,7 +102,8 @@ export const EXPORT_FORMATS: readonly ExportFormat[] = [
     files: 2,
     async produce(context) {
       context.say("Drawing the equirectangular plate...");
-      const plates = await renderPlates(surfaceOnce(context), {
+      const surface = surfaceOnce(context);
+      const plates = await renderPlates(surface, shaderFor(surface, context.view), {
         onRow: (row, rows) => {
           if (row % 128 === 0) context.say(`Drawing the equirectangular plate, row ${row} of ${rows}...`);
         },
@@ -123,6 +129,7 @@ export const EXPORT_FORMATS: readonly ExportFormat[] = [
         context.detail,
         context.size,
         context.smooth,
+        context.view,
         width,
       );
       return [{ suffix: "-vtt.png", data: png }];
@@ -141,7 +148,7 @@ export const EXPORT_FORMATS: readonly ExportFormat[] = [
         {
           suffix: `-${context.size}.geojson`,
           data: text(
-            hexGeoJson(hexRecords(surface, context.planet.pois), {
+            hexGeoJson(hexRecords(surface, context.planet.pois, shaderFor(surface, context.view)), {
               planet: context.planet,
               size: context.size,
               seaLevel: surface.seaLevel,
@@ -165,7 +172,10 @@ export const EXPORT_FORMATS: readonly ExportFormat[] = [
       return [
         {
           suffix: `-${context.size}.csv`,
-          data: text(hexCsv(hexRecords(surface, context.planet.pois)), "text/csv"),
+          data: text(
+            hexCsv(hexRecords(surface, context.planet.pois, shaderFor(surface, context.view))),
+            "text/csv",
+          ),
         },
       ];
     },
@@ -251,6 +261,11 @@ export function manifest(context: ExportContext, files: readonly string[]): stri
       },
       world: {
         detail: context.size,
+        // Which of the two views of 5.7 the coloured files were drawn in. A grey
+        // plate is a dead world in one of them and a matter of altitude in the
+        // other, and nothing in the picture itself says which. The heightmap and
+        // the sector line carry no colour and are the same either way.
+        view: context.view,
         hexes: cellCount(context.size),
         diameterKm: surface.diameterKm,
         kmPerHex: surface.diameterKm === null ? null : stepKm(surface.diameterKm, context.size),

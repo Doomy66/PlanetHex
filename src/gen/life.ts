@@ -76,17 +76,36 @@ const SCORCHED_K = 340;
 export const DEFAULT_VERDANCY = 0.5;
 
 export function verdancyFor(uwp: string, detail: PlanetDetail): number {
-  const profile = parseUwp(uwp);
-  if (profile === null) return DEFAULT_VERDANCY;
+  const cover = coverFactorsFor(uwp, detail);
+  if (cover === null) return DEFAULT_VERDANCY;
+  return cover.air * cover.water * warmthAt(detail.meanTempK);
+}
 
+/**
+ * The two factors a world carries everywhere, held apart from the third because
+ * the third is not the same everywhere. The verdancy above reads the warmth at the
+ * world's mean, which is the one figure a single colour for the whole planet can
+ * use. The visible view of 5.7 reads it latitude by latitude off the same pair.
+ */
+export interface CoverFactors {
+  readonly air: number;
+  readonly water: number;
+}
+
+/** Air and water, or null where the UWP cannot be read. */
+export function coverFactorsFor(uwp: string, detail: PlanetDetail): CoverFactors | null {
+  const profile = parseUwp(uwp);
+  if (profile === null) return null;
   const digit = Math.min(Math.max(Math.trunc(profile.atmosphere), 0), ATMOSPHERE_COVER.length - 1);
-  const air = ATMOSPHERE_COVER[digit]!;
-  const water = ramp(detail.hydrographicsPct ?? 0, DRY_PCT, WET_PCT);
-  const warmth = Math.min(
-    ramp(detail.meanTempK, FROZEN_K, COLD_K),
-    ramp(detail.meanTempK, SCORCHED_K, HOT_K),
-  );
-  return air * water * warmth;
+  return {
+    air: ATMOSPHERE_COVER[digit]!,
+    water: ramp(detail.hydrographicsPct ?? 0, DRY_PCT, WET_PCT),
+  };
+}
+
+/** The warmth factor at a temperature: 1 where cover is comfortable, 0 either side. */
+export function warmthAt(tempK: number): number {
+  return Math.min(ramp(tempK, FROZEN_K, COLD_K), ramp(tempK, SCORCHED_K, HOT_K));
 }
 
 /** Zero at the `none` end, one at the `full` end, linear between. Either order. */

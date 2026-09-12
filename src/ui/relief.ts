@@ -1,5 +1,5 @@
 import * as THREE from "three";
-import { heightColour } from "./colour";
+import type { Shader } from "./colour";
 import { ANGLE, EXAGGERATION, BASE_DROP, type Pt2 } from "./iso";
 
 /**
@@ -29,6 +29,8 @@ export interface ReliefCell {
   readonly y: number;
   readonly height: number;
   readonly iced: boolean;
+  /** Where the hex sits between the equator and a pole. Spec 5.7.3. */
+  readonly sinLat: number;
 }
 
 /** What the camera is to show, in the projected units the panel's viewBox uses. */
@@ -44,7 +46,8 @@ export interface ReliefInput {
   /** The lowest height in view, which the block is cut off under. */
   readonly low: number;
   readonly seaLevel: number;
-  readonly verdancy: number;
+  /** How the view of 5.7 colours a place on this world. */
+  readonly shade: Shader;
   /** How far the patch reaches, in hexes, so its footprint can be closed. */
   readonly reach: number;
   /** The two lattice steps, for placing the footprint's corners. */
@@ -162,7 +165,7 @@ export function createReliefView(): ReliefView {
       const i = index.size;
       index.set(`${cell.dp},${cell.dq}`, i);
       positions.push(cell.x, stand(cell.height), cell.y);
-      colour.setStyle(heightColour(cell.height, input.seaLevel, cell.iced, input.verdancy));
+      colour.setStyle(input.shade(cell.height, cell.sinLat, cell.iced));
       colour.convertSRGBToLinear();
       colours.set([colour.r, colour.g, colour.b], i * 3);
     }

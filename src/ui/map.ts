@@ -1,6 +1,6 @@
 import type { Grid } from "../grid/grid";
 import { ICO_FACES } from "../grid/icosahedron";
-import { heightColour } from "./colour";
+import type { Shader } from "./colour";
 import { ICO_EDGE_ANGLE, scaleBar, stepKm } from "./scale";
 import { isIced, type IceCaps } from "../gen/ice";
 import type { PoiKind } from "../poi";
@@ -79,11 +79,10 @@ export interface HexMap {
   render(
     grid: Grid,
     heights: Float64Array,
-    seaLevel: number,
     diameterKm: number | null,
     caps: IceCaps | null,
-    /** How green the land is drawn, from 0 for bare to 1 for an Earth. Spec 5.6. */
-    verdancy: number,
+    /** How the view of 5.7 colours a place on this world. */
+    shade: Shader,
   ): void;
   setSelected(cell: number | null): void;
   /**
@@ -276,10 +275,9 @@ export function createHexMap(): HexMap {
   function render(
     grid: Grid,
     heights: Float64Array,
-    seaLevel: number,
     diameterKm: number | null,
     caps: IceCaps | null,
-    verdancy: number,
+    shade: Shader,
   ): void {
     // The net is the same size at every detail level, so a view the user has
     // zoomed in on survives the slider rather than being thrown away with the
@@ -309,8 +307,8 @@ export function createHexMap(): HexMap {
           .join(" ");
         const poly = document.createElementNS(SVG_NS, "polygon");
         poly.setAttribute("points", points);
-        const iced = isIced(caps, grid.cells[p.cell]!.centre[1]);
-        poly.setAttribute("fill", heightColour(heights[p.cell]!, seaLevel, iced, verdancy));
+        const sinLat = grid.cells[p.cell]!.centre[1];
+        poly.setAttribute("fill", shade(heights[p.cell]!, sinLat, isIced(caps, sinLat)));
         poly.setAttribute("data-cell", String(p.cell));
         hexes.push(poly);
         const list = placementsByCell.get(p.cell);

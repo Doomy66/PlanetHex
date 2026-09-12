@@ -43,41 +43,71 @@
 
         <h2>Planet</h2>
         <label>Name<input id="p-name" type="text" autocomplete="off" /></label>
-        <div class="row fields">
-          <label class="grow">Sector<input id="p-sector" type="text" autocomplete="off" placeholder="Spinward Marches" /></label>
-          <label>Hex<input id="p-hex" class="hexfield" type="text" autocomplete="off" inputmode="numeric" maxlength="5" placeholder="1910" /></label>
-        </div>
-        <div id="subsector" class="hint under"></div>
-        <label>UWP<span class="row"><input id="p-uwp" type="text" autocomplete="off" /><button id="roll-uwp" type="button" title="Roll a new profile">Roll</button></span></label>
-        <label>Seed<input id="p-seed" type="text" autocomplete="off" /></label>
-        <label>Detail<span class="row"><input id="p-size" type="range" min="0" max="4" step="1" list="detail-stops" /><span id="cell-count" class="hint"></span></span></label>
-        <!-- Beside the slider, since what it is worth depends on the level: at the
-             fine ones a seam is thinner than a pixel. Spec 4.3.7.1. -->
-        <label class="inline under"><input id="p-smooth" type="checkbox" /> Smooth</label>
-        <datalist id="detail-stops"><option value="0"></option><option value="1"></option><option value="2"></option><option value="3"></option><option value="4"></option></datalist>
 
-        <h2>
-          World
-          <button id="reset-world" class="linky" type="button" title="Back to the rolled values">reset</button>
-        </h2>
-        <div class="row fields">
-          <label class="grow">Axial tilt&deg;<input id="p-tilt" type="number" min="0" max="180" step="0.1" autocomplete="off" /></label>
-          <label class="grow">Day, hours<input id="p-rotation" type="number" min="0.1" step="0.1" autocomplete="off" /></label>
-        </div>
-        <div id="rotation-note" class="hint under"></div>
-        <div class="row fields">
-          <label class="grow">Orbit, AU<input id="p-orbit" type="number" min="0.05" max="50" step="0.01" autocomplete="off" /></label>
-          <label class="grow">Mean temp&deg;C<input id="p-temp" type="number" step="1" autocomplete="off" /></label>
-        </div>
-        <div id="orbit-note" class="hint under"></div>
-        <!-- Impacts. A count rather than a rate, because it is what the surface
-             carries now and not what fell on it. Spec 6.15.12. -->
-        <div class="row fields">
-          <label class="grow">Craters<input id="p-craters" type="number" min="0" max="20000" step="10" autocomplete="off" /></label>
-        </div>
-        <div id="crater-note" class="hint under"></div>
+        <!-- The left panel is four sections that fold away, because on a short
+             window the fields below the fold are the ones a user has finished
+             with. Spec 4.2.6. -->
+        <details class="section" id="section-profile" open>
+          <summary>Profile</summary>
+          <div class="section-body">
+            <div class="row fields">
+              <label class="grow">Sector<input id="p-sector" type="text" autocomplete="off" placeholder="Spinward Marches" /></label>
+              <label>Hex<input id="p-hex" class="hexfield" type="text" autocomplete="off" inputmode="numeric" maxlength="5" placeholder="1910" /></label>
+            </div>
+            <div id="subsector" class="hint under"></div>
+            <label>UWP<span class="row"><input id="p-uwp" type="text" autocomplete="off" /><button id="roll-uwp" type="button" title="Roll a new profile">Roll</button></span></label>
+            <label>Seed<input id="p-seed" type="text" autocomplete="off" /></label>
+          </div>
+        </details>
 
-        <label>Narrative<textarea id="p-narrative" rows="6"></textarea></label>
+        <details class="section" id="section-display" open>
+          <summary>Display</summary>
+          <div class="section-body">
+            <label>Detail<span class="row"><input id="p-size" type="range" min="0" max="4" step="1" list="detail-stops" /><span id="cell-count" class="hint"></span></span></label>
+            <!-- Beside the slider, since what it is worth depends on the level: at the
+                 fine ones a seam is thinner than a pixel. Spec 4.3.7.1. -->
+            <label class="inline under"><input id="p-smooth" type="checkbox" /> Smooth</label>
+            <datalist id="detail-stops"><option value="0"></option><option value="1"></option><option value="2"></option><option value="3"></option><option value="4"></option></datalist>
+            <!-- Which of the two views of 5.7 all three panels draw. -->
+            <label class="spaced">View<select id="p-view">
+              <option value="terrain">Terrain</option>
+              <option value="visible">Visible</option>
+            </select></label>
+            <div id="view-note" class="hint under"></div>
+          </div>
+        </details>
+
+        <details class="section" id="section-world">
+          <summary>
+            World
+            <button id="reset-world" class="linky" type="button" title="Back to the rolled values">reset</button>
+          </summary>
+          <div class="section-body">
+            <div class="row fields">
+              <label class="grow">Axial tilt&deg;<input id="p-tilt" type="number" min="0" max="180" step="0.1" autocomplete="off" /></label>
+              <label class="grow">Day, hours<input id="p-rotation" type="number" min="0.1" step="0.1" autocomplete="off" /></label>
+            </div>
+            <div id="rotation-note" class="hint under"></div>
+            <div class="row fields">
+              <label class="grow">Orbit, AU<input id="p-orbit" type="number" min="0.05" max="50" step="0.01" autocomplete="off" /></label>
+              <label class="grow">Mean temp&deg;C<input id="p-temp" type="number" step="1" autocomplete="off" /></label>
+            </div>
+            <div id="orbit-note" class="hint under"></div>
+            <!-- Impacts. A count rather than a rate, because it is what the surface
+                 carries now and not what fell on it. Spec 6.15.12. -->
+            <div class="row fields">
+              <label class="grow">Craters<input id="p-craters" type="number" min="0" max="20000" step="10" autocomplete="off" /></label>
+            </div>
+            <div id="crater-note" class="hint under"></div>
+          </div>
+        </details>
+
+        <details class="section" id="section-narrative" open>
+          <summary>Narrative</summary>
+          <div class="section-body">
+            <textarea id="p-narrative" rows="6" aria-label="Narrative"></textarea>
+          </div>
+        </details>
 
         <h2>Points of interest</h2>
         <ul id="poi-list" class="poi-list"></ul>
@@ -209,7 +239,12 @@
         <h3>The panels</h3>
         <dl class="help-list">
           <dt>Left</dt>
-          <dd>Everything you can change, and nothing else.</dd>
+          <dd>
+            Everything you can change, and nothing else. Four sections that fold
+            away: <b>Profile</b> for sector, hex, UWP and seed, <b>Display</b> for
+            the detail level and the view, <b>World</b> for the figures the profile
+            rolled, and <b>Narrative</b>. Click a heading to open or close it.
+          </dd>
           <dt>Middle</dt>
           <dd>The flat map, with the worked-out figures for the world beneath it.</dd>
           <dt>Right, top</dt>
@@ -253,6 +288,28 @@
           and the hexes come back. The selection and the point of interest rings
           are drawn either way.
         </p>
+        <p>
+          <b>View</b> chooses how all three panels colour the world, and it is only
+          paint: the coastline, the ice and the heights are the same either way.
+        </p>
+        <dl class="help-list">
+          <dt>Terrain</dt>
+          <dd>
+            Height as colour: blue sea, ground, grey and white peaks. A map, and
+            what to use when what you want to know is how high the ground is.
+          </dd>
+          <dt>Visible</dt>
+          <dd>
+            What the world would look like from orbit. Green where things grow,
+            brown where the ground is bare but weathered, grey where it is bare
+            rock, white where the water is frozen. It reads temperature rather than
+            height, so a world is jungle at its equator and tundra near its poles,
+            with dry belts in the subtropics where the rain has already fallen.
+            Axial tilt sets how far apart those temperatures are: lean the axis
+            past 54&deg; and the poles take more sun over a year than the equator
+            does, and the world comes out iced at the waist and green at the ends.
+          </dd>
+        </dl>
         <p>
           The <b>World</b> figures &mdash; tilt, day, orbit, temperature &mdash;
           arrive rolled and are yours to overrule. One you have typed over is

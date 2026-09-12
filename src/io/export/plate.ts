@@ -1,6 +1,6 @@
 import { locate } from "../../grid/icosahedron";
 import { isIced } from "../../gen/ice";
-import { heightColour } from "../../ui/colour";
+import type { Shader } from "../../ui/colour";
 import { nextFrame, toPng } from "../images";
 import type { Surface } from "../../surface";
 import type { Vec3 } from "../../grid/vec3";
@@ -53,6 +53,7 @@ export interface PlateOptions {
  */
 export async function renderPlates(
   surface: Surface,
+  shade: Shader,
   options: PlateOptions = {},
 ): Promise<{ colour: Blob; height: Blob }> {
   const width = options.width ?? PLATE_WIDTH;
@@ -65,16 +66,18 @@ export async function renderPlates(
   const heightData = pixels();
   const table = latticeTable(surface);
 
-  // The colour ramp is read through a string and parsed back, which is what
-  // heightColour hands out. There are far fewer distinct heights than pixels, so
-  // the answers are kept: a plate has millions of pixels and a few thousand
-  // colours, and parsing the same string a thousand times is wasted work.
-  const cache = new Map<string, readonly [number, number, number]>();
-  const rgb = (h: number, iced: boolean): readonly [number, number, number] => {
+  // The shader is read through a string and parsed back, which is what it hands
+  // out. There are far fewer distinct heights than pixels, so the answers are
+  // kept: a plate has millions of pixels and a few thousand colours, and parsing
+  // the same string a thousand times is wasted work. The cache is a row's, not
+  // the plate's, because the visible view of 5.7 colours by latitude as well as
+  // by height, and a row is one latitude.
+  let cache = new Map<string, readonly [number, number, number]>();
+  const rgb = (h: number, sinLat: number, iced: boolean): readonly [number, number, number] => {
     const key = `${Math.round(h * 4096)}|${iced ? 1 : 0}`;
     const seen = cache.get(key);
     if (seen) return seen;
-    const parsed = parseRgb(heightColour(h, surface.seaLevel, iced, surface.verdancy));
+    const parsed = parseRgb(shade(h, sinLat, iced));
     cache.set(key, parsed);
     return parsed;
   };
@@ -86,12 +89,13 @@ export async function renderPlates(
     const lat = (0.5 - (y + 0.5) / height) * Math.PI;
     const cosLat = Math.cos(lat);
     const sinLat = Math.sin(lat);
+    cache = new Map();
     for (let x = 0; x < width; x++) {
       const lon = ((x + 0.5) / width - 0.5) * 2 * Math.PI;
       const p: Vec3 = [cosLat * Math.cos(lon), sinLat, cosLat * Math.sin(lon)];
       const h = sample(table, p);
       const at = (y * width + x) * 4;
-      const [r, g, b] = rgb(h, isIced(surface.caps, sinLat));
+      const [r, g, b] = rgb(h, sinLat, isIced(surface.caps, sinLat));
       colourData[at] = r;
       colourData[at + 1] = g;
       colourData[at + 2] = b;
