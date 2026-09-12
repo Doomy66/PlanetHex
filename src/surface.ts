@@ -6,6 +6,7 @@ import { verdancyFor } from "./gen/life";
 import { buildHeightField, type HeightField, type HeightFieldOptions } from "./gen/field";
 import { REFERENCE_SIZE } from "./grid/coord";
 import type { PlanetDetail } from "./gen/detail";
+import { buildCraterField, craterOptionsFor, type CraterField, type CraterOptions } from "./gen/crater";
 import { DEFAULT_SEA_LEVEL } from "./ui/colour";
 import type { Planet } from "./planet";
 
@@ -27,6 +28,8 @@ export interface Surface {
    * grid of 4.4.9 is read off.
    */
   readonly field: HeightField;
+  /** The impacts laid over that field. Spec 3.6. */
+  readonly craters: CraterField;
   readonly seaLevel: number;
   readonly diameterKm: number | null;
   readonly caps: IceCaps | null;
@@ -46,6 +49,21 @@ export interface Surface {
  */
 let held: { readonly key: string; readonly field: HeightField } | null = null;
 
+/**
+ * The crater layer last built, held for the same reason the field is. Filing a few
+ * hundred impacts is far cheaper than building the field, but it is still work that
+ * only the seed and the count decide, and a redraw asks for it every time.
+ */
+let heldCraters: { readonly key: string; readonly craters: CraterField } | null = null;
+
+function cratersFor(seed: string, options: CraterOptions): CraterField {
+  const key = `${seed}|${options.count}|${options.minRadius}|${options.maxRadius}|${options.slope}`;
+  if (heldCraters?.key === key) return heldCraters.craters;
+  const craters = buildCraterField(seed, options);
+  heldCraters = { key, craters };
+  return craters;
+}
+
 function fieldFor(seed: string, options: HeightFieldOptions): HeightField {
   const key = `${seed}|${options.roughness}|${options.persistence}|${options.seedSpread}`;
   if (held?.key === key) return held.field;
@@ -60,17 +78,22 @@ export function surfaceOn(planet: Planet, detail: PlanetDetail, grid: Grid): Sur
   // read off. Both used to build their own, which was the same expensive work
   // done twice, and it is kept between redraws for the same reason.
   const field = fieldFor(planet.seed, options);
+  const craters = cratersFor(
+    planet.seed,
+    craterOptionsFor(planet.seed, detail, planet.uwp, planet.craters),
+  );
   return {
     grid,
     options,
     field,
-    heights: heightsOn(field, grid),
+    craters,
+    heights: heightsOn(field, grid, craters),
     // Off the reference lattice rather than off the cells on screen, so the
     // coastline does not move when the detail level does. Spec 5.2.4.
     seaLevel:
       detail.hydrographicsPct === null
         ? DEFAULT_SEA_LEVEL
-        : seaLevelFor(referenceHeightsOn(field), detail.hydrographicsPct / 100),
+        : seaLevelFor(referenceHeightsOn(field, craters), detail.hydrographicsPct / 100),
     diameterKm: detail.diameterKm,
     caps: iceCapsFor(planet.uwp, detail),
     verdancy: verdancyFor(planet.uwp, detail),

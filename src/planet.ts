@@ -27,6 +27,8 @@ export interface Planet {
   tiltDeg: number | null;
   orbitAu: number | null;
   rotationHours: number | null;
+  /** How many impacts the surface carries, or null for what the seed rolled. Spec 6.15.12. */
+  craters: number | null;
   seed: string;
   /** The detail level of 2.2.1, one of DETAIL_LEVELS. */
   size: number;
@@ -47,6 +49,7 @@ export function newPlanet(seed = randomSeed()): Planet {
     tiltDeg: null,
     orbitAu: null,
     rotationHours: null,
+    craters: null,
     seed,
     size: DEFAULT_DETAIL,
     pois: [],
@@ -208,6 +211,7 @@ function readSettings(r: Record<string, unknown>): {
   tiltDeg: number | null;
   orbitAu: number | null;
   rotationHours: number | null;
+  craters: number | null;
 } {
   const setting = (key: string) => {
     const value = r[key];
@@ -217,6 +221,7 @@ function readSettings(r: Record<string, unknown>): {
     tiltDeg: setting("tiltDeg"),
     orbitAu: setting("orbitAu"),
     rotationHours: setting("rotationHours"),
+    craters: setting("craters"),
   };
 }
 

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { parseUwp, rollUwp } from "./planet";
+import { newPlanet, parseUwp, parsePlanet, rollUwp } from "./planet";
 
 /** A spread of seeds, enough that every branch of the rules is exercised. */
 const WORLDS = Array.from({ length: 500 }, (_, i) => {
@@ -121,5 +121,27 @@ describe("rollUwp", () => {
       return worlds.reduce((sum, { w }) => sum + w.tech, 0) / worlds.length;
     };
     expect(techAt("A")).toBeGreaterThan(techAt("X"));
+  });
+});
+
+describe("the world settings a save carries", () => {
+  const save = (extra: Record<string, unknown>) =>
+    parsePlanet(JSON.stringify({ ...newPlanet("Saved"), ...extra }));
+
+  it("starts a new planet on the rolled values", () => {
+    const planet = newPlanet("Fresh");
+    expect(planet.craters).toBeNull();
+    expect(planet.tiltDeg).toBeNull();
+  });
+
+  it("reads a crater count back off a save", () => {
+    expect(save({ craters: 640 }).craters).toBe(640);
+    // Zero is a decision the referee made, not an absent one.
+    expect(save({ craters: 0 }).craters).toBe(0);
+  });
+
+  it("leaves a save written before craters existed on its rolled count", () => {
+    const { craters: _dropped, ...older } = newPlanet("Older");
+    expect(parsePlanet(JSON.stringify(older)).craters).toBeNull();
   });
 });

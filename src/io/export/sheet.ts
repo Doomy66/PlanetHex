@@ -6,6 +6,7 @@ import { isRetrograde, isTidallyLocked } from "../../gen/climate";
 import type { PlanetDetail } from "../../gen/detail";
 import type { Planet } from "../../planet";
 import type { Poi } from "../../poi";
+import { craterOptionsFor } from "../../gen/crater";
 
 /**
  * The world sheet: one page about the planet, in Markdown and in HTML. Spec 6.19.
@@ -46,6 +47,11 @@ export interface SheetInput {
   /** Rows per face of the level the map was exported at, for the record. */
   readonly size: number;
   readonly cells: number;
+}
+
+/** The impacts the surface carries, the world setting of 6.15.12 included. */
+function craterCountFor(planet: Planet, detail: PlanetDetail): number {
+  return craterOptionsFor(planet.seed, detail, planet.uwp, planet.craters).count;
 }
 
 function build(input: SheetInput): { title: string; subtitle: string; sections: Section[] } {
@@ -107,6 +113,7 @@ function build(input: SheetInput): { title: string; subtitle: string; sections: 
               ? "one face always to its sun"
               : `${detail.rotationHours.toFixed(1)} hours`,
           ],
+          ["Craters", craterCountFor(planet, detail).toLocaleString("en-GB")],
           ["Map detail", `${input.cells.toLocaleString("en-GB")} hexes, ${input.size} rows per face`],
         ],
       },

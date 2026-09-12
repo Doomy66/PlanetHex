@@ -3,6 +3,7 @@ import { latticePosition, REFERENCE_SIZE, SEA_SAMPLE_SIZE } from "../grid/coord"
 import { positionKey } from "../grid/vec3";
 import type { HeightField, HeightFieldOptions } from "./field";
 import { buildHeightField, DEFAULT_FIELD_OPTIONS } from "./field";
+import { NO_CRATERS, type CraterField } from "./crater";
 
 /**
  * Heights for a grid, read off the subdivision field in field.ts.
@@ -34,7 +35,11 @@ export function generateHeights(
  * the finest grid the globe of 4.4.9 draws - reads them both off one field rather
  * than paying for it twice.
  */
-export function heightsOn(field: HeightField, grid: Grid): Float64Array {
+export function heightsOn(
+  field: HeightField,
+  grid: Grid,
+  craters: CraterField = NO_CRATERS,
+): Float64Array {
   // NaN marks a cell nothing has written to, so a gap shows up as a gap rather
   // than as a plausible sea-level zero.
   const heights = new Float64Array(grid.cells.length).fill(Number.NaN);
@@ -42,7 +47,10 @@ export function heightsOn(field: HeightField, grid: Grid): Float64Array {
   for (const face of grid.net) {
     for (const p of face.placements) {
       if (!Number.isNaN(heights[p.cell]!)) continue;
-      heights[p.cell] = clamp01(field.sample(face.face, p.i, p.j, grid.size));
+      heights[p.cell] = clamp01(
+        field.sample(face.face, p.i, p.j, grid.size) +
+          craters.offsetAt(face.face, grid.size, p.i, p.j),
+      );
     }
   }
   return heights;
@@ -79,7 +87,10 @@ export function referenceHeights(
 }
 
 /** The same, off a field already built, for the reason heightsOn gives. */
-export function referenceHeightsOn(field: HeightField): Float64Array {
+export function referenceHeightsOn(
+  field: HeightField,
+  craters: CraterField = NO_CRATERS,
+): Float64Array {
   const seen = new Set<string>();
   const values: number[] = [];
   for (let f = 0; f < 20; f++) {
@@ -90,7 +101,12 @@ export function referenceHeightsOn(field: HeightField): Float64Array {
         const key = positionKey(latticePosition(f, SEA_SAMPLE_SIZE, i, j));
         if (seen.has(key)) continue;
         seen.add(key);
-        values.push(clamp01(field.sample(f, i, j, SEA_SAMPLE_SIZE)));
+        values.push(
+          clamp01(
+            field.sample(f, i, j, SEA_SAMPLE_SIZE) +
+              craters.offsetAt(f, SEA_SAMPLE_SIZE, i, j),
+          ),
+        );
       }
     }
   }
