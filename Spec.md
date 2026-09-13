@@ -577,7 +577,11 @@ A browser application that generates planet surfaces procedurally and shows them
 
 5.9.4.4 Two, and no more. A town has an edge and a middle and nothing else worth a line; a ladder of them would be reading a precision into a figure worked out from one digit of a profile.
 
-5.9.4.5 They belong to the flat view, as the contours of 4.5.8.7 do, and for the same reason. They are not tied to the contour toggle: that switch is for the ground's own lines, and a city is not a height.
+5.9.4.5 They are drawn in relief as well as flat, which the contours of 4.5.8 are not. The reason 4.5.9.6 drops those is that the light already says what a contour says: a slope is a shaded hillside. A town boundary is not something light shows, so there is nothing in the relief view standing in for it and it is drawn there too.
+
+5.9.4.5.1 In relief a limit lies on the ground rather than floating over it. A line runs on the sides between hexes rather than through their middles, so the height along it is what the hexes around it average to, the nearer ones counting for more.
+
+5.9.4.5.2 They are not tied to the contour toggle: that switch is for the ground's own lines, and a city is not a height.
 
 5.9.4.6 A city wider than the patch has its limits outside it and draws none. That is the honest answer: the panel is showing ground that is all of it inside the town, and there is no edge in view to draw. The mark of 5.5 still says the settlement is there.
 

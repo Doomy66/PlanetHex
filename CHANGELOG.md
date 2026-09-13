@@ -16,6 +16,10 @@ user. Dates are the day the release was tagged.
   underneath is left as it was, and two things drawn for one fact was one too many.
   The reach model moved to `gen/settle.ts`, where how far a town is built out
   belongs, leaving `ui/orbital.ts` doing nothing but colour.
+  - Drawn in the 3D view as well as the flat one, lying on the ground and
+    following it. Contours are dropped in relief because the light already says
+    what they say; a town boundary is not something light shows, so there is
+    nothing standing in for it there.
 
 ## 1.5.0 — 2026-09-13
 
