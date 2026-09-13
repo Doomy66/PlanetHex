@@ -376,11 +376,45 @@ export function createLocalView(): LocalView {
       if (group.childElementCount > 0) lines.push(group);
     }
 
+    /**
+     * The height at a point between hexes, for laying a line on the ground in
+     * relief. A contour runs on hex sides rather than through hex centres, so the
+     * height there is what the hexes around it average to, nearer ones counting
+     * for more.
+     */
+    const heightNear = ([a, b]: Step): number => {
+      let total = 0;
+      let weight = 0;
+      for (const dp of new Set([Math.floor(a), Math.ceil(a)])) {
+        for (const dq of new Set([Math.floor(b), Math.ceil(b)])) {
+          const h = heights.get(`${dp},${dq}`);
+          if (h === undefined) continue;
+          const w = 1 / (0.001 + Math.hypot(dp - a, dq - b));
+          total += h * w;
+          weight += w;
+        }
+      }
+      return weight === 0 ? low : total / weight;
+    };
+
+    /** A point of a line, on the flat ground or standing on the lit ground. */
+    const onGround = (at: Step): string => {
+      const [gx, gy] = ground(at);
+      if (view === null) return `${gx.toFixed(4)} ${gy.toFixed(4)}`;
+      const [px, py] = view.place(gx, gy, heightNear(at));
+      return `${px.toFixed(4)} ${py.toFixed(4)}`;
+    };
+
     // The city limits of 5.9.4, cut from how built up the ground is by the same
     // tracer the contours use. A line rather than a wash, because on a world of
     // billions the wash covered the whole patch and said only that people lived
     // there; where the edge of the town falls is the thing worth knowing.
-    if (view === null && builtBy.size > 0) {
+    //
+    // Drawn in relief as well as flat, unlike the contours of 4.5.8. A contour
+    // says what the light already says there, under 4.5.9.6; a town boundary is
+    // not something light shows, so it is drawn either way and follows the ground
+    // it lies on.
+    if (builtBy.size > 0) {
       const traced = traceContours(
         // A hex the patch found but nothing is built on is nothing built, not an
         // absence. Only a hex off the patch has no answer.
@@ -395,7 +429,7 @@ export function createLocalView(): LocalView {
         const path = document.createElementNS(SVG_NS, "path");
         path.setAttribute(
           "d",
-          line.segments.map(({ from, to }) => `M${flat(from)}L${flat(to)}`).join(""),
+          line.segments.map(({ from, to }) => `M${onGround(from)}L${onGround(to)}`).join(""),
         );
         path.setAttribute("class", line.level >= CITY_LIMITS[1]! ? "city-core" : "city-edge");
         group.append(path);
