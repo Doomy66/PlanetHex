@@ -1,5 +1,5 @@
 import { DETAIL_LEVELS } from "../grid/coord";
-import { poiPlacements } from "../poi";
+import { markKind, poiPlacements, type Poi } from "../poi";
 import { buildSurface, shaderFor, type Surface } from "../surface";
 import { createHexMap, strokeWidths, type PoiMark } from "../ui/map";
 import type { ViewMode } from "../ui/colour";
@@ -32,6 +32,7 @@ const STYLES = `
   .selected-hex { fill: none; stroke-width: var(--mark-stroke, 0.006); }
   .face-outline { fill: none; stroke: #f2f4f8; stroke-width: 0.012; opacity: 0.45; }
   .poi-starport { --poi: #ff4d47; }
+  .poi-city { --poi: #4fd1c5; }
   .poi-comment { --poi: #d7dde6; }
   .poi-hex { fill: none; stroke: var(--poi); stroke-width: var(--mark-stroke, 0.006); }
   .scalebar path { fill: none; stroke: #dfe3ea; stroke-width: 3; vector-effect: non-scaling-stroke; }
@@ -184,12 +185,15 @@ export function renderMapAt(
 }
 
 function marksFor(planet: Planet, grid: Parameters<typeof poiPlacements>[0]): PoiMark[] {
-  const byCell = new Map<number, PoiMark["kind"]>();
+  const byCell = new Map<number, Poi[]>();
   for (const { poi, cell } of poiPlacements(grid, planet.pois)) {
-    // A hex carrying both is marked as a starport, as it is on screen.
-    if (poi.kind === "starport" || !byCell.has(cell)) byCell.set(cell, poi.kind);
+    const here = byCell.get(cell);
+    if (here) here.push(poi);
+    else byCell.set(cell, [poi]);
   }
-  return [...byCell].map(([cell, kind]) => ({ cell, kind }));
+  // Ranked by 5.5.5, through the same rule the panel uses, so a picture and the
+  // map it was taken of cannot mark a hex differently.
+  return [...byCell].map(([cell, here]) => ({ cell, kind: markKind(here) }));
 }
 
 /** A detached map as the text of an SVG file. */

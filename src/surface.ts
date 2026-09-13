@@ -7,8 +7,9 @@ import { buildHeightField, type HeightField, type HeightFieldOptions } from "./g
 import { REFERENCE_SIZE } from "./grid/coord";
 import type { PlanetDetail } from "./gen/detail";
 import { buildCraterField, craterOptionsFor, type CraterField, type CraterOptions } from "./gen/crater";
-import { DEFAULT_SEA_LEVEL, terrainShader, type Shader, type ViewMode } from "./ui/colour";
-import { visibleShader, visibleWorldFor, type VisibleWorld } from "./ui/visible";
+import { DEFAULT_SEA_LEVEL, surveyShader, type Shader, type ViewMode } from "./ui/colour";
+import { orbitalShader } from "./ui/orbital";
+import { biomeWorldFor, type BiomeWorld } from "./gen/biome";
 import type { Planet } from "./planet";
 
 /**
@@ -35,8 +36,8 @@ export interface Surface {
   readonly diameterKm: number | null;
   readonly caps: IceCaps | null;
   readonly verdancy: number;
-  /** What the visible view of 5.7 makes of the world, for the shader below. */
-  readonly visible: VisibleWorld;
+  /** What the ground is made of, place by place. Spec 5.8. */
+  readonly biome: BiomeWorld;
 }
 
 /**
@@ -45,9 +46,9 @@ export interface Surface {
  * and every panel is handed one of these instead of the numbers behind it.
  */
 export function shaderFor(surface: Surface, view: ViewMode): Shader {
-  return view === "visible"
-    ? visibleShader(surface.seaLevel, surface.visible)
-    : terrainShader(surface.seaLevel, surface.verdancy);
+  return view === "orbital"
+    ? orbitalShader(surface.seaLevel, surface.biome)
+    : surveyShader(surface.seaLevel, surface.verdancy);
 }
 
 /** The surface on a grid already built. Spec 3.4: the UWP shapes the terrain, so
@@ -111,7 +112,7 @@ export function surfaceOn(planet: Planet, detail: PlanetDetail, grid: Grid): Sur
     diameterKm: detail.diameterKm,
     caps: iceCapsFor(planet.uwp, detail),
     verdancy: verdancyFor(planet.uwp, detail),
-    visible: visibleWorldFor(planet.uwp, detail),
+    biome: biomeWorldFor(planet.uwp, detail),
   };
 }
 

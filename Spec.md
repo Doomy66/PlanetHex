@@ -337,6 +337,12 @@ A browser application that generates planet surfaces procedurally and shows them
 
 4.5.7.2 The display hex the click fell in comes back with it, since that is what the map and the globe can show a selection on. Clicking the patch therefore selects the ground the dialogue is about as well as opening it.
 
+4.5.7.2.1 Where a point of interest is drawn on the hex that was clicked, the dialogue opens on that one rather than on the hex's own name.
+
+4.5.7.2.1.1 The two are not the same name for the same ground. A point of interest holds the name of the lattice it was placed on under 2.4.8, and this panel draws on a lattice of its own that is usually finer, so the name a click produces is not the name the point of interest holds even when the click lands squarely on it. Opening by name therefore made a second point of interest on top of the first: a blank dialogue over a city, and two of them on one hex if it was saved.
+
+4.5.7.2.1.2 What makes them one thing is that they are drawn on the same hex, and that is what the click reports. The hex each point of interest falls on is worked out once and both the ring of 4.5.7.3 and the click are answered from it, so the panel cannot draw a mark in one place and open it from another.
+
 4.5.7.3 This is the panel that takes the click because it is the one drawn at the scale of a place on the ground. The middle panel's click already selects, under 4.3.2, and one gesture cannot do both.
 
 4.5.7.4 Points of interest the patch reaches are ringed on it at the size of the hexes it draws, and named beside them in the colours of 5.5.1. A point placed at another depth is ringed on the fine hex covering it, by the same rule 6.6.1 places one on the map. The name beside the ring is what carries at a glance; the ring says which hex the name is about.
@@ -479,6 +485,10 @@ A browser application that generates planet surfaces procedurally and shows them
 
 5.5.4.1 The selection is drawn over the marks rather than under them, and a mark is drawn wider than the selection outline that may cover it, so a hex that is both still shows a rim of the colour saying what is on it.
 
+5.5.5 There are three colours now, since 6.24 gives a world its cities: a starport red, a city teal, and a comment pale grey. A hex of the map covers a swathe of the world under 6.6.3, and at the coarse levels that is enough ground to hold all three at once. One mark to a hex, so they rank: a starport is what a referee looks for first, a city is a place on the world, and a comment is a note about one. The tooltip of 4.3.5 says what else is under it.
+
+5.5.5.1 Teal because the other three colours were taken. Red is the starport, grey the comment, and gold the selection of 4.3.3, and 5.5.4 has already spent one round of this working out that two marks a user has to tell apart cannot sit next to each other on the wheel.
+
 ### 5.6 Ground colour
 
 5.6.1 Land is not always green. Green is what a world with plants on it looks like, and most profiles do not describe such a world. Each planet carries a verdancy in [0, 1], and its land is drawn between two ramps: a green one at 1 and an arid one, in ochres, sand and warm rock, at 0.
@@ -501,9 +511,13 @@ A browser application that generates planet surfaces procedurally and shows them
 
 5.7.1 The world is drawn one of two ways, and which is a view option under 4.2.6: it says nothing about the planet, so it is not saved with it and does not mark it unsaved. Both views read the same heights, the same sea level and the same ice, and all three panels of section 4 draw whichever is chosen. The saved pictures and the coloured exports of 6.17 are drawn in it too, since a save writes down what was on screen, and the manifest of 6.22 records which it was.
 
-5.7.1.1 **Terrain** is 5.1 to 5.6, unchanged: height as colour, blue through the ground colour to grey and white. It is a map. It says how high the ground is, which is what a referee measuring a march across it wants, and its greys and whites climb with altitude whatever the world is made of.
+5.7.1.1 **Survey** is 5.1 to 5.6, unchanged: height as colour, blue through the ground colour to grey and white. It is a map, and what it says is how high the ground is, which is what a referee measuring a march across it wants. Its greys and whites climb with altitude whatever the world is made of.
 
-5.7.1.2 **Visible** is what an eye in orbit would see. It answers one question, what colour is that ground, and it reads temperature where the other reads height. Green where things grow, brown where the ground is bare and weathered, grey where it is bare and unweathered, white where water is frozen, and the sea a darker blue than the map's, because a sea drawn to be looked at is not a sea drawn to be read over.
+5.7.1.2 **Orbital** is what an eye coming in would see. It answers one question, what colour is that ground, and it reads temperature where the other reads height. Green where things grow, brown where the ground is bare and weathered, grey where it is bare and unweathered, white where water is frozen, and the sea a darker blue than the survey's, because a sea drawn to be looked at is not a sea drawn to be read over.
+
+5.7.1.3 Orbital is the default. A world is a place before it is a measurement, and what a user opening the application wants first is to see what they have got; the heights are still there to be read the moment they are wanted.
+
+5.7.1.4 The two were called Terrain and Visible once. Both views draw terrain, so the first named nothing that distinguished it, and "visible" reads as a switch for whether a thing is shown rather than as a way of drawing it. Survey and Orbital say who is looking and from where, which is the actual difference between them.
 
 5.7.2 Ground cover is the verdancy of 5.6 taken a place at a time rather than once for the world. The air and water factors of 5.6.2 are the world's and do not vary; the warmth factor is read at the local temperature of 5.7.3. A world whose mean is temperate is jungle at its equator and tundra at sixty degrees, and one colour for the whole planet cannot say that.
 
@@ -528,6 +542,40 @@ A browser application that generates planet surfaces procedurally and shows them
 5.7.5 The caps of 5.4 are drawn as ice rather than as pale ground. Frozen water is white, and it is white over sea and over land alike, so the cap reads as a sheet rather than as terrain seen through frost. This is the one thing the two views deliberately disagree about, and 5.4.5 gives the reason the map does it the other way: a map has to keep the terrain legible under the ice and a photograph does not.
 
 5.7.6 What does not change between the views: the coastline, the ice edge, the heights, the hex readout of 4.5.6, and the grey heightmap of 6.21. The view is paint. Nothing under it moves.
+
+### 5.8 What the ground is
+
+5.8.1 The verdancy of 5.6 is one number for a whole world, which is as much as a single colour for the whole of it can use. The visible view of 5.7 needs it a place at a time, and having worked it out per hex it should not then throw it away as a colour: what the ground at a hex is, is a fact about the world, and it belongs in the readout of 4.5.6 and the exported table of 6.17 as much as on the map.
+
+5.8.1.1 So the model lives with the rest of what a world is made of rather than with the drawing of it, and 5.7 is the paint over it. Cover, weathering, snow and the local temperature are worked out once and read by the colour, by the name below, and by the settlements of 6.24, which is what stops the three disagreeing about the same hex.
+
+5.8.2 Every hex is named for what its ground is: deep sea, sea, shelf sea, sea ice, ice cap, snowfield, bare rock, rainforest, forest, boreal forest, tundra, savannah, grassland, steppe, desert, cold desert, polar desert.
+
+5.8.2.1 This is not the terrain band of 5.1. That says how high the ground is; this says what it is made of; and a hex has both, because they are different questions with different answers. Two hexes at the same height, one at the equator and one at sixty degrees, are the same band and different ground, and a band read off height alone cannot tell them apart.
+
+5.8.2.2 The order the tests come in is the order the answers overrule each other. Ice and open water are what a place is whatever is under them; snow and bare stone are what it is whatever would otherwise grow; and only past all of those does the cover name it.
+
+5.8.2.3 The thresholds are read off Earth. Closed broadleaf holds down to an annual mean of about 6C, which is Paris and Vancouver; below that it is conifer, and taiga runs to about -5C, where the trees give out. Permanent snow needs a good deal colder than freezing: Reykjavik sits at 64 degrees and is not under it, and what is white there is the mountains behind it.
+
+5.8.3 Both exports of 6.17 carry it, in a column of its own beside the terrain band rather than in place of it. The band is what those files have always carried and a reader is entitled to keep getting it.
+
+### 5.9 Built ground
+
+5.9.1 The local panel of 4.5 draws what people have built over the ground they built it on, in both of the views of 5.7. The map and the globe do not.
+
+5.9.1.1 It was the visible view alone at first, on the grounds that the terrain ramp is a height map and a city is not a height. But the ramp is what the panel is drawing the ground with either way, and a referee looking at the patch wants to know where the town is whichever way they have it coloured. The tint lifts out of the ramp's greens and ochres as readily as out of the biome's.
+
+5.9.2 It is a question of scale rather than of principle. A hex of the map is a couple of hundred kilometres across and some sixty thousand square kilometres of ground. The largest built-up area on Earth is an eighth of that, so a hex holding a city is still overwhelmingly whatever 5.8 says it is, and painting it over would be the distortion rather than the correction. It is the same reasoning 5.5.3 draws a point of interest as an outline and not a fill.
+
+5.9.2.1 The local panel is the case that does not hold. Its hexes are sixteen to twenty-seven kilometres across, a couple of hundred square kilometres each, and a city of any size covers dozens of them. There the built ground is the ground, and drawing it as forest is the map saying something it knows to be false.
+
+5.9.3 How far a settlement is built out follows from how many people it holds, at a density of eight thousand to the square kilometre. Earth's dense cities run between two and ten thousand; the higher end is taken, since a world building upwards holds more of them on the same footprint than one that is not.
+
+5.9.4 It is drawn full strength across the middle and thins to nothing at the edge, so a city does not end at a line. What it thins into is the ground of 5.8, which is still being drawn underneath: the built colour is laid over the biome rather than replacing it, and a city in a desert and a city in a forest are not the same colour.
+
+5.9.5 The colour is a pale warm grey, and pale on purpose. A darker one was tried first and came out the same weight as the forest around it, which is a change of colour nobody can see and therefore no change at all.
+
+5.9.6 Nothing here is generated. No height moves, no hex changes what 5.8 calls it, and the exports of 6.17 carry the biome rather than this. It is paint, as the ice of 5.4.6 is.
 
 ## 6. Planet data and persistence
 
@@ -592,7 +640,7 @@ A browser application that generates planet surfaces procedurally and shows them
 
 6.5.1 A point of interest has a kind, a name, and a narrative. The name is what the map and the lists call it; the narrative is free prose about it, as 6.10 describes the planet's own.
 
-6.5.2 There are two kinds. A starport is a place on the world. A comment is a note about one, which covers everything a referee wants to write on a hex without inventing a kind for each.
+6.5.2 There are three kinds. A starport is a place on the world, and the profile says a world has one. A city is a place on the world the profile does not name, which is what 6.24 puts there. A comment is a note about one, which covers everything a referee wants to write on a hex without inventing a kind for each.
 
 6.5.2.1 The starport of a point of interest is not the starport letter of the UWP. The letter says what quality of port the world has; this says where on the world it is. A world can carry more than one, and a world whose profile says X can still have a landing field somebody put there.
 
@@ -616,17 +664,13 @@ A browser application that generates planet surfaces procedurally and shows them
 
 6.5.8.4 It is an ordinary point of interest once placed. The user can move it, rename it, write it up, or delete it, and nothing regenerates it: only New places one, so a planet the user has emptied stays empty.
 
-6.5.8.5 Rolling a new profile renames the world's starport and places it again. A reroll is a different kind of world on the same seed: the letter is a different letter, and under 3.4 the ground is different ground, so the site the terrain picked was picked for a world that no longer exists. Left where it was, the port is as likely to be in the sea as on the coast it was put on.
+6.5.8.5 Rolling a new profile settles the world again, by 6.24.10 and not by a rule of its own. A roll is a different kind of world on the same seed: the letter is a different letter, and under 3.4 the ground is different ground, so the sites the terrain picked were picked for a world that no longer exists. Left where they were, the port is as likely to be in the sea as on the coast it was put on.
 
-6.5.8.5.1 The narrative comes across untouched, as it does through a move under 6.5.9.3. What the user wrote about the place is theirs. Where the port is and what class it is are the profile's, and the reroll is what asked for a new one.
+6.5.8.5.1 It was a rule of its own once, and a narrow one: it moved the single starport a world carried, left a world with several alone, and left an emptied world empty. Then 6.24.10 made the same decision for every digit that bears on where people live, and a roll is the plainest case of that rather than the exception to it. Two rules for one question is one rule too many, and the narrower of them went.
 
-6.5.8.5.2 Editing a digit by hand does not move it. That edit shapes the surface as much as a reroll does, so the distinction is not in what changes underneath but in what was asked for: a digit is typed by someone working on this world with its ports in view, and moving one under them at every keystroke is the application arguing with the person editing. A reroll asks for a different world outright, and gets one.
+6.5.8.5.2 What the user has written comes back, under 6.24.10.2. That covers what the old rule protected and more: it kept the narrative and rewrote the name, and this keeps a name the user chose as well.
 
-6.5.8.5.3 Only where the world carries one starport. Several is an arrangement the user made, and nothing in the profile says which of them it is talking about. The reroll leaves all of them and says so, rather than picking one.
-
-6.5.8.5.4 A new profile of X takes the starport away. The profile is what says whether a world has one, and 6.5.8.3 already declines to place a port on such a world; leaving one standing would be the same contradiction arrived at from the other side. An unreadable profile says nothing either way, so it leaves what is there alone.
-
-6.5.8.5.5 A world the user has emptied stays empty, as 6.5.8.4 has it. The reroll moves the starport the world has; it is not a second route to the one only New places.
+6.5.8.5.3 Editing a digit by hand does the same thing, where the digit is one of the five 6.24.10.1 lists. What it does not do is fire on a profile that cannot yet be read, which is what half a UWP typed on the way to a whole one is. Moving things under the user at every keystroke would be the application arguing with the person editing, and that is the concern the old rule was reaching for when it declined to act on a typed digit at all.
 
 6.5.9 The dialogue opened on a point with nothing on it offers Move Here: a list of the points of interest the world already has, and a button that moves the chosen one to this point.
 
@@ -639,6 +683,12 @@ A browser application that generates planet surfaces procedurally and shows them
 6.5.6 A point of interest that cannot be read on load is dropped rather than the file being refused. Unlike the seed of 6.4.3 it is not something the planet cannot be rebuilt without, and losing one note beats refusing the world it was written about.
 
 6.5.7 The left panel lists the points of interest on the world, so what is on it can be read without hunting the map for marks. Choosing one selects the hex it is drawn on and opens the dialogue on it.
+
+6.5.7.1 The list is ordered by kind, then by size largest first, then by name: starports, then cities from the capital down, then comments. The kind order is the ranking of 5.5.5, and for the same reason. A world of any size carries one port and a dozen other things, and a referee who came to the panel to find the port should not be reading down an alphabet for it.
+
+6.5.7.1.1 Size before name because a city's size is what the list is being read for. The capital is at the top of its group and the hamlets are at the bottom, which is the order they matter in, and it is the order 6.24.3 generated them in.
+
+6.5.7.1.2 A point of interest with no size recorded sorts under the ones that have one. A comment has no size; neither has a city the user placed by hand, and guessing at either would be inventing a fact.
 
 6.6 A point of interest is attached to the hex it was placed on, at the scale it was placed at, and it is stored by that hex's name under 2.4.8. Placed in the local panel, that is one of the fine hexes that panel draws, which is finer than any level of the map. The name does not depend on what is being viewed, so moving the slider neither invalidates one nor moves it.
 
@@ -876,6 +926,64 @@ A browser application that generates planet surfaces procedurally and shows them
 
 6.23.6 The folder of 6.4.1.1 is asked for after the dialogue is dismissed rather than before it is opened, since the dialogue's own button is the gesture the picker needs and a picker cannot be opened from under a modal.
 
+### 6.24 Settlements
+
+6.24.1 A new world arrives with its cities on it, the way 6.5.8 already has it arrive with its starport. The profile says how many people a world holds and the map drew none of that: a world of nine billion looked exactly like a world of nine, and a referee asking where anybody lived had the whole surface to choose from.
+
+6.24.1.1 The starport is the world's first city. It is where ships come down, which is where the money is and where the people follow, and 6.5.8.1 already sites it on the best coast the terrain has. So it is counted among the settlements rather than standing beside them, and it keeps its own kind, because the profile names it and does not name the rest.
+
+6.24.2 One settlement per point of the population digit. A world of a thousand people has three places worth naming, a world of billions has nine, and a world of nobody has none. The cities placed are that count less whatever starport is already standing, so a profile of X, which has no port under 6.5.8.3, gets its whole count as cities instead.
+
+6.24.3 They are sized by the rank-size rule. Rank a region's cities and the second is about half the first, the third a third of it, the tenth a tenth. It holds across every settled region anyone has counted, from Roman Egypt to the present, which makes it about as safe a guess as this application makes anywhere. The starport, being the first city, is the primate city and the rest fall away behind it.
+
+6.24.3.1 The figures are not meant to total the world's population and do not. People live on farms, in hamlets, down mines, on rigs at sea, and on a world with a decent port a good many of them live in orbit and never touch the surface. None of that is on the map and none of it should be added into the cities that are. The world's own figure is on the summary panel for a referee who wants the difference.
+
+6.24.4 Each settlement says what it is carrying, as the first line of its narrative. As prose rather than to the person: a figure worked out from one digit by a rank-size rule is good to about its first two characters, and writing it to the last one would be claiming a census nobody took.
+
+6.24.5 Where they go is habitability, and that is the model of 5.8 asked about people rather than about plants. Food grows where cover grows, a coast is worth more than an inland plain, mountains and ice are worth less than either.
+
+6.24.5.1 A world with no land worth the name puts its cities on the water. It floats them or sinks them and the map does not say which; what it does say is that they are on the shelf rather than out over four kilometres of open ocean, because that is where a city at sea would be. A water world is the case that breaks a model insisting on a shore, and 6.5.8.2 already ranks rather than requires for the same reason.
+
+6.24.5.2 Settlements are spread rather than merely ranked. The best sites on a world are all in the same place, often the same bay, and taking the best N of them puts every city on the planet within a few hexes of each other. So each one chosen pushes the score down around it and the next is the best of what is left.
+
+6.24.6 A world names its places in one voice. Whoever landed there spoke some language and brought some habit of naming with them, and a map with Barreach next to Ishkhuur next to Depot Three on it reads like three worlds filed together by mistake. So a flavour is drawn once per planet from the seed and every settlement on that world is named in it.
+
+6.24.6.1 The flavours are polyglot, anglic, Vilani, founder and functional. Polyglot is the common case and deliberately so: a sector is a thousand years of several species and a dozen languages settling each other's worlds, and most of its names are that mixture rather than any one tongue kept clean. The others are where one did survive, where a recent world is named for whoever got there first, or where nobody bothered and the places are numbered.
+
+6.24.6.2 A functional world numbers its settlements in rank order, so its first site is its largest. The word is the world's and the number is the settlement's.
+
+6.24.6.3 Names are drawn together rather than one at a time, so that two landing on the same pair can be dealt with. Two places on one world sharing a name is worse than a name drawn a second time, so the draw is made again.
+
+6.24.7 They are ordinary points of interest once placed, as 6.5.8.4 has the starport: move them, rename them, write them up, delete them. A name is fixed by the seed so it is the same name every time that world is made, and it is the user's to type over.
+
+6.24.8 A settlement carries its size as a number as well as in the line of 6.24.4. The two are for different readers: the line is for the referee and is theirs to rewrite, and the number is what 6.5.7.1 puts the cities in order by. Reading the order back out of prose the user is free to edit would be a sort that stopped working the first time anybody wrote on one.
+
+6.24.8.1 It survives an edit to the name, the kind or the prose, and a move under 6.5.9.3, because it is not on the form and is not the user's to type. It is absent on a comment and on anything placed by hand, which have no size to record.
+
+6.24.9 Rolling a new profile moves and renames the starport under 6.5.8.5, and leaves the cities where they are. Editing a digit by hand is 6.24.10.
+
+### 6.24.10 Settling a world again
+
+6.24.10.1 Editing a digit the settlements depend on places them again. Five of the eight bear on it: the starport letter says whether there is a port and what class it is; size shapes the ground and sets the scale; atmosphere and hydrographics decide what grows and where the coast is, which is what habitability is read off; and population says how many settlements there are and how large. Government, law level and tech level say nothing about any of it, and typing one of those leaves the map alone.
+
+6.24.10.1.1 The seed counts as well. It is no part of the profile, but it decides the ground the sites are chosen on and the names they are given, so a world given a new seed is a world to be settled again.
+
+6.24.10.1.2 A profile that cannot be read changes nothing. Half a UWP is typed on the way to a whole one, and 6.5.8.5.3 says why moving things under the user at every keystroke is the application arguing with the person editing.
+
+6.24.10.1.3 It runs after the surface has been rebuilt, so the sites are chosen on the ground the new profile makes rather than on the ground the old one made.
+
+6.24.10.2 What the user wrote comes back. A name or a piece of prose counts as theirs where it is not what the generator would have produced, which is checkable rather than guessable: the names of 6.24.6 are fixed by the seed and the rank, neither of which a change of profile moves, and the line of 6.24.4 is a function of the size recorded beside it. Anything that differs is carried across to the settlement of the same rank.
+
+6.24.10.2.1 This is the trade 6.5.8.5.1 used to make, widened. There the narrative was the user's and the name was the profile's; here the same test is applied to both, and to the cities as well, so a world can be tuned digit by digit without losing what has been written on it.
+
+6.24.10.3 Comments are left alone. They are notes about the world rather than settlements of it, and nothing in a profile bears on them.
+
+6.24.10.4 A loaded file is taken as already settled. A save is a world somebody arranged, and opening it is not a reason to rearrange it.
+
+6.24.11 The port and the cities differ over a reroll because the profile names one and not the others. "Starport A" is the profile talking, and a reroll that left a B standing where the letter now says A would be showing the user something it knows to be false. A city's name and everything written about it are the user's from the moment the world exists, and nothing in a new profile says that Barreach is now called something else.
+
+6.24.11.1 What this costs: a reroll that moves the population digit leaves a world carrying the wrong number of cities, and the population line of 6.24.4 on each of them is the line the old profile wrote. That is the same trade 6.5.8.5.1 makes for the narrative, and it falls the same way. Losing what the user wrote is worse than showing a figure they can retype.
+
 ## 7. Reference material
 
 > The files below are third party reference material, held for private use while building this application. They are not licensed for redistribution. Exclude the `Examples` folder from any public repository or published build, and do not copy their artwork, layout, or title blocks into the application. The folder is listed in `.gitignore`, so the links below resolve only in a local working copy.
@@ -898,9 +1006,19 @@ The Traveller SRD at https://www.traveller-srd.com/, under core rules, world cre
 
 8.1 **Technology.** Rendering approach for the flat map, rendering approach for the sphere, and whether a framework is used at all. Unspecified so far.
 
-8.2 **Sphere projection.** How the flat net maps onto the sphere, and how much distortion is acceptable near the 12 vertices.
+8.2 **Sphere projection.** No longer open. A lattice point is placed by normalising the barycentric blend of its face's three corners, under 2.4.3, so the net maps onto the sphere by gnomonic projection from the icosahedron and nothing has to be told where the seams are: a hex shared by two faces solves to one point from either of them, which is 2.1.3 satisfied by construction rather than by stitching.
 
-8.3 **Terrain beyond height.** Both reference images show terrain types, ice, vegetation, and cities. Ice is settled under 5.4, which is the first thing drawn from latitude rather than from height. Vegetation and cities are still open, and so is whether anything else should be derived this way.
+8.2.1 The distortion this leaves is the icosahedron's own and it is small. Hexes grow towards the middle of a face and shrink towards the corners, by about a tenth either way, which is under the width of a seam at the levels the map is read at. The twelve pentagons are where it concentrates, and they are a fact about tiling a sphere with hexagons rather than a fault in the projection: no arrangement avoids them, and 2.1.4 has the code treat five neighbours as ordinary everywhere it walks them.
+
+8.2.2 What made it a question was whether the distortion would show on the coastline, since the height field is built on the lattice and read on the sphere. It does not: the field is a function of position rather than of lattice index, so a coast crosses a face edge without knowing it is there, and the globe and the map draw the same coast because they read the same function.
+
+8.3 **Terrain beyond height.** Both reference images show terrain types, ice, vegetation, and cities, and all four are now settled. Ice is 5.4, the first thing drawn from latitude rather than from height. Vegetation is 5.6 for the world and 5.7.2 for the place. Terrain type is 5.8: every hex is named for what its ground is made of, which is a different question from how high it is and gets a different answer. Cities are 6.24, sited by habitability and sized by the rank-size rule.
+
+8.3.1 What the four have in common is the shape of the answer rather than the subject. Each is some function of position read off a model the profile already implies, rather than a thing generated and stored: the surface is still a seed and a UWP under 1.3, and nothing here added a byte to a save file.
+
+8.3.2 Still open, and deliberately not attempted: **rivers**. They would be worth more on a hex map than anything above, and they are the one item that does not fit the shape of 8.3.1. A river is a path rather than a field, so it cannot be a function of position the way craters and cover are, and it would have to be routed once and then hold still across every detail level and three subdivisions deeper in the local panel of 4.5. That is a piece of work of its own rather than a colour rule.
+
+8.3.3 Ruled out: winds, currents, and mineral resources. The first two are derivable and no referee needs them. The third is not derivable at all: nothing in the profile or the height field bears on it, and generating one would be a random number wearing a geology costume.
 
 8.4 **Attachments.** No longer open. Settled in 6.5 as points of interest, of which there are two kinds: a starport, and a comment covering everything else a referee wants to write on a hex. What happens to one when the detail level changes is settled in 6.6. Whether cities become a kind of their own, or are generated from population the way 8.3 asks of vegetation, stays with 8.3.
 

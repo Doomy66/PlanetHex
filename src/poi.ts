@@ -21,9 +21,9 @@ import { nearestCell, type CellId, type Grid } from "./grid/grid";
  */
 
 /** What a POI is. Spec 6.5.2: a place on the world, or a note about one. */
-export type PoiKind = "starport" | "comment";
+export type PoiKind = "starport" | "city" | "comment";
 
-export const POI_KINDS: readonly PoiKind[] = ["starport", "comment"];
+export const POI_KINDS: readonly PoiKind[] = ["starport", "city", "comment"];
 
 export interface Poi {
   readonly kind: PoiKind;
@@ -31,6 +31,17 @@ export interface Poi {
   readonly name: string;
   /** Free prose about it, as the planet's own narrative is under 6.10. */
   readonly narrative: string;
+  /**
+   * How many people it holds, where 6.24 worked one out. Absent on a comment and
+   * on anything the user placed by hand, which have no size to record.
+   *
+   * Held as a number as well as written into the narrative of 6.24.4, because the
+   * two are for different readers. The line is for the referee and is theirs to
+   * rewrite; this is what the list of 6.5.7.1 puts the cities in order by, and
+   * parsing it back out of prose the user is free to edit would be a sort that
+   * stopped working the first time anybody wrote on one.
+   */
+  readonly population?: number;
   /** The point it sits on, named on the lattice it was placed on. Spec 6.6. */
   readonly ref: LatticeRef;
 }
@@ -84,6 +95,54 @@ export function removePoi(pois: readonly Poi[], ref: LatticeRef): Poi[] {
   return pois.filter((poi) => latticeKey(poi.ref) !== key);
 }
 
+/**
+ * Which kind a hex is marked as when it carries several. Spec 5.5.5.
+ *
+ * A hex of the map covers a swathe of the world under 6.6.3, and at the coarse
+ * levels that is enough ground to hold a port, a city and a note about them all at
+ * once. One mark to a hex, so one of the three has to win, and they rank the way
+ * they matter: a starport is what a referee looks for first, a city is a place on
+ * the world, and a comment is a note about one. The tooltip of 4.3.5 says what
+ * else is under it.
+ */
+const MARK_ORDER: readonly PoiKind[] = ["starport", "city", "comment"];
+
+export function markKind(pois: readonly Poi[]): PoiKind {
+  for (const kind of MARK_ORDER) {
+    if (pois.some((poi) => poi.kind === kind)) return kind;
+  }
+  return "comment";
+}
+
+/**
+ * Where a kind sorts, lowest first. The same order the marks rank in, because it
+ * is the same judgement about which of them a referee came to the panel for: the
+ * list of 4.2.5.1 puts the starport at the top for the reason the map draws it
+ * over a comment.
+ */
+export function kindRank(kind: PoiKind): number {
+  const at = MARK_ORDER.indexOf(kind);
+  return at === -1 ? MARK_ORDER.length : at;
+}
+
+/**
+ * How the list of 6.5.7.1 orders two points of interest: by kind, then by size
+ * largest first, then by name.
+ *
+ * Size before name because a city's size is what a referee is looking for when
+ * they look at the list at all. The capital is the top of the group and the
+ * hamlets are the bottom of it, which is the order they matter in. Anything with
+ * no size recorded - a comment, or a city the user placed by hand - sorts under
+ * the ones that have one rather than being guessed at.
+ */
+export function comparePois(a: Poi, b: Poi, title: (poi: Poi) => string): number {
+  return (
+    kindRank(a.kind) - kindRank(b.kind) ||
+    (b.population ?? -1) - (a.population ?? -1) ||
+    title(a).localeCompare(title(b))
+  );
+}
+
 /** What the starport a profile gives a world is called. Spec 6.5.8. */
 export function starportName(letter: string): string {
   return `Starport ${letter}`;
@@ -94,54 +153,10 @@ export function starports(pois: readonly Poi[]): Poi[] {
   return pois.filter((poi) => poi.kind === "starport");
 }
 
-/**
- * What a reroll did to the world's starport. Spec 6.5.8.5.
- *
- * `moved` and `removed` are the two that changed something. `several` is a world
- * carrying more than one, which the reroll will not choose between under
- * 6.5.8.5.3, and `none` covers the rest: a world with no starport to move, a
- * profile that cannot be read, and a surface with nowhere to put one.
- */
-export type StarportRerollOutcome = "moved" | "removed" | "several" | "none";
-
-export interface StarportReroll {
-  /** The list to keep, new in every case, as putPoi and removePoi are. */
-  readonly pois: Poi[];
-  readonly outcome: StarportRerollOutcome;
-}
-
-/**
- * The world's starport after a new profile has been rolled. Spec 6.5.8.5.
- *
- * A reroll is a different kind of world on the same seed, so the class the port
- * is and the ground it stands on have both changed and the site the terrain
- * picked was picked for a world that is gone. The narrative comes across
- * untouched under 6.5.8.5.1: what the user wrote is theirs, and only where the
- * port is and what it is called belong to the profile.
- *
- * `letter` is the starport digit of the new profile, or null where the profile
- * cannot be read. `ref` is where the terrain now puts a port, or null where it
- * has nowhere to put one.
- */
-export function rerollStarport(
-  pois: readonly Poi[],
-  letter: string | null,
-  ref: LatticeRef | null,
-): StarportReroll {
-  const ports = starports(pois);
-  // A world the user has emptied stays empty, and one carrying several is an
-  // arrangement the profile does not get to pick from. Spec 6.5.8.5.3 and .5.
-  if (ports.length === 0) return { pois: [...pois], outcome: "none" };
-  if (ports.length > 1) return { pois: [...pois], outcome: "several" };
-  const port = ports[0]!;
-  // An unreadable profile says nothing either way. Spec 6.5.8.5.4.
-  if (letter === null) return { pois: [...pois], outcome: "none" };
-  // X says the world has no starport, and 6.5.8.3 declines to place one there,
-  // so one already standing goes.
-  if (letter === "X") return { pois: removePoi(pois, port.ref), outcome: "removed" };
-  if (ref === null) return { pois: [...pois], outcome: "none" };
-  const moved: Poi = { ...port, name: starportName(letter), ref };
-  return { pois: putPoi(removePoi(pois, port.ref), moved), outcome: "moved" };
+/** The cities on a world. The starport is the first of them under 6.24.1, and is
+ *  not among these: it is its own kind, because the profile names it. */
+export function cities(pois: readonly Poi[]): Poi[] {
+  return pois.filter((poi) => poi.kind === "city");
 }
 
 /**
@@ -166,10 +181,14 @@ function readPoi(raw: unknown): Poi | null {
   const kind = POI_KINDS.includes(r["kind"] as PoiKind) ? (r["kind"] as PoiKind) : null;
   const ref = readRef(r["ref"]);
   if (kind === null || ref === null) return null;
+  const people = r["population"];
+  const population =
+    typeof people === "number" && Number.isFinite(people) && people >= 0 ? people : null;
   return {
     kind,
     name: typeof r["name"] === "string" ? r["name"] : "",
     narrative: typeof r["narrative"] === "string" ? r["narrative"] : "",
+    ...(population === null ? {} : { population }),
     ref,
   };
 }

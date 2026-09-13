@@ -1,10 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { visibleColour, visibleWorldFor } from "./visible";
+import { orbitalColour } from "./orbital";
+import { biomeWorldFor } from "../gen/biome";
 import { latitudeContrastK, temperatureAtLatitude } from "../gen/climate";
 import type { PlanetDetail } from "../gen/detail";
 
 /**
- * The visible view of 5.7. Colours are checked by what makes them that colour -
+ * The orbital view of 5.7.1.2. Colours are checked by what makes them that colour -
  * greener than it is red, lighter than the ground under it - rather than against
  * exact numbers, so the ramps can be tuned without rewriting the tests.
  */
@@ -35,12 +36,12 @@ const LOWLAND = 0.62;
 type World = { uwp: string; detail: Partial<PlanetDetail> };
 
 const at = (w: World, height: number, latDeg: number, over: Partial<PlanetDetail> = {}) =>
-  visibleColour(
+  orbitalColour(
     height,
     Math.sin((latDeg * Math.PI) / 180),
     false,
     SEA_LEVEL,
-    visibleWorldFor(w.uwp, world({ ...w.detail, ...over })),
+    biomeWorldFor(w.uwp, world({ ...w.detail, ...over })),
   );
 
 const isGreen = (c: readonly number[]) => c[1]! > c[0]! && c[1]! > c[2]!;
@@ -76,9 +77,9 @@ describe("the visible view", () => {
   });
 
   it("draws frozen water white, over sea and over land alike", () => {
-    const w = visibleWorldFor(EARTH.uwp, world());
+    const w = biomeWorldFor(EARTH.uwp, world());
     for (const height of [0.2, LOWLAND]) {
-      const ice = visibleColour(height, 0.99, true, SEA_LEVEL, w);
+      const ice = orbitalColour(height, 0.99, true, SEA_LEVEL, w);
       expect(lightness(ice)).toBeGreaterThan(230);
     }
   });

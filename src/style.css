@@ -4,6 +4,7 @@
      grey for a comment, both bright enough to be seen over sea, land, and ice
      and neither of them the accent the selection is drawn in. */
   --poi-starport: #ff4d47;
+  --poi-city: #4fd1c5;
   --poi-comment: #d7dde6;
   --bg: #14161a;
   --panel: #1c1f25;
@@ -332,6 +333,7 @@ input[type="range"] + .hint { white-space: nowrap; }
 /* Points of interest. Spec 5.5 ------------------------------------------- */
 
 .poi-starport { --poi: var(--poi-starport); }
+.poi-city { --poi: var(--poi-city); }
 .poi-comment { --poi: var(--poi-comment); }
 
 /* An outline rather than a fill, so the terrain under a POI can still be read. */

@@ -6,7 +6,9 @@ import {
   poiPosition,
   putPoi,
   removePoi,
-  rerollStarport,
+  cities,
+  comparePois,
+  markKind,
   starports,
   type Poi,
 } from "./poi";
@@ -235,78 +237,47 @@ describe("the hex a click in the patch lands on", () => {
   });
 });
 
-describe("the starport a reroll speaks for", () => {
-  const comment = (at: LatticeRef, name = "Wreck"): Poi => ({
-    kind: "comment",
+describe("telling the three kinds apart", () => {
+  const city = (name: string, population?: number): Poi => ({
+    kind: "city",
     name,
-    narrative: "Still there.",
-    ref: at,
+    narrative: "",
+    ...(population === undefined ? {} : { population }),
+    ref: ref(3, 12, 4),
+  });
+  const note: Poi = { kind: "comment", name: "A note", narrative: "", ref: ref(4, 8, 2) };
+
+  it("picks them out by kind", () => {
+    const all = [note, city("Karwold"), starport(ref(1, 6, 3))];
+    expect(starports(all)).toHaveLength(1);
+    expect(cities(all)).toHaveLength(1);
   });
 
-  const here = ref(2, 10, 5);
-  const there = ref(7, 20, 11);
-
-  it("renames it to the new class and puts it on the new site", () => {
-    const { pois, outcome } = rerollStarport([starport(here, "Starport A")], "C", there);
-    expect(outcome).toBe("moved");
-    expect(pois).toHaveLength(1);
-    expect(pois[0]!.name).toBe("Starport C");
-    expect(pois[0]!.ref).toEqual(there);
+  it("marks a hex for the most important thing on it. Spec 5.5.5", () => {
+    const port = starport(ref(1, 6, 3));
+    expect(markKind([note, city("Karwold"), port])).toBe("starport");
+    expect(markKind([note, city("Karwold")])).toBe("city");
+    expect(markKind([note])).toBe("comment");
+    expect(markKind([])).toBe("comment");
   });
 
-  it("keeps the narrative, which is the user's and not the profile's", () => {
-    const written: Poi = { ...starport(here, "Port Ozymandias"), narrative: "Burnt out in 1104." };
-    const { pois } = rerollStarport([written], "B", there);
-    expect(pois[0]!.narrative).toBe("Burnt out in 1104.");
-    expect(pois[0]!.kind).toBe("starport");
-  });
-
-  it("leaves the comments on the world alone", () => {
-    const note = comment(ref(4, 6, 2));
-    const { pois } = rerollStarport([note, starport(here)], "D", there);
-    expect(pois).toContainEqual(note);
-    expect(starports(pois)).toHaveLength(1);
-  });
-
-  it("takes the starport away where the new profile is X", () => {
-    const { pois, outcome } = rerollStarport([starport(here), comment(there)], "X", there);
-    expect(outcome).toBe("removed");
-    expect(starports(pois)).toHaveLength(0);
-    // The note about the world is not the profile's business either way.
-    expect(pois).toHaveLength(1);
-  });
-
-  it("moves nothing on a world carrying several", () => {
-    const ports = [starport(here, "Starport A"), starport(ref(9, 4, 1), "The old field")];
-    const { pois, outcome } = rerollStarport(ports, "E", there);
-    expect(outcome).toBe("several");
-    expect(pois).toEqual(ports);
-  });
-
-  it("does not place one on a world the user has emptied", () => {
-    const { pois, outcome } = rerollStarport([comment(here)], "A", there);
-    expect(outcome).toBe("none");
-    expect(starports(pois)).toHaveLength(0);
-  });
-
-  it("leaves it where it is when the profile cannot be read", () => {
-    const { pois, outcome } = rerollStarport([starport(here, "Starport A")], null, there);
-    expect(outcome).toBe("none");
-    expect(pois[0]!.ref).toEqual(here);
-    expect(pois[0]!.name).toBe("Starport A");
-  });
-
-  it("leaves it where it is when the terrain offers nowhere to go", () => {
-    const { pois, outcome } = rerollStarport([starport(here, "Starport A")], "C", null);
-    expect(outcome).toBe("none");
-    expect(pois[0]!.ref).toEqual(here);
-  });
-
-  it("hands back a list of its own rather than the one it was given", () => {
-    const before = [starport(here)];
-    const { pois } = rerollStarport(before, null, there);
-    expect(pois).not.toBe(before);
-    expect(pois).toEqual(before);
+  it("orders a list by kind, then size, then name. Spec 6.5.7.1", () => {
+    const title = (poi: Poi) => poi.name;
+    const list = [
+      note,
+      city("Alpha", 100),
+      starport(ref(1, 6, 3)),
+      city("Zeta", 900),
+      city("Byname"),
+    ];
+    const sorted = [...list].sort((a, b) => comparePois(a, b, title));
+    expect(sorted.map((poi) => poi.name)).toEqual([
+      "Highport",
+      "Zeta",
+      "Alpha",
+      "Byname",
+      "A note",
+    ]);
   });
 });
 
