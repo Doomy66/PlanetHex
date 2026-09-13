@@ -4,9 +4,9 @@ The version in [package.json](package.json) is what the Windows installer of
 `npm run package` names itself after, so it is the one number that reaches a
 user. Dates are the day the release was tagged.
 
-## Unreleased
+## 1.5.0 — 2026-09-13
 
-- **Every hex knows what it is made of.** The visible view worked out cover,
+- **Every hex knows what it is made of.** The orbital view worked out cover,
   weathering, snow and a local temperature for every hex, turned them into a
   colour, and threw them away. A colour is not the answer to the question, so the
   model moved out of the drawing code and into the world model, and now names the
