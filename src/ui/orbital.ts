@@ -8,7 +8,7 @@ import {
   temperatureAt,
   type BiomeWorld,
 } from "../gen/biome";
-import { mix, normalise, parseRgb, rgbText, sample, type Shader, type Stop } from "./colour";
+import { mix, normalise, rgbText, sample, type Shader, type Stop } from "./colour";
 
 /**
  * The world as an eye in orbit would see it. Spec 5.7.1.2.
@@ -134,76 +134,4 @@ export function orbitalColour(
   ground = mix(ground, ICE, snowAt(world, tempK, n));
 
   return iced ? mix(ground, ICE, ICE_COVER) : ground;
-}
-
-/* Built ground ------------------------------------------------------------- */
-
-/**
- * Where people have built, drawn over the ground rather than into it. Spec 5.9.
- *
- * Only the local panel does this, and only because of its scale. A hex of the map
- * is a couple of hundred kilometres across and some sixty thousand square
- * kilometres of ground; the largest built-up area on Earth is an eighth of that,
- * so a hex holding a city is still overwhelmingly whatever the biome says it is,
- * and painting it grey would be the distortion rather than the correction. That is
- * the same reason 5.5.3 draws a point of interest as an outline and not a fill.
- *
- * The local panel is the case that does not hold. Its hexes are sixteen to
- * twenty-seven kilometres across, a couple of hundred square kilometres each, and
- * a city of any size covers dozens of them. There the built ground is the ground.
- *
- * It is drawn in both views. A city is not a height and the terrain ramp is a
- * height map, which was the argument for leaving it out of that one; but the
- * ramp is what the panel is drawing the ground with either way, and a referee
- * looking at the patch wants to know where the town is whichever way they have it
- * coloured. The tint lifts out of the ramp's greens and ochres as readily as out
- * of the biome's.
- */
-
-/**
- * People to the square kilometre of built-up area. Earth's dense cities run
- * between two and ten thousand; the higher end is taken, since a world building
- * upwards holds more of them on the same footprint than one that is not.
- */
-const URBAN_DENSITY = 8000;
-
-/**
- * What built ground reads as from above: the pale warm grey of roof, road and
- * concrete. Lighter than anything growing as well as far less saturated, which is
- * what makes a city read as one from orbit. A darker grey was tried first and
- * came out as a patch of the same weight as the forest around it - a change of
- * colour nobody could see, which is the same as no change at all.
- */
-const URBAN: readonly [number, number, number] = [152, 145, 136];
-
-/** How completely it covers the ground at the middle of a city. Not wholly: parks,
- *  water and the ground between buildings are still there to be seen. */
-const URBAN_COVER = 0.78;
-
-/** The fraction of the radius the built ground holds at full strength before it
- *  starts thinning into suburb, ribbon and then open country. */
-const URBAN_CORE = 0.45;
-
-/** How far a settlement of this many people is built out, in kilometres. */
-export function builtRadiusKm(people: number): number {
-  if (people <= 0) return 0;
-  return Math.sqrt(people / URBAN_DENSITY / Math.PI);
-}
-
-/**
- * How built up a place is, from its distance to a settlement and that
- * settlement's reach. One at the middle, nothing at the edge, and a shoulder
- * between so a city does not end at a line.
- */
-export function builtAt(distanceKm: number, radiusKm: number): number {
-  if (radiusKm <= 0 || distanceKm >= radiusKm) return 0;
-  const t = (radiusKm - distanceKm) / (radiusKm * (1 - URBAN_CORE));
-  return t >= 1 ? 1 : t * t * (3 - 2 * t);
-}
-
-/** A ground colour with however much of it is built on. */
-export function urbanise(colour: string, built: number): string {
-  if (built <= 0) return colour;
-  const amount = built > 1 ? 1 : built;
-  return rgbText(mix(parseRgb(colour), URBAN, amount * URBAN_COVER));
 }

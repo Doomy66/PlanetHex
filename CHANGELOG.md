@@ -4,6 +4,19 @@ The version in [package.json](package.json) is what the Windows installer of
 `npm run package` names itself after, so it is the one number that reaches a
 user. Dates are the day the release was tagged.
 
+## Unreleased
+
+- **A city is drawn as its limits, and nothing else.** Two lines cut from how
+  built up the ground is, by the same tracer the contours use: the edge of the town
+  and the line inside it where the building closes up, in the colour a city is
+  marked in everywhere else. The grey wash that was there before is gone. On a
+  small town it read well enough; on a world of billions the city is wider than the
+  patch and it turned the whole panel grey, which said only that people lived there
+  — true, and useless. Where the edge falls is the thing worth knowing, the terrain
+  underneath is left as it was, and two things drawn for one fact was one too many.
+  The reach model moved to `gen/settle.ts`, where how far a town is built out
+  belongs, leaving `ui/orbital.ts` doing nothing but colour.
+
 ## 1.5.0 — 2026-09-13
 
 - **Every hex knows what it is made of.** The orbital view worked out cover,
