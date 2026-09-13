@@ -4,7 +4,7 @@ The version in [package.json](package.json) is what the Windows installer of
 `npm run package` names itself after, so it is the one number that reaches a
 user. Dates are the day the release was tagged.
 
-## Unreleased
+## 1.5.1 — 2026-09-13
 
 - **A city is drawn as its limits, and nothing else.** Two lines cut from how
   built up the ground is, by the same tracer the contours use: the edge of the town
