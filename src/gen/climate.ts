@@ -157,8 +157,21 @@ function normalQuantile(p: number): number {
  * clouds win. Calibrated so that Earth's oceans and one atmosphere give 0.31.
  */
 export function albedoFor(hydrographicsPct: number, pressureAtm: number): number {
-  const cloud = clamp01(hydrographicsPct / 100) * clamp01(pressureAtm);
-  return ALBEDO_ROCK + ALBEDO_CLOUD * cloud;
+  return ALBEDO_ROCK + ALBEDO_CLOUD * cloudFractionFor(hydrographicsPct, pressureAtm);
+}
+
+/**
+ * How much of a world is under cloud, 0 to 1. Water to lift and air to lift it
+ * into: either at nothing leaves a world with a clear sky, and neither on its own
+ * is worth anything.
+ *
+ * Held apart from the albedo above because 5.10 draws it. The sky a world is
+ * under and the sunlight it sends back are one fact, and reading them off one
+ * number is what stops the globe showing an overcast world the temperature model
+ * has treated as clear.
+ */
+export function cloudFractionFor(hydrographicsPct: number, pressureAtm: number): number {
+  return clamp01(hydrographicsPct / 100) * clamp01(pressureAtm);
 }
 
 /** How much warmer the air keeps the surface than bare sunlight would, in kelvin. */

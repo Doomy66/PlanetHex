@@ -577,6 +577,36 @@ A browser application that generates planet surfaces procedurally and shows them
 
 5.9.6 Nothing here is generated. No height moves, no hex changes what 5.8 calls it, and the exports of 6.17 carry the biome rather than this. It is paint, as the ice of 5.4.6 is.
 
+### 5.10 Cloud
+
+5.10.1 The globe of 4.4 draws the world under its weather. The map and the local panel do not: a hex map is read through, and a sky over it would be an obstruction rather than a picture.
+
+5.10.2 How much cloud a world carries is the figure the albedo of 6.15 is already built on: water to lift and air to lift it into, either at nothing leaving a clear sky. It is read off that one number rather than worked out again, so a world the globe draws overcast cannot be a world the temperature model has been treating as clear.
+
+5.10.3 Where the cloud is, is the circulation of 5.7.2.2 seen from the other side. Air rises over the equator and rains, which is the band along it; it comes down about twenty-six degrees out, dry, which is both the deserts of that clause and the clear belts either side of the waist; and it rises again where the polar air meets it, which is why the fifties are the cloudiest latitudes on Earth. One model and two things drawn from it, so a world's deserts sit under its clear skies by construction rather than by luck.
+
+5.10.3.1 The rest is noise, because weather is. Nothing here is a simulation and nothing moves: it is a still, one plausible afternoon, fixed by the seed so the same world is under the same sky every time it is opened.
+
+5.10.3.2 The noise is sampled in three dimensions on a direction rather than in two on a latitude and a longitude. A sphere passing through a three-dimensional field meets no edge anywhere on it, so there is no seam at the poles and none down the antimeridian.
+
+5.10.3.3 It is put through its own distribution before it is read. Four octaves summed pile up around the middle and reach neither end, so a cover of three quarters compared against the raw figure cleared every sample on the planet and drew solid overcast whatever the profile said. Flattened, the cover is a fraction of the world again.
+
+5.10.4 It is drawn as a translucent shell over the ground rather than as a colour mixed into it. Cloud sits above terrain rather than being part of it, and the coastline underneath has to go on reading as a coastline.
+
+5.10.4.1 From a texture rather than hex by hex. The ground is drawn hexagon by hexagon because a hex is what the map is made of; weather is not, and hexagonal cloud would read as a fault in the sphere.
+
+5.10.4.2 The shell hangs clear of the highest terrain and of the marks of 4.4.8. A point of interest a cloud can swallow is a mark that cannot be found.
+
+5.10.4.3 It is drawn well short of opaque, and that is a choice rather than a measurement. Earth is about two thirds under cloud and a faithful sky would bury the world; this panel exists to show a planet. The cover is modelled honestly and only the paint is softened.
+
+5.10.5 Cloud is a view option, drawn unless the user says otherwise. A world has weather, so a globe that opened without any would be the application knowing something and drawing none of it; but the panel's job is the planet, and a referee who wants the coastline should be able to have it. Like the seams of 4.3.7.1 it says nothing about the world, so it is not saved and does not mark a planet unsaved.
+
+5.10.5.1 Switching it off takes the shell off the world and leaves it built, and switching it back on puts the same one back. The sky has not changed, only whether it is being looked through, and a world should not be under different weather for having been looked at underneath.
+
+5.10.5.2 Nothing is built for a sky nobody is looking at. A world opened with the toggle off works the texture out when it is first turned on rather than at every redraw before that.
+
+5.10.6 Nothing here is generated. No height moves, no hex changes what 5.8 calls it, and nothing a save writes carries it. It is paint, as the ice of 5.4.6 and the built ground of 5.9.6 are.
+
 ## 6. Planet data and persistence
 
 6.1 A save contains the following.

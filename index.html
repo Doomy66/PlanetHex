@@ -67,6 +67,8 @@
             <!-- Beside the slider, since what it is worth depends on the level: at the
                  fine ones a seam is thinner than a pixel. Spec 4.3.7.1. -->
             <label class="inline under"><input id="p-smooth" type="checkbox" /> Smooth</label>
+            <!-- The globe's own, and on to start with: a world has weather. Spec 5.10.6. -->
+            <label class="inline under"><input id="p-clouds" type="checkbox" checked /> Clouds</label>
             <datalist id="detail-stops"><option value="0"></option><option value="1"></option><option value="2"></option><option value="3"></option><option value="4"></option></datalist>
             <!-- Which of the two views of 5.7 all three panels draw. -->
             <label class="spaced">View<select id="p-view">
@@ -253,7 +255,13 @@
           <dt>Right, top</dt>
           <dd>
             The globe, drawn at the size and the axial tilt the profile gives it,
-            and always at the finest detail whatever the slider says.
+            and always at the finest detail whatever the slider says. It is the one
+            panel that draws the weather: cloud where the world has water to lift
+            and air to lift it into, heavy over the equator and along the storm
+            track of the fifties, thin over the dry belts that make the deserts.
+            It does not move &mdash; it is one afternoon, fixed by the seed, and
+            <b>Clouds</b> in the Display section clears it when you want the
+            coastline instead.
           </dd>
           <dt>Right, bottom</dt>
           <dd>
@@ -284,6 +292,11 @@
           safe to move back. The globe ignores it and draws at a level of its own,
           since a hex of the coarse settings covers a swathe of a sphere you are
           seeing all of at once.
+        </p>
+        <p>
+          <b>Clouds</b> draws the globe under its weather, and clearing it gives
+          the bare world back. It is the globe's alone: the map and the local panel
+          are read through, and a sky over them would be in the way.
         </p>
         <p>
           <b>Smooth</b> beside the slider draws the ground without the seams

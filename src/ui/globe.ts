@@ -3,6 +3,7 @@ import { OrbitControls } from "three/addons/controls/OrbitControls.js";
 import type { Grid } from "../grid/grid";
 import type { Vec3 } from "../grid/vec3";
 import type { Shader } from "./colour";
+import { cloudAt, type CloudWorld } from "../gen/cloud";
 import { isIced, type IceCaps } from "../gen/ice";
 import type { PoiKind } from "../poi";
 
@@ -45,6 +46,27 @@ const RESUME_SPIN_MS = 2500;
 const SELECT_LIFT = 1.004;
 /** POI rings sit a shade further out than the selection, so the two never z-fight. */
 const POI_LIFT = 1.006;
+/**
+ * The cloud shell of 5.10, and how far above the ground it hangs. Far enough to
+ * clear the highest terrain and the marks of 4.4.8, since a point of interest a
+ * cloud can swallow is a mark that cannot be found.
+ */
+const CLOUD_LIFT = 1.012;
+/**
+ * The cloud texture, longitude across and latitude down. Small on purpose: cloud
+ * has no edge to soften and a sphere a few hundred pixels across cannot show more
+ * than this, and it is redrawn pixel by pixel every time a world changes.
+ */
+const CLOUD_TEXTURE = { width: 320, height: 160 } as const;
+/**
+ * How solid the thickest cloud is drawn.
+ *
+ * Well short of opaque, and that is a choice rather than a measurement. Earth is
+ * about two thirds under cloud and a faithful sky would bury the world; this panel
+ * exists to show a planet, so the sky is drawn thin enough to read the coastline
+ * through. The cover is modelled honestly and only the paint is softened.
+ */
+const CLOUD_ALPHA = 0.62;
 /** Fallbacks, should the stylesheet not have been read yet. */
 const POI_FALLBACK: Record<PoiKind, string> = {
   starport: "#ff4d47",
@@ -75,12 +97,20 @@ export interface Globe {
     caps: IceCaps | null,
     /** How the view of 5.7 colours a place on this world. */
     shade: Shader,
+    /** The sky the world is under. Spec 5.10. */
+    clouds: CloudWorld,
     axialTiltDeg: number,
   ): void;
   /** The hex to mark, by its corners, or null for none. Spec 4.4.4. */
   setSelected(corners: readonly Vec3[] | null): void;
   /** The hexes carrying a POI, ringed in the colour of their kind. Spec 4.4.8. */
   setPois(marks: readonly GlobeMark[]): void;
+  /**
+   * Draw the world under its weather, or clear. Spec 5.10.6. A view option, so
+   * the shell already built is put back rather than worked out again: the sky has
+   * not changed, only whether it is being looked through.
+   */
+  setClouds(on: boolean): void;
   /** Where on the sphere a click landed, as a direction from its centre. */
   onSelect(handler: (at: Vec3) => void): void;
   /** Back to the starting viewpoint, so a new planet's size can be read. Spec 4.4.5.2. */
@@ -200,6 +230,14 @@ export function createGlobe(): Globe {
   axis.add(poleLine());
 
   let surface: THREE.Mesh | null = null;
+  let shell: THREE.Mesh | null = null;
+  /** What the shell in hand was built for, so an unchanged sky is not redrawn. */
+  let shellKey = "";
+  /** Whether the user wants the weather drawn. Spec 5.10.6. */
+  let showSky = true;
+  /** The sky of the world in hand, so switching the toggle back on has one to
+   *  build from without waiting for the next redraw. */
+  let sky: CloudWorld | null = null;
   let highlight: THREE.Mesh | null = null;
   // On the spinning group, so a mark turns with the ground it is drawn on.
   const poiLayer = new THREE.Group();
@@ -213,6 +251,7 @@ export function createGlobe(): Globe {
     diameterKm: number | null,
     caps: IceCaps | null,
     shade: Shader,
+    clouds: CloudWorld,
     axialTiltDeg: number,
   ): void {
     disposeSurface();
@@ -263,6 +302,7 @@ export function createGlobe(): Globe {
       new THREE.MeshLambertMaterial({ vertexColors: true, flatShading: true }),
     );
     spin.add(surface);
+    drawClouds(clouds);
     // The corners the marks are drawn from have just been rebuilt, so the marks
     // are drawn again from the new ones.
     drawPois();
@@ -334,7 +374,96 @@ export function createGlobe(): Globe {
     spin.add(highlight);
   }
 
+  /**
+   * The cloud shell. Spec 5.10.3: a translucent sphere over the ground rather than
+   * a colour mixed into it, because cloud is above the terrain rather than part of
+   * it and the coastline underneath has to go on reading as a coastline.
+   *
+   * Drawn from an equirectangular texture rather than per hex. The ground is drawn
+   * hexagon by hexagon because a hex is what the map is made of; cloud is not, and
+   * hexagonal weather would read as a fault in the sphere.
+   *
+   * Held between redraws where the sky has not changed, since it is the same
+   * fifty thousand samples every time and nothing about it moves when the detail
+   * level or the view does.
+   */
+  function drawClouds(clouds: CloudWorld): void {
+    sky = clouds;
+    // Nothing is built for a sky nobody is looking at. The world is remembered
+    // above, so turning the toggle back on builds it then.
+    if (!showSky) return;
+    const key = `${clouds.seed}|${clouds.cover.toFixed(4)}`;
+    if (shell !== null && key === shellKey) {
+      applyClouds();
+      return;
+    }
+    disposeClouds();
+    shellKey = key;
+    if (clouds.cover <= 0) return;
+
+    const { width, height } = CLOUD_TEXTURE;
+    const canvas = document.createElement("canvas");
+    canvas.width = width;
+    canvas.height = height;
+    const context = canvas.getContext("2d");
+    if (context === null) return;
+    const image = context.createImageData(width, height);
+    for (let y = 0; y < height; y++) {
+      // The centre of the row, as the plate of 6.21 takes it: a row stands for a
+      // band of latitude and the pole belongs at the edge rather than inside it.
+      const lat = (0.5 - (y + 0.5) / height) * Math.PI;
+      const cosLat = Math.cos(lat);
+      const sinLat = Math.sin(lat);
+      for (let x = 0; x < width; x++) {
+        const lon = ((x + 0.5) / width - 0.5) * 2 * Math.PI;
+        const thickness = cloudAt(clouds, [cosLat * Math.cos(lon), sinLat, cosLat * Math.sin(lon)]);
+        const at = (y * width + x) * 4;
+        image.data[at] = 255;
+        image.data[at + 1] = 255;
+        image.data[at + 2] = 255;
+        image.data[at + 3] = Math.round(thickness * CLOUD_ALPHA * 255);
+      }
+    }
+    context.putImageData(image, 0, 0);
+
+    const texture = new THREE.CanvasTexture(canvas);
+    texture.colorSpace = THREE.SRGBColorSpace;
+    // Longitude wraps and latitude does not, so only the one axis repeats.
+    texture.wrapS = THREE.RepeatWrapping;
+    texture.wrapT = THREE.ClampToEdgeWrapping;
+    shell = new THREE.Mesh(
+      new THREE.SphereGeometry(CLOUD_LIFT, 64, 48),
+      new THREE.MeshLambertMaterial({
+        map: texture,
+        transparent: true,
+        // Lit by the same sun as the ground, so the terminator runs across both.
+        depthWrite: false,
+      }),
+    );
+    applyClouds();
+  }
+
+  /** Put the shell on the world, or take it off, without rebuilding it. */
+  function applyClouds(): void {
+    if (shell === null) return;
+    if (showSky) spin.add(shell);
+    else spin.remove(shell);
+  }
+
+  function disposeClouds(): void {
+    if (shell === null) return;
+    spin.remove(shell);
+    shell.geometry.dispose();
+    const material = shell.material as THREE.MeshLambertMaterial;
+    material.map?.dispose();
+    material.dispose();
+    shell = null;
+  }
+
   function disposeSurface(): void {
+    // The shell is taken off with it and put back by drawClouds, which keeps the
+    // cloud drawn over the ground rather than under the next one.
+    if (shell !== null) spin.remove(shell);
     if (!surface) return;
     spin.remove(surface);
     surface.geometry.dispose();
@@ -403,6 +532,16 @@ export function createGlobe(): Globe {
     render,
     setSelected,
     setPois,
+    setClouds(on) {
+      showSky = on;
+      if (!on) {
+        applyClouds();
+      } else if (shell === null && sky !== null) {
+        drawClouds(sky);
+      } else {
+        applyClouds();
+      }
+    },
     resetView,
     onSelect(handler) {
       handlers = [...handlers, handler];
