@@ -164,6 +164,11 @@ body {
    deep sea, where there is least colour behind it to hold it down, and the lines
    then shout loudest exactly where they say least. Spec 4.5.8.5. */
 .localview .contour-sea { stroke: rgba(150, 194, 236, 0.62); }
+/* City limits, Spec 5.9.4. The colour a city is marked in everywhere else, so the
+   ring on the hex and the edge of the town read as the one thing. */
+.localview .city-limits path { fill: none; stroke-linejoin: round; }
+.localview .city-edge { stroke: var(--poi-city); stroke-width: 0.16; opacity: 0.8; }
+.localview .city-core { stroke: var(--poi-city); stroke-width: 0.1; opacity: 0.55; }
 /* With contours on, the seams between hexes give way to the lines: a seam left
    under a contour line is the same mark saying less. The fills themselves carry
    no class; the selection outline and the POI rings do, and keep their strokes.

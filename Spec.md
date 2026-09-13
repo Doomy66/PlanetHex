@@ -559,23 +559,29 @@ A browser application that generates planet surfaces procedurally and shows them
 
 5.8.3 Both exports of 6.17 carry it, in a column of its own beside the terrain band rather than in place of it. The band is what those files have always carried and a reader is entitled to keep getting it.
 
-### 5.9 Built ground
+### 5.9 Where a settlement reaches
 
-5.9.1 The local panel of 4.5 draws what people have built over the ground they built it on, in both of the views of 5.7. The map and the globe do not.
+5.9.1 The local panel of 4.5 draws a settlement as its limits: two lines, the edge of the town and the line inside it where the building closes up. The map and the globe draw nothing of it beyond the mark of 5.5.
 
-5.9.1.1 It was the visible view alone at first, on the grounds that the terrain ramp is a height map and a city is not a height. But the ramp is what the panel is drawing the ground with either way, and a referee looking at the patch wants to know where the town is whichever way they have it coloured. The tint lifts out of the ramp's greens and ochres as readily as out of the biome's.
+5.9.2 It is a question of scale. A hex of the map is a couple of hundred kilometres across and some sixty thousand square kilometres of ground; the largest built-up area on Earth is an eighth of that, so a hex holding a city is still overwhelmingly whatever 5.8 says it is. The local panel's hexes are sixteen to twenty-seven kilometres across, a couple of hundred square kilometres each, and a city of any size covers dozens of them. That is where the question starts being worth asking.
 
-5.9.2 It is a question of scale rather than of principle. A hex of the map is a couple of hundred kilometres across and some sixty thousand square kilometres of ground. The largest built-up area on Earth is an eighth of that, so a hex holding a city is still overwhelmingly whatever 5.8 says it is, and painting it over would be the distortion rather than the correction. It is the same reasoning 5.5.3 draws a point of interest as an outline and not a fill.
+5.9.3 How far a settlement is built out follows from how many people it holds, at a density of eight thousand to the square kilometre. Earth's dense cities run between two and ten thousand; the higher end is taken, since a world building upwards holds more of them on the same footprint than one that is not. It is solid across the middle and thins from there, so the limits fall where the town thins rather than at a ring drawn round it.
 
-5.9.2.1 The local panel is the case that does not hold. Its hexes are sixteen to twenty-seven kilometres across, a couple of hundred square kilometres each, and a city of any size covers dozens of them. There the built ground is the ground, and drawing it as forest is the map saying something it knows to be false.
+5.9.4 The lines are cut by the contour tracer of 4.5.8, from how built up the ground is instead of from how high it is. It is the same question asked of a different field, so it is the same code: a line on the sides between hexes that fall either side of a level, with every hex wholly on one side of it.
 
-5.9.3 How far a settlement is built out follows from how many people it holds, at a density of eight thousand to the square kilometre. Earth's dense cities run between two and ten thousand; the higher end is taken, since a world building upwards holds more of them on the same footprint than one that is not.
+5.9.4.1 It was a wash first, laid over the ground colour. On a small town that reads. On a world of billions the city is wider than the patch, and the wash turned the whole panel grey and said only that people lived there, which is true and useless. Where the edge falls is the thing worth knowing, and a line is what says it.
 
-5.9.4 It is drawn full strength across the middle and thins to nothing at the edge, so a city does not end at a line. What it thins into is the ground of 5.8, which is still being drawn underneath: the built colour is laid over the biome rather than replacing it, and a city in a desert and a city in a forest are not the same colour.
+5.9.4.2 The wash went entirely rather than being softened. Two things drawn for one fact is one too many, and the fainter it was made the more it was a smudge over terrain the panel had gone to some trouble to get right.
 
-5.9.5 The colour is a pale warm grey, and pale on purpose. A darker one was tried first and came out the same weight as the forest around it, which is a change of colour nobody can see and therefore no change at all.
+5.9.4.3 The lines are drawn in the colour a city is marked in under 5.5.5, so the ring on its hex and the edge of its ground read as the one thing.
 
-5.9.6 Nothing here is generated. No height moves, no hex changes what 5.8 calls it, and the exports of 6.17 carry the biome rather than this. It is paint, as the ice of 5.4.6 is.
+5.9.4.4 Two, and no more. A town has an edge and a middle and nothing else worth a line; a ladder of them would be reading a precision into a figure worked out from one digit of a profile.
+
+5.9.4.5 They belong to the flat view, as the contours of 4.5.8.7 do, and for the same reason. They are not tied to the contour toggle: that switch is for the ground's own lines, and a city is not a height.
+
+5.9.4.6 A city wider than the patch has its limits outside it and draws none. That is the honest answer: the panel is showing ground that is all of it inside the town, and there is no edge in view to draw. The mark of 5.5 still says the settlement is there.
+
+5.9.5 Nothing here is generated. No height moves, no hex changes what 5.8 calls it, and the exports of 6.17 carry the biome rather than this. It is drawn, as the ice of 5.4.6 is.
 
 ### 5.10 Cloud
 

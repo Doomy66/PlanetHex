@@ -6,7 +6,7 @@ import { add, normalise, scale, type Vec3 } from "../grid/vec3";
 import { fieldSizeFor, openHeightField, type HeightFieldOptions } from "../gen/field";
 import { NO_CRATERS, type CraterField } from "../gen/crater";
 import type { Shader } from "./colour";
-import { builtAt, builtRadiusKm, urbanise } from "./orbital";
+import { builtAt, builtRadiusKm } from "../gen/settle";
 import { scaleBar, stepKm } from "./scale";
 import { isIced, type IceCaps } from "../gen/ice";
 import { planContours, traceContours, type Step } from "./contour";
@@ -42,6 +42,13 @@ export const RINGS = 2.5;
  * where the colour turns by anything a contour line could sit beside.
  */
 const OVERLAP = 1.04;
+
+/**
+ * Where the city limits of 5.9.4 are drawn: the edge of settlement, and the line
+ * inside it where the building closes up. Two lines rather than a ladder of them,
+ * since a town has an edge and a middle and nothing else worth a line.
+ */
+const CITY_LIMITS: readonly number[] = [0.16, 0.62];
 
 export interface LocalInput {
   readonly grid: Grid;
@@ -252,9 +259,8 @@ export function createLocalView(): LocalView {
             return reach <= 0 ? [] : [{ at: poiPosition(poi.ref), reach }];
           });
 
-    /** A ground colour with whatever is built on that spot laid over it. */
-    const built = (colour: string, at: Vec3): string => {
-      if (towns.length === 0) return colour;
+    /** How built up a spot is, taking the nearest town that reaches it. */
+    const builtOn = (at: Vec3): number => {
       let most = 0;
       for (const town of towns) {
         const dot = at[0] * town.at[0] + at[1] * town.at[1] + at[2] * town.at[2];
@@ -262,11 +268,13 @@ export function createLocalView(): LocalView {
         const amount = builtAt(km, town.reach);
         if (amount > most) most = amount;
       }
-      return urbanise(colour, most);
+      return most;
     };
 
     /** Every height the patch found, kept for the contours of 4.5.8 to cut. */
     const heights = new Map<string, number>();
+    /** The same for how built up each hex is, which 5.9.4 cuts its limits from. */
+    const builtBy = new Map<string, number>();
     /** One hex of the patch, sampled but not yet drawn. */
     interface Found {
       readonly dp: number;
@@ -278,8 +286,10 @@ export function createLocalView(): LocalView {
       /** Where the hex sits between the equator and a pole, which is what the
        *  visible view of 5.7 reads a temperature off. */
       readonly sinLat: number;
-      /** The colour it is drawn in, ground and whatever is built on it. */
+      /** The colour the view of 5.7 gives it. */
       readonly colour: string;
+      /** How built up it is, 0 to 1, which the city limits of 5.9.4 are cut from. */
+      readonly built: number;
     }
     const found: Found[] = [];
     let low = Infinity;
@@ -298,6 +308,7 @@ export function createLocalView(): LocalView {
         const sample = sampleAt(field, home.face, fine, i, j);
         if (sample === null) continue;
         const iced = isIced(input.caps, sample.y);
+        const built = builtOn(sample.at);
         found.push({
           dp,
           dq,
@@ -306,9 +317,11 @@ export function createLocalView(): LocalView {
           height: sample.height,
           iced,
           sinLat: sample.y,
-          colour: built(shade(sample.height, sample.y, iced), sample.at),
+          colour: shade(sample.height, sample.y, iced),
+          built,
         });
         heights.set(`${dp},${dq}`, sample.height);
+        if (built > 0) builtBy.set(`${dp},${dq}`, built);
         if (sample.height < low) low = sample.height;
         if (sample.height > high) high = sample.height;
       }
@@ -358,6 +371,33 @@ export function createLocalView(): LocalView {
           line.segments.map(({ from, to }) => `M${flat(from)}L${flat(to)}`).join(""),
         );
         path.setAttribute("class", shadeOf(line.level));
+        group.append(path);
+      }
+      if (group.childElementCount > 0) lines.push(group);
+    }
+
+    // The city limits of 5.9.4, cut from how built up the ground is by the same
+    // tracer the contours use. A line rather than a wash, because on a world of
+    // billions the wash covered the whole patch and said only that people lived
+    // there; where the edge of the town falls is the thing worth knowing.
+    if (view === null && builtBy.size > 0) {
+      const traced = traceContours(
+        // A hex the patch found but nothing is built on is nothing built, not an
+        // absence. Only a hex off the patch has no answer.
+        (dp, dq) => (heights.has(`${dp},${dq}`) ? (builtBy.get(`${dp},${dq}`) ?? 0) : null),
+        reach,
+        CITY_LIMITS,
+      );
+      const group = document.createElementNS(SVG_NS, "g");
+      group.setAttribute("class", "city-limits");
+      for (const line of traced) {
+        if (line.segments.length === 0) continue;
+        const path = document.createElementNS(SVG_NS, "path");
+        path.setAttribute(
+          "d",
+          line.segments.map(({ from, to }) => `M${flat(from)}L${flat(to)}`).join(""),
+        );
+        path.setAttribute("class", line.level >= CITY_LIMITS[1]! ? "city-core" : "city-edge");
         group.append(path);
       }
       if (group.childElementCount > 0) lines.push(group);

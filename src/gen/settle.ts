@@ -372,3 +372,49 @@ export function populationNote(people: number): string {
   if (people <= 0) return "A settlement of no recorded population.";
   return `Population about ${compactNumber(people)}.`;
 }
+
+/* How far a settlement reaches -------------------------------------------- */
+
+/**
+ * How far out a settlement is built, and how the ground thins from its middle to
+ * its edge. Spec 5.9.
+ *
+ * Read by the local panel of 4.5 and by nothing else, because of its scale. A hex
+ * of the map is a couple of hundred kilometres across and some sixty thousand
+ * square kilometres of ground; the largest built-up area on Earth is an eighth of
+ * that, so a hex holding a city is still overwhelmingly whatever 5.8 says it is.
+ * A local hex is a couple of hundred square kilometres and a city covers dozens of
+ * them, which is where the question starts being worth asking.
+ *
+ * What the panel makes of it is 5.9.4's business: two lines, cut from this by the
+ * contour tracer of 4.5.8. Nothing here draws anything.
+ */
+
+/**
+ * People to the square kilometre of built-up area. Earth's dense cities run
+ * between two and ten thousand; the higher end is taken, since a world building
+ * upwards holds more of them on the same footprint than one that is not.
+ */
+const URBAN_DENSITY = 8000;
+
+/** The fraction of the radius that is solidly built before it starts thinning
+ *  into suburb, ribbon and then open country. */
+const URBAN_CORE = 0.45;
+
+/** How far a settlement of this many people is built out, in kilometres. */
+export function builtRadiusKm(people: number): number {
+  if (people <= 0) return 0;
+  return Math.sqrt(people / URBAN_DENSITY / Math.PI);
+}
+
+/**
+ * How built up a place is, from its distance to a settlement and that
+ * settlement's reach. One at the middle, nothing at the edge, and a shoulder
+ * between, so the limits cut from it fall where the town thins rather than at a
+ * ring drawn round it.
+ */
+export function builtAt(distanceKm: number, radiusKm: number): number {
+  if (radiusKm <= 0 || distanceKm >= radiusKm) return 0;
+  const t = (radiusKm - distanceKm) / (radiusKm * (1 - URBAN_CORE));
+  return t >= 1 ? 1 : t * t * (3 - 2 * t);
+}
