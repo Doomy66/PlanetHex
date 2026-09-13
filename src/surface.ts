@@ -10,6 +10,7 @@ import { buildCraterField, craterOptionsFor, type CraterField, type CraterOption
 import { DEFAULT_SEA_LEVEL, surveyShader, type Shader, type ViewMode } from "./ui/colour";
 import { orbitalShader } from "./ui/orbital";
 import { biomeWorldFor, type BiomeWorld } from "./gen/biome";
+import { cloudWorldFor, type CloudWorld } from "./gen/cloud";
 import type { Planet } from "./planet";
 
 /**
@@ -38,6 +39,8 @@ export interface Surface {
   readonly verdancy: number;
   /** What the ground is made of, place by place. Spec 5.8. */
   readonly biome: BiomeWorld;
+  /** The sky it is under. Spec 5.10. */
+  readonly clouds: CloudWorld;
 }
 
 /**
@@ -113,6 +116,7 @@ export function surfaceOn(planet: Planet, detail: PlanetDetail, grid: Grid): Sur
     caps: iceCapsFor(planet.uwp, detail),
     verdancy: verdancyFor(planet.uwp, detail),
     biome: biomeWorldFor(planet.uwp, detail),
+    clouds: cloudWorldFor(planet.seed, detail),
   };
 }
 

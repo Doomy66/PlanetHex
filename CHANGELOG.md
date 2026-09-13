@@ -48,6 +48,23 @@ user. Dates are the day the release was tagged.
   the common case: a sector is a thousand years of several languages settling each
   other's worlds, and most of its names are that mixture rather than any one tongue
   kept clean.
+- **Cloud on the globe.** How much of it a world carries is the figure the albedo
+  was already built on — water to lift and air to lift it into — so a world drawn
+  overcast cannot be one the temperature model has been treating as clear. Where it
+  sits is the circulation that makes the deserts, read from the other side: heavy
+  over the equator, clear over the dry belts at twenty-six degrees, heavy again
+  along the storm track of the fifties. A world's deserts lie under its clear skies
+  by construction rather than by luck. The rest is noise, because weather is, and it
+  does not move: one afternoon, fixed by the seed.
+  - Drawn as a translucent shell from a texture rather than hex by hex. A hex is
+    what the map is made of and weather is not, and hexagonal cloud would read as a
+    fault in the sphere.
+  - **Clouds** in the Display section clears it, for when you want the coastline
+    rather than the weather. On to start with, since a world has weather. Switching
+    it off takes the shell off and leaves it built, so the same sky comes back.
+  - Well short of opaque, deliberately. Earth is two thirds under cloud and a
+    faithful sky would bury the world; the cover is modelled honestly and only the
+    paint is softened.
 - **The views are called Survey and Orbital**, and Orbital is what a world opens
   in. They were Terrain and Visible: both views draw terrain, so the first named
   nothing that told it apart, and "visible" reads as a switch for whether a thing

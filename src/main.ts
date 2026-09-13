@@ -124,6 +124,8 @@ interface State {
   caps: IceCaps | null;
   /** Whether the map draws the ground without its hex seams. A view option. Spec 4.3.7.1. */
   smooth: boolean;
+  /** Whether the globe draws the world under its weather. Spec 5.10.6. */
+  sky: boolean;
   /** Whether the local panel draws contour lines. A view option, so not saved. Spec 4.5.8. */
   contours: boolean;
   /** Whether the local panel draws the patch in relief. Also a view option. Spec 4.5.9. */
@@ -205,6 +207,7 @@ const state: State = (() => {
     shade: orbitalShader(DEFAULT_SEA_LEVEL, biome),
     caps: null,
     smooth: false,
+    sky: true,
     contours: false,
     isometric: false,
     selected: null,
@@ -281,6 +284,7 @@ function resurface(): void {
     state.diameterKm,
     state.caps,
     state.shade,
+    surface.clouds,
     detail.axialTiltDeg,
   );
   showSelection(state.selected);
@@ -805,6 +809,13 @@ showView();
 
 // The two view options redraw the one panel they change, and nothing else: they
 // say nothing about the world, so they neither resurface it nor mark it unsaved.
+// The sky is already built, so this only decides whether it is on the world. The
+// globe is not rebuilt for it, as the seams of 4.3.7.1 do not rebuild the map.
+el<HTMLInputElement>("p-clouds").addEventListener("change", (event) => {
+  state.sky = (event.target as HTMLInputElement).checked;
+  globe.setClouds(state.sky);
+});
+
 el<HTMLInputElement>("show-contours").addEventListener("change", (event) => {
   state.contours = (event.target as HTMLInputElement).checked;
   showFocus();
