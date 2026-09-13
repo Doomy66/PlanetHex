@@ -29,11 +29,22 @@ import { DEFAULT_FIELD_OPTIONS, type HeightFieldOptions } from "./gen/field";
 import { newPlanet, parseUwp, rollUwp, type Planet } from "./planet";
 import { starportSite } from "./gen/site";
 import {
+  MAX_SETTLEMENTS,
+  populationNote,
+  populationShares,
+  settlementCount,
+  settlementNames,
+  settlementSites,
+} from "./gen/settle";
+import {
   poiAt,
   poiPlacements,
+  poiPosition,
+  markKind,
+  comparePois,
   putPoi,
   removePoi,
-  rerollStarport,
+  cities,
   starportName,
   starports,
   type Poi,
@@ -54,12 +65,14 @@ import { createGlobe } from "./ui/globe";
 import { createLocalView } from "./ui/local";
 import {
   DEFAULT_SEA_LEVEL,
+  normalise,
   terrainBand,
-  terrainShader,
   type Shader,
   type ViewMode,
 } from "./ui/colour";
 import { DEFAULT_VERDANCY } from "./gen/life";
+import { biomeAt, biomeWorldFor, type BiomeWorld } from "./gen/biome";
+import { orbitalShader } from "./ui/orbital";
 import {
   download,
   isSupported,
@@ -101,6 +114,8 @@ interface State {
   craters: CraterField;
   /** How green the land is drawn, from bare rock to an Earth. Spec 5.6. */
   verdancy: number;
+  /** What the ground is made of, place by place. Spec 5.8. */
+  biome: BiomeWorld;
   /** Which of the two views of 5.7 the three panels are drawing. */
   view: ViewMode;
   /** That view, as the function the panels colour a hex with. */
@@ -165,9 +180,13 @@ function globeGrid(): Grid {
 const local = createLocalView();
 el("local-view").append(local.element);
 
+/** The view a session opens in. Spec 5.7.1.3: the world as it looks. */
+const DEFAULT_VIEW: ViewMode = "orbital";
+
 const state: State = (() => {
   const planet = newPlanet();
   const grid = buildGrid(planet.size);
+  const biome = biomeWorldFor("", planetDetail(planet.seed, planet.uwp));
   return {
     planet,
     grid,
@@ -178,8 +197,12 @@ const state: State = (() => {
     options: DEFAULT_FIELD_OPTIONS,
     craters: NO_CRATERS,
     verdancy: DEFAULT_VERDANCY,
-    view: "terrain",
-    shade: terrainShader(DEFAULT_SEA_LEVEL, DEFAULT_VERDANCY),
+    biome,
+    view: DEFAULT_VIEW,
+    // Replaced by the first resurface, which has a real world to read. Built from
+    // the same view the session opens in so that nothing is ever drawn in one and
+    // described as the other.
+    shade: orbitalShader(DEFAULT_SEA_LEVEL, biome),
     caps: null,
     smooth: false,
     contours: false,
@@ -245,6 +268,7 @@ function resurface(): void {
   state.diameterKm = surface.diameterKm;
   state.caps = surface.caps;
   state.verdancy = surface.verdancy;
+  state.biome = surface.biome;
   state.shade = shaderFor(surface, state.view);
   map.render(state.grid, state.heights, state.diameterKm, state.caps, state.shade);
   // The finest grid the application has, read off the field the surface was just
@@ -478,6 +502,9 @@ for (const key of ["name", "sector", "uwp", "narrative"] as const) {
     if (key === "uwp") {
       showDetail();
       resurface();
+      // After the surface, so the sites are chosen on the ground the new profile
+      // makes rather than on the ground the old one made. Spec 6.24.10.
+      resettleIfStale();
     }
     markDirty();
   });
@@ -511,6 +538,8 @@ fields.seed.addEventListener("change", () => {
   showDetail();
   markDirty();
   regenerate();
+  // New ground under them, and new names for them. Spec 6.24.10.1.
+  resettleIfStale();
   say(`Regenerated from seed ${seed}.`);
 });
 
@@ -633,36 +662,27 @@ el("reset-world").addEventListener("click", (event) => {
   say("World settings back to what the seed and the profile give.");
 });
 
-// Spec 6.5.8.5: a reroll is a different kind of world on the same seed, so the
-// starport it came with is renamed to the new class and put where the new
-// terrain wants it. Resurfacing comes first, since the site is read off the
-// heights and the sea level the new profile makes. Typing a digit does none of
-// this, under 6.5.8.5.2.
+// Spec 6.5.8.5: a roll is a different kind of world on the same seed, so the
+// port and the cities are placed again on the ground the new profile makes.
+// Resurfacing comes first, since the sites are read off the heights and the sea
+// level that profile produces rather than off the ones it replaced.
 el("roll-uwp").addEventListener("click", () => {
   state.planet.uwp = rollUwp(state.planet.seed + ":" + Date.now());
   fields.uwp.value = state.planet.uwp;
   showDetail();
   resurface();
-  const uwp = parseUwp(state.planet.uwp);
-  const { pois, outcome } = rerollStarport(
-    state.planet.pois,
-    uwp === null ? null : uwp.starport,
-    starportRef(),
-  );
-  state.planet.pois = pois;
+  // A roll is a different world on the same seed, so everything the profile puts
+  // on the ground is put there again: the port of 6.5.8 and the cities of 6.24,
+  // by the one rule in 6.24.10 rather than by a second one of its own.
+  resettleIfStale();
   markDirty();
-  if (outcome === "none") {
-    say(`Rolled ${state.planet.uwp}.`);
-    return;
-  }
-  showPois();
-  if (outcome === "moved") {
-    const port = starports(state.planet.pois)[0]!;
-    say(`Rolled ${state.planet.uwp}. ${port.name} moved to ${formatLattice(port.ref)}.`);
-  } else if (outcome === "removed") {
+  const port = starports(state.planet.pois)[0];
+  if (port === undefined) {
     say(`Rolled ${state.planet.uwp}, which gives the world no starport, so it has none.`);
   } else {
-    say(`Rolled ${state.planet.uwp}. The world has several starports, so none was moved.`);
+    const towns = cities(state.planet.pois).length;
+    const also = towns === 0 ? "" : ` and ${towns} ${towns === 1 ? "city" : "cities"}`;
+    say(`Rolled ${state.planet.uwp}. ${port.name} on ${formatLattice(port.ref)}${also}.`);
   }
 });
 
@@ -681,7 +701,15 @@ function showHex(id: number | null): void {
   const lon = (Math.atan2(z, x) * 180) / Math.PI;
   el("h-id").textContent = formatRef(state.refs.of[id]!);
   el("h-height").textContent = height.toFixed(3);
-  el("h-band").textContent = terrainBand(height, state.seaLevel, isIced(state.caps, cell.centre[1]));
+  const iced = isIced(state.caps, cell.centre[1]);
+  el("h-band").textContent = terrainBand(height, state.seaLevel, iced);
+  // What the ground is, beside how high it is. Two questions, two answers. Spec 5.8.2.
+  el("h-ground").textContent = biomeAt(
+    state.biome,
+    normalise(height, state.seaLevel),
+    cell.centre[1],
+    iced,
+  );
   el("h-sides").textContent = cell.isPentagon ? "5 (vertex hex)" : "6";
   el("h-latlon").textContent = `${lat.toFixed(1)}°, ${lon.toFixed(1)}°`;
   // Every one the hex covers, named, for the reason 4.3.5.1 gives for the
@@ -759,16 +787,17 @@ el<HTMLInputElement>("p-smooth").addEventListener("change", (event) => {
 // resurfaces the planet nor marks it unsaved. All three panels read it, so all
 // three are redrawn.
 const VIEW_NOTES: Readonly<Record<ViewMode, string>> = {
-  terrain: "Height: blue sea, ground, grey and white peaks.",
-  visible: "From orbit: green where things grow, brown desert, grey bare rock, white ice.",
+  orbital: "As it looks: green where things grow, brown desert, grey rock, white ice.",
+  survey: "As it measures: blue sea, ground, grey and white peaks by height.",
 };
 
 function showView(): void {
+  el<HTMLSelectElement>("p-view").value = state.view;
   el("view-note").textContent = VIEW_NOTES[state.view];
 }
 
 el<HTMLSelectElement>("p-view").addEventListener("change", (event) => {
-  state.view = (event.target as HTMLSelectElement).value === "visible" ? "visible" : "terrain";
+  state.view = (event.target as HTMLSelectElement).value === "survey" ? "survey" : "orbital";
   showView();
   resurface();
 });
@@ -821,7 +850,25 @@ const poiFields = {
 /** The hex the open dialogue is about. Null while it is shut. */
 let editing: LatticeRef | null = null;
 
-const KIND_LABEL: Record<PoiKind, string> = { starport: "Starport", comment: "Comment" };
+const KIND_LABEL: Record<PoiKind, string> = {
+  starport: "Starport",
+  city: "City",
+  comment: "Comment",
+};
+
+/**
+ * What a point of interest says when it is pointed at. Spec 4.3.5.1.
+ *
+ * The same three things the map's tooltip gives, in the plain text a title
+ * attribute takes: what it is called, what kind it is, and whatever has been
+ * written about it. A count says something is there and not what, and that is as
+ * true of the list as it is of the map.
+ */
+function poiTooltip(poi: Poi): string {
+  const lines = [poiTitle(poi), KIND_LABEL[poi.kind]];
+  if (poi.narrative.trim() !== "") lines.push("", poi.narrative.trim());
+  return lines.join("\n");
+}
 
 function poiTitle(poi: Poi): string {
   return poi.name.trim() === "" ? KIND_LABEL[poi.kind] : poi.name;
@@ -841,12 +888,10 @@ function showPois(): void {
     else state.poisByCell.set(cell, [poi]);
   }
 
-  // One mark to a hex, whatever it covers. A hex covering both kinds is marked as
-  // a starport, since a place on the world outranks a note about one and the
-  // tooltip of 4.3.5 says what else is there.
+  // One mark to a hex, whatever it covers, ranked by 5.5.5.
   const marks: PoiMark[] = [...state.poisByCell].map(([cell, here]) => ({
     cell,
-    kind: here.some((poi) => poi.kind === "starport") ? "starport" : "comment",
+    kind: markKind(here),
   }));
   map.setPois(marks);
   globe.setPois(
@@ -858,22 +903,20 @@ function showPois(): void {
 
   const list = el("poi-list");
   list.replaceChildren(
+    // Starports first, then cities largest first, then comments. Spec 6.5.7.1.
     ...[...placements]
-      .sort((a, b) => poiTitle(a.poi).localeCompare(poiTitle(b.poi)))
+      .sort((a, b) => comparePois(a.poi, b.poi, poiTitle))
       .map(({ poi, cell }) => {
         const item = document.createElement("li");
         const button = document.createElement("button");
         button.type = "button";
         button.className = `poi-entry poi-${poi.kind}`;
-        button.title = `${KIND_LABEL[poi.kind]} on ${formatLattice(poi.ref)}`;
+        button.title = poiTooltip(poi);
         button.textContent = poiTitle(poi);
-        // Selecting first, so the panels are looking at the ground the dialogue
-        // is about: the display hex covering the POI, which is what the map and
-        // the globe can show a selection on.
-        button.addEventListener("click", () => {
-          select(cell);
-          openPoi(poi.ref);
-        });
+        // Goes to it rather than opening it. Spec 6.5.7.2: the list is how a
+        // referee finds a place on the world, and finding it means looking at it.
+        // The dialogue is opened from the patch, where the hex it is about is.
+        button.addEventListener("click", () => select(cell));
         item.append(button);
         return item;
       }),
@@ -891,19 +934,186 @@ function showPois(): void {
  * A world whose profile says X has no starport to place, and an unreadable UWP
  * says nothing either way, so neither gets one.
  */
-function placeStarport(): void {
+function placeStarport(written: Written = {}): void {
   const uwp = parseUwp(state.planet.uwp);
   if (uwp === null || uwp.starport === "X") return;
   const ref = starportRef();
   if (ref === null) return;
   state.planet.pois = putPoi(state.planet.pois, {
     kind: "starport",
-    name: starportName(uwp.starport),
-    narrative: "",
+    // The class is the profile's under 6.5.8.5, so it is written again unless the
+    // user has given the port a name of their own.
+    name: written.name ?? starportName(uwp.starport),
+    narrative: written.narrative ?? "",
     ref,
   });
   showPois();
 }
+
+/**
+ * The digits a world's settlements depend on, and nothing else. Spec 6.24.10.1.
+ *
+ * Five of the eight bear on where people are. The starport letter says whether
+ * there is a port and what it is called; size shapes the ground and sets the
+ * scale; atmosphere and hydrographics decide what grows and where the coast is,
+ * which is what habitability is read off; and population says how many
+ * settlements there are and how large. Government, law level and tech level say
+ * nothing about any of it, so typing one of those leaves the map alone.
+ *
+ * The seed is in the signature too. It is not part of the profile, but it decides
+ * the ground the sites are chosen on and the names they are given, so a world with
+ * a new seed is a world to be settled again.
+ *
+ * An unreadable profile gives an empty signature, which never matches and never
+ * fires: half a UWP is typed on the way to a whole one, and a redraw at every
+ * keystroke would be the application arguing with the person editing. Spec 6.5.8.5.3
+ * settled that question once already.
+ */
+function settlementSignature(): string {
+  const uwp = parseUwp(state.planet.uwp);
+  if (uwp === null) return "";
+  return [
+    state.planet.seed,
+    uwp.starport,
+    uwp.size,
+    uwp.atmosphere,
+    uwp.hydrographics,
+    uwp.population,
+  ].join("|");
+}
+
+/** The signature the settlements on the world were placed for. */
+let settled = "";
+
+/** Take the world as settled, without touching it. For New, and for a load. */
+function markSettled(): void {
+  settled = settlementSignature();
+}
+
+/**
+ * Settle the world again where a digit that bears on it has moved. Spec 6.24.10.
+ *
+ * Called after the surface has been rebuilt, since the sites are chosen off the
+ * heights and the sea level the new profile produced rather than the old ones.
+ */
+function resettleIfStale(): void {
+  const now = settlementSignature();
+  if (now === "" || now === settled) return;
+  settled = now;
+  resettle();
+}
+
+/**
+ * What the user has written on a world's settlements, by rank, so a resettle can
+ * give it back. Spec 6.24.10.2.
+ *
+ * A value counts as the user's where it is not what the generator would have
+ * produced. That is checkable rather than guessable: the names of 6.24.6 depend on
+ * the seed and the rank, which a change of profile does not move, and the line of
+ * 6.24.4 is a function of the size that was recorded beside it.
+ */
+interface Written {
+  readonly name?: string;
+  readonly narrative?: string;
+}
+
+function writtenByRank(): Written[] {
+  const generated = settlementNames(state.planet.seed, MAX_SETTLEMENTS);
+  const existing = state.planet.pois
+    .filter((poi) => poi.kind === "starport" || poi.kind === "city")
+    .sort((a, b) => (b.population ?? -1) - (a.population ?? -1));
+
+  return existing.map((poi, rank) => {
+    const wasNamed =
+      poi.name === generated[rank] || /^Starport [A-EX]$/.test(poi.name) || poi.name === "";
+    const wasWritten =
+      poi.narrative === "" ||
+      (poi.population !== undefined && poi.narrative === populationNote(poi.population));
+    return {
+      ...(wasNamed ? {} : { name: poi.name }),
+      ...(wasWritten ? {} : { narrative: poi.narrative }),
+    };
+  });
+}
+
+/**
+ * Place the world's starport and cities again, keeping what the user wrote.
+ * Spec 6.24.10.
+ *
+ * Comments are left alone: they are notes about the world rather than settlements
+ * of it, and nothing in a profile bears on them.
+ */
+function resettle(): void {
+  const written = writtenByRank();
+  state.planet.pois = state.planet.pois.filter((poi) => poi.kind === "comment");
+  placeStarport(written[0]);
+  placeCities(written);
+}
+
+/**
+ * The cities a world carries. Spec 6.24.
+ *
+ * The profile says how many people a world holds, and until now the map drew none
+ * of that. One settlement per point of the population digit, the starport counting
+ * as the first of them under 6.24.1, so the cities placed here are that count less
+ * whatever port is already standing.
+ *
+ * Each carries its own share of the settled population in its narrative, by the
+ * rank-size rule of 6.24.3. They are ordinary points of interest once placed: move
+ * them, rename them, write them up, or delete them.
+ */
+function placeCities(written: readonly Written[] = []): void {
+  const detail = currentDetail();
+  const uwp = parseUwp(state.planet.uwp);
+  if (uwp === null) return;
+  const wanted = settlementCount(uwp.population);
+  if (wanted === 0) return;
+
+  // The starport is the first city, so it takes the first site and the first
+  // share, and the rest are placed around it. A world whose profile gives it no
+  // port has all of them to place.
+  const port = starports(state.planet.pois)[0] ?? null;
+  const taken =
+    port === null ? [] : [nearestCell(state.grid, poiPosition(port.ref))].filter(isCell);
+  const sites = settlementSites(
+    state.grid,
+    state.heights,
+    state.seaLevel,
+    state.biome,
+    state.caps,
+    wanted - taken.length,
+    taken,
+  );
+  const shares = populationShares(wanted, detail.population ?? 0);
+  // One voice per world under 6.24.6, so the names are drawn together.
+  const names = settlementNames(state.planet.seed, wanted);
+
+  let pois = state.planet.pois;
+  // The port is rank one, so it takes shares[0] and the cities follow it.
+  if (port !== null && shares[0] !== undefined) {
+    pois = putPoi(pois, {
+      ...port,
+      narrative: written[0]?.narrative ?? populationNote(shares[0]),
+      population: shares[0],
+    });
+  }
+  sites.forEach((cell, i) => {
+    const ref = state.refs.of[cell];
+    if (!ref) return;
+    const rank = taken.length + i;
+    pois = putPoi(pois, {
+      kind: "city",
+      name: written[rank]?.name ?? names[rank] ?? "",
+      narrative: written[rank]?.narrative ?? populationNote(shares[rank] ?? 0),
+      population: shares[rank] ?? 0,
+      ref: asLatticeRef(ref),
+    });
+  });
+  state.planet.pois = pois;
+  showPois();
+}
+
+const isCell = (id: number | null): id is number => id !== null;
 
 /**
  * Where the terrain now puts a starport, or null where it has nowhere to put
@@ -997,10 +1207,15 @@ function chosenKind(): PoiKind {
 poiFields.form.addEventListener("submit", (event) => {
   if (editing === null) return;
   event.preventDefault();
+  // The size of 6.24.3 is not on the form and is not the user's to type, so it
+  // comes across from whatever was on this point rather than being dropped by an
+  // edit to the name. Spec 6.5.9.3 carries the narrative the same way.
+  const was = poiAt(state.planet.pois, editing);
   const poi: Poi = {
     kind: chosenKind(),
     name: poiFields.name.value,
     narrative: poiFields.narrative.value,
+    ...(was?.population === undefined ? {} : { population: was.population }),
     ref: editing,
   };
   state.planet.pois = putPoi(state.planet.pois, poi);
@@ -1038,7 +1253,11 @@ poiFields.dialog.addEventListener("close", () => {
 // the scale a place on the ground is at.
 local.onPick((pick) => {
   if (pick.cell !== null) select(pick.cell);
-  openPoi(pick.ref);
+  // The point of interest drawn on that hex, where there is one, rather than the
+  // hex's own name. Spec 4.5.7.2: a POI holds the name of the lattice it was
+  // placed on and the patch is drawn on a finer one, so the two names differ for
+  // the same ground and opening by name made a second POI on top of the first.
+  openPoi(pick.poi?.ref ?? pick.ref);
 });
 
 /* The tooltip of 4.3.4 ---------------------------------------------------- */
@@ -1114,6 +1333,8 @@ el("new").addEventListener("click", () => {
   showPlanet();
   regenerate();
   placeStarport();
+  placeCities();
+  markSettled();
   // Spec 4.4.5.2 and 4.3.6.2: the globe's size says how big this world is, which
   // a camera left zoomed in on the last one would contradict, and a map left
   // zoomed in on a corner of it opens the new world showing a corner.
@@ -1407,6 +1628,9 @@ el("load").addEventListener("click", async () => {
     state.selectedRef = null;
     showPlanet();
     regenerate();
+    // What the file carries is what the world has. A save is a world somebody
+    // arranged, so it is taken as already settled and 6.24.10 leaves it alone.
+    markSettled();
     map.resetView();
     globe.resetView();
     markClean();
@@ -1460,6 +1684,8 @@ window.addEventListener("keydown", (event) => {
 showPlanet();
 regenerate();
 placeStarport();
+placeCities();
+markSettled();
 markClean();
 // Not an error on either path: a browser without the API saves as a download
 // rather than writing back into the folder it came from. Spec 6.4.1.

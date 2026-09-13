@@ -34,6 +34,7 @@ export function hexGeoJson(records: readonly HexRecord[], options: GeoJsonOption
       height: round(record.height, 6),
       relief: round(record.relief, 6),
       terrain: record.terrain,
+      ground: record.ground,
       land: record.land,
       iced: record.iced,
       sides: record.sides,

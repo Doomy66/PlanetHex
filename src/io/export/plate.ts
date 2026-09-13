@@ -1,6 +1,6 @@
 import { locate } from "../../grid/icosahedron";
 import { isIced } from "../../gen/ice";
-import type { Shader } from "../../ui/colour";
+import { parseRgb, type Shader } from "../../ui/colour";
 import { nextFrame, toPng } from "../images";
 import type { Surface } from "../../surface";
 import type { Vec3 } from "../../grid/vec3";
@@ -198,9 +198,3 @@ async function encode(
   return toPng(canvas);
 }
 
-/** "rgb(r,g,b)" back to its three numbers. */
-function parseRgb(colour: string): readonly [number, number, number] {
-  const parts = colour.match(/\d+/g);
-  if (parts === null || parts.length < 3) return [0, 0, 0];
-  return [Number(parts[0]), Number(parts[1]), Number(parts[2])];
-}

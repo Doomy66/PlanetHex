@@ -6,6 +6,7 @@ import { add, normalise, scale, type Vec3 } from "../grid/vec3";
 import { fieldSizeFor, openHeightField, type HeightFieldOptions } from "../gen/field";
 import { NO_CRATERS, type CraterField } from "../gen/crater";
 import type { Shader } from "./colour";
+import { builtAt, builtRadiusKm, urbanise } from "./orbital";
 import { scaleBar, stepKm } from "./scale";
 import { isIced, type IceCaps } from "../gen/ice";
 import { planContours, traceContours, type Step } from "./contour";
@@ -69,6 +70,17 @@ export interface Pick {
   readonly ref: LatticeRef;
   /** The display hex it falls in, which is what the other panels can select. */
   readonly cell: number | null;
+  /**
+   * The point of interest drawn on that hex, where there is one. Spec 4.5.7.2.
+   *
+   * Carried rather than looked up by the ref above, because the two need not be
+   * the same name for the same ground. A POI is named on the lattice it was placed
+   * on under 2.4.8, and the patch is drawn on a lattice of its own that is usually
+   * finer, so the ref a click produces is not the ref the POI holds even when the
+   * click is squarely on it. What makes them one thing is that they are drawn on
+   * the same hex, and that is what this says.
+   */
+  readonly poi: Poi | null;
 }
 
 export interface LocalView {
@@ -188,6 +200,7 @@ export function createLocalView(): LocalView {
       return {
         ref: latticeRef(home.face, i, j, fine),
         cell: p === null || lastGrid === null ? null : nearestCell(lastGrid, p),
+        poi: poiOnHex.get(`${dp},${dq}`) ?? null,
       };
     };
 
@@ -199,6 +212,57 @@ export function createLocalView(): LocalView {
     const flat = (at: Step): string => {
       const [x, y] = ground(at);
       return `${x.toFixed(4)} ${y.toFixed(4)}`;
+    };
+
+    /**
+     * Which hex of the patch each point of interest is drawn on. Worked out once:
+     * the ring of 4.5.7.3 is drawn from it, and a click is answered from it, so
+     * the two cannot disagree about which hex a POI is on.
+     */
+    const onPatch = input.pois.flatMap((poi) => {
+      const at = patchOffset(poiPosition(poi.ref), home.face, fine, iCentre, jCentre, e1, e2);
+      if (at === null) return [];
+      const steps = stepsAt(at[0], at[1]);
+      const [dp, dq] = hexRound(steps[0], steps[1]);
+      if (Math.abs(dp) > reach || Math.abs(dq) > reach || Math.abs(dp + dq) > reach) return [];
+      return [{ poi, dp, dq }];
+    });
+    const poiOnHex = new Map<string, Poi>();
+    // First one wins, which is the order 6.5.7.1 put them in: a starport over a
+    // city over a comment, so a click lands on what the hex is marked as.
+    for (const { poi, dp, dq } of onPatch) {
+      const key = `${dp},${dq}`;
+      if (!poiOnHex.has(key)) poiOnHex.set(key, poi);
+    }
+
+    /**
+     * The settlements near enough to have built on the patch, and how far each
+     * reaches. Spec 5.9: a city covers dozens of these hexes, so at this scale the
+     * built ground is the ground and is drawn as such.
+     *
+     * Worked out once for the patch rather than per hex. Nothing is built where
+     * the UWP gives no diameter to turn an angle into a distance with.
+     */
+    const radiusKm = (input.diameterKm ?? 0) / 2;
+    const towns =
+      radiusKm <= 0
+        ? []
+        : input.pois.flatMap((poi) => {
+            const reach = builtRadiusKm(poi.population ?? 0);
+            return reach <= 0 ? [] : [{ at: poiPosition(poi.ref), reach }];
+          });
+
+    /** A ground colour with whatever is built on that spot laid over it. */
+    const built = (colour: string, at: Vec3): string => {
+      if (towns.length === 0) return colour;
+      let most = 0;
+      for (const town of towns) {
+        const dot = at[0] * town.at[0] + at[1] * town.at[1] + at[2] * town.at[2];
+        const km = Math.acos(Math.min(1, Math.max(-1, dot))) * radiusKm;
+        const amount = builtAt(km, town.reach);
+        if (amount > most) most = amount;
+      }
+      return urbanise(colour, most);
     };
 
     /** Every height the patch found, kept for the contours of 4.5.8 to cut. */
@@ -214,6 +278,8 @@ export function createLocalView(): LocalView {
       /** Where the hex sits between the equator and a pole, which is what the
        *  visible view of 5.7 reads a temperature off. */
       readonly sinLat: number;
+      /** The colour it is drawn in, ground and whatever is built on it. */
+      readonly colour: string;
     }
     const found: Found[] = [];
     let low = Infinity;
@@ -231,14 +297,16 @@ export function createLocalView(): LocalView {
         const j = jCentre + dq;
         const sample = sampleAt(field, home.face, fine, i, j);
         if (sample === null) continue;
+        const iced = isIced(input.caps, sample.y);
         found.push({
           dp,
           dq,
           x: dp * e1[0] + dq * e2[0],
           y: dp * e1[1] + dq * e2[1],
           height: sample.height,
-          iced: isIced(input.caps, sample.y),
+          iced,
           sinLat: sample.y,
+          colour: built(shade(sample.height, sample.y, iced), sample.at),
         });
         heights.set(`${dp},${dq}`, sample.height);
         if (sample.height < low) low = sample.height;
@@ -303,7 +371,7 @@ export function createLocalView(): LocalView {
       for (const cell of found) {
         const poly = document.createElementNS(SVG_NS, "polygon");
         poly.setAttribute("points", points(fill.map(([dx, dy]) => [cell.x + dx, cell.y + dy])));
-        poly.setAttribute("fill", shade(cell.height, cell.sinLat, cell.iced));
+        poly.setAttribute("fill", cell.colour);
         hexes.push(poly);
         note(cell.x, cell.y);
       }
@@ -334,12 +402,7 @@ export function createLocalView(): LocalView {
     // named beside it. Spec 4.5.7.3: this panel draws a POI at the size of the
     // hexes it draws, which is the size a POI is placed at here.
     const marks: SVGElement[] = [];
-    for (const poi of input.pois) {
-      const at = patchOffset(poiPosition(poi.ref), home.face, fine, iCentre, jCentre, e1, e2);
-      if (at === null) continue;
-      const steps = stepsAt(at[0], at[1]);
-      const [dp, dq] = hexRound(steps[0], steps[1]);
-      if (Math.abs(dp) > reach || Math.abs(dq) > reach || Math.abs(dp + dq) > reach) continue;
+    for (const { poi, dp, dq } of onPatch) {
       // On the ground, or on the lid of its own hex where the patch stands in
       // relief. Either way the ring is the hex the POI is on. Spec 4.5.9.4.
       const flatAt: Pt2 = [dp * e1[0] + dq * e2[0], dp * e1[1] + dq * e2[1]];
@@ -395,7 +458,6 @@ export function createLocalView(): LocalView {
         cells: found,
         low,
         seaLevel,
-        shade,
         reach,
         basis: [e1, e2],
         frame: { left, top, width, height },
@@ -501,6 +563,8 @@ export interface Sample {
   readonly height: number;
   /** Height on the unit sphere, which is the sine of the latitude. */
   readonly y: number;
+  /** Where the point is on the sphere, for anything measuring a distance to it. */
+  readonly at: Vec3;
 }
 
 export function sampleAt(
@@ -517,7 +581,7 @@ export function sampleAt(
   const fj = Math.round(found.j);
   if (fj < 0 || fi > size || fj > fi) return null;
   const h = field.heightAt(found.face, size, fi, fj);
-  return { height: h < 0 ? 0 : h > 1 ? 1 : h, y: p[1] };
+  return { height: h < 0 ? 0 : h > 1 ? 1 : h, y: p[1], at: p };
 }
 
 /**

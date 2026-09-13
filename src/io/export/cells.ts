@@ -1,7 +1,8 @@
 import { formatRef, type RefIndex } from "../../grid/coord";
 import { buildRefIndex } from "../../grid/coord";
 import { isIced } from "../../gen/ice";
-import { terrainBand, type Shader } from "../../ui/colour";
+import { normalise, terrainBand, type Shader } from "../../ui/colour";
+import { biomeAt } from "../../gen/biome";
 import { poiPlacements, type Poi } from "../../poi";
 import type { Surface } from "../../surface";
 import type { Vec3 } from "../../grid/vec3";
@@ -29,6 +30,8 @@ export interface HexRecord {
   /** Height relative to sea level, negative under water. */
   readonly relief: number;
   readonly terrain: string;
+  /** What the ground is made of, which is a different question. Spec 5.8.2. */
+  readonly ground: string;
   readonly iced: boolean;
   readonly land: boolean;
   /** The colour the map paints it, so an export and the panel agree. */
@@ -72,6 +75,12 @@ export function hexRecords(
       height,
       relief: height - surface.seaLevel,
       terrain: terrainBand(height, surface.seaLevel, iced),
+      ground: biomeAt(
+        surface.biome,
+        normalise(height, surface.seaLevel),
+        cell.centre[1],
+        iced,
+      ),
       iced,
       land: height > surface.seaLevel,
       colour: shade(height, cell.centre[1], iced),

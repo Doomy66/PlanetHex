@@ -33,7 +33,7 @@ function surfaceOf(planet: Planet) {
 
 function recordsOf(planet: Planet) {
   const surface = surfaceOf(planet);
-  return hexRecords(surface, planet.pois, shaderFor(surface, "terrain"));
+  return hexRecords(surface, planet.pois, shaderFor(surface, "survey"));
 }
 
 const poi = (kind: Poi["kind"], name: string): Poi => ({
@@ -169,7 +169,7 @@ describe("the hex polygons", () => {
   const parse = (planet: Planet) => {
     const surface = surfaceOf(planet);
     return JSON.parse(
-      hexGeoJson(hexRecords(surface, planet.pois, shaderFor(surface, "terrain")), {
+      hexGeoJson(hexRecords(surface, planet.pois, shaderFor(surface, "survey")), {
         planet,
         size: SIZE,
         seaLevel: surface.seaLevel,

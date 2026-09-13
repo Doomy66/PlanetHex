@@ -26,7 +26,7 @@ export const DEFAULT_SEA_LEVEL = 0.5;
 export type Stop = readonly [number, readonly [number, number, number]];
 
 /** Which of the two views of 5.7 a panel is drawing. */
-export type ViewMode = "terrain" | "visible";
+export type ViewMode = "survey" | "orbital";
 
 /**
  * A colour for one place on the world: how high it is, how far it sits from the
@@ -125,13 +125,20 @@ export function mix(a: readonly number[], b: readonly number[], t: number): read
   return [0, 1, 2].map((i) => a[i]! + (b[i]! - a[i]!) * k);
 }
 
+/** A colour back from the string above. Anything unreadable comes back black. */
+export function parseRgb(colour: string): readonly [number, number, number] {
+  const parts = colour.match(/\d+/g);
+  if (parts === null || parts.length < 3) return [0, 0, 0];
+  return [Number(parts[0]), Number(parts[1]), Number(parts[2])];
+}
+
 /** A colour as the string an SVG fill or a three.js material will take. */
 export function rgbText(c: readonly number[]): string {
   return `rgb(${Math.round(c[0]!)},${Math.round(c[1]!)},${Math.round(c[2]!)})`;
 }
 
-/** The height ramp above, as the shader the panels take. Spec 5.7.1. */
-export function terrainShader(seaLevel: number, verdancy: number): Shader {
+/** The height ramp above, as the shader the panels take. Spec 5.7.1.1. */
+export function surveyShader(seaLevel: number, verdancy: number): Shader {
   return (height, _sinLat, iced) => heightColour(height, seaLevel, iced, verdancy);
 }
 

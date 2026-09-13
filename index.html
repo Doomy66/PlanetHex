@@ -70,8 +70,8 @@
             <datalist id="detail-stops"><option value="0"></option><option value="1"></option><option value="2"></option><option value="3"></option><option value="4"></option></datalist>
             <!-- Which of the two views of 5.7 all three panels draw. -->
             <label class="spaced">View<select id="p-view">
-              <option value="terrain">Terrain</option>
-              <option value="visible">Visible</option>
+              <option value="orbital">Orbital</option>
+              <option value="survey">Survey</option>
             </select></label>
             <div id="view-note" class="hint under"></div>
           </div>
@@ -145,6 +145,8 @@
               <div><dt>Hex</dt><dd id="h-id">&mdash;</dd></div>
               <div><dt>Height</dt><dd id="h-height">&mdash;</dd></div>
               <div><dt>Terrain</dt><dd id="h-band">&mdash;</dd></div>
+              <!-- What the ground is, beside how high it is. Spec 5.8.2. -->
+              <div><dt>Ground</dt><dd id="h-ground">&mdash;</dd></div>
               <div><dt>Sides</dt><dd id="h-sides">&mdash;</dd></div>
               <div><dt>Lat, lon</dt><dd id="h-latlon">&mdash;</dd></div>
               <div id="h-poi-row" hidden><dt>POI</dt><dd id="h-poi">&mdash;</dd></div>
@@ -169,6 +171,7 @@
         <fieldset class="poi-kinds">
           <legend>Kind</legend>
           <label class="inline"><input type="radio" name="poi-kind" value="starport" /> Starport</label>
+          <label class="inline"><input type="radio" name="poi-kind" value="city" /> City</label>
           <label class="inline"><input type="radio" name="poi-kind" value="comment" /> Comment</label>
         </fieldset>
         <label>Name<input id="poi-name" type="text" autocomplete="off" /></label>
@@ -262,8 +265,9 @@
 
         <h3>Making a world</h3>
         <p>
-          <b>New</b> starts a fresh planet with a new seed, a rolled profile, and a
-          starport placed on coastal land near its equator.
+          <b>New</b> starts a fresh planet with a new seed, a rolled profile, a
+          starport placed on coastal land near its equator, and a city for each
+          further point of the population digit.
         </p>
         <p>
           The <b>seed</b> says which world this is. The same seed always gives the
@@ -293,14 +297,9 @@
           paint: the coastline, the ice and the heights are the same either way.
         </p>
         <dl class="help-list">
-          <dt>Terrain</dt>
+          <dt>Orbital</dt>
           <dd>
-            Height as colour: blue sea, ground, grey and white peaks. A map, and
-            what to use when what you want to know is how high the ground is.
-          </dd>
-          <dt>Visible</dt>
-          <dd>
-            What the world would look like from orbit. Green where things grow,
+            What the world would look like coming in. Green where things grow,
             brown where the ground is bare but weathered, grey where it is bare
             rock, white where the water is frozen. It reads temperature rather than
             height, so a world is jungle at its equator and tundra near its poles,
@@ -308,6 +307,12 @@
             Axial tilt sets how far apart those temperatures are: lean the axis
             past 54&deg; and the poles take more sun over a year than the equator
             does, and the world comes out iced at the waist and green at the ends.
+            This is what a new world opens in.
+          </dd>
+          <dt>Survey</dt>
+          <dd>
+            Height as colour: blue sea, ground, grey and white peaks. A map, and
+            what to use when what you want to know is how high the ground is.
           </dd>
         </dl>
         <p>
@@ -384,16 +389,64 @@
 
         <h3>Points of interest</h3>
         <p>
-          A <b>starport</b> is a place on the world; a <b>comment</b> is a note
-          about one. Each has a name and as much prose as you care to write, and
-          both are marked on the map and the globe in their own colour. They are
-          placed in the local panel, because the map's hexes are hundreds of miles
-          across and far too large to say where anything is.
+          A <b>starport</b> is a place on the world, a <b>city</b> is a place the
+          profile does not name, and a <b>comment</b> is a note about one. Each has
+          a name and as much prose as you care to write, and each is marked on the
+          map and the globe in its own colour: red, teal and grey. They are placed
+          in the local panel, because the map's hexes are hundreds of miles across
+          and far too large to say where anything is.
+        </p>
+        <p>
+          A new world arrives with its cities on it &mdash; one per point of the
+          population digit, the starport counting as the first of them. They are
+          put where the ground is worth living on: where things grow, on a coast
+          where there is one, off the mountains and the ice, and spread out rather
+          than heaped in one bay. A world with no land to speak of puts them on the
+          water. Each carries its share of the world's people in its notes, the
+          largest first. A world names its places in one voice: the flavour
+          &mdash; polyglot, anglic, Vilani, named for a founder, or just numbered
+          &mdash; is drawn once per planet, so its cities sound like each other.
+          Those shares are not meant to add up to the population on
+          the summary panel: plenty of people live outside a city, and on a world
+          with a good starport plenty live in orbit.
+        </p>
+        <p>
+          Cities are ordinary points of interest once placed. Move them, rename
+          them, write them up, delete them.
+        </p>
+        <p>
+          Editing a digit that bears on where people live &mdash; starport, size,
+          atmosphere, hydrographics or population &mdash; places them all again on
+          the ground the new profile makes. Government, law level and tech level
+          say nothing about it and leave the map alone, and so does half a UWP
+          typed on the way to a whole one. Anything you have renamed or written on
+          comes back with it.
         </p>
         <p>
           One to a point. Clicking an empty point offers <b>Move Here</b>, which
           brings an existing one over with its name and its notes intact. The left
-          panel lists what is on the world; choosing one goes to it.
+          panel lists what is on the world &mdash; starports first, then cities
+          from the largest down, then comments. Choosing one goes to it: the panels
+          all move to its hex and the local view draws the ground around it. Click
+          it there to open it.
+        </p>
+
+        <p>
+          The readout over the local panel gives every hex two answers about its
+          ground, because they are two questions. <b>Terrain</b> is how high it is
+          &mdash; lowland, upland, mountain, peak. <b>Ground</b> is what it is made
+          of &mdash; rainforest, steppe, cold desert, bare rock, sea ice. Two hexes
+          at the same height, one at the equator and one at sixty degrees, are the
+          same terrain and quite different ground. Both travel in the hex table and
+          the GeoJSON a save writes.
+        </p>
+
+        <p>
+          The local panel draws what people have built over the ground they built
+          it on, in either view, spreading as far as the settlement's population
+          warrants and thinning into open country at the edge. Only there: a hex of the map is sixty thousand square kilometres, and the
+          largest city on Earth would be an eighth of one, so the map would be
+          claiming a great deal more concrete than there is.
         </p>
 
         <h3>Hex names</h3>

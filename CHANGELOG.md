@@ -4,9 +4,91 @@ The version in [package.json](package.json) is what the Windows installer of
 `npm run package` names itself after, so it is the one number that reaches a
 user. Dates are the day the release was tagged.
 
+## Unreleased
+
+- **Every hex knows what it is made of.** The visible view worked out cover,
+  weathering, snow and a local temperature for every hex, turned them into a
+  colour, and threw them away. A colour is not the answer to the question, so the
+  model moved out of the drawing code and into the world model, and now names the
+  ground: rainforest, boreal forest, tundra, savannah, steppe, cold desert, bare
+  rock, sea ice, snowfield. It is not the terrain band — that says how high the
+  ground is, this says what it is — so the readout carries both, and so do the hex
+  table and the GeoJSON, in a column of their own rather than in place of the band.
+  Two hexes at the same height, one at the equator and one at sixty degrees, are
+  the same band and quite different ground.
+- **Cities.** A new world arrives with its settlements on it, the way it already
+  arrived with its starport.
+  - **One per point of the population digit**, the starport counting as the first
+    of them. A profile of X has no port, so such a world gets its whole count as
+    cities instead.
+  - **Sited by habitability**, which is the ground model above asked about people
+    rather than plants: food grows where cover grows, a coast beats an inland
+    plain, mountains and ice are worth less than either. Each one chosen pushes the
+    score down around it, so they spread instead of heaping in the one best bay.
+  - **A water world puts its cities on the water**, on the shelf rather than out
+    over four kilometres of open ocean. Floating or sunk, the map does not say.
+  - **Sized by the rank-size rule**, so the starport is the primate city and the
+    rest fall away behind it, and each says what it holds in its own notes. The
+    figures are not meant to total the world's population and do not: people live
+    on farms, down mines, and on a world with a decent port, in orbit.
+  - Ordinary points of interest once placed — move, rename, write up, delete — and
+    only New places them. A reroll moves the starport as it always did and leaves
+    the cities alone, since the profile names the port and does not name them.
+- **A third mark colour**, teal, and one rule for which of the three a hex shows
+  when it covers several. The map and the saved picture were deciding that
+  separately and now share it.
+- **The points of interest list is ordered by kind**, starports first, then
+  cities from the capital down, then comments. The kind order is the same ranking
+  the marks use: a world carries one port and a dozen other things, and sorting the
+  lot by name put the port wherever its letter happened to fall. Within the cities
+  it is size, because size is what the list is being read for.
+- **A world names its places in one voice.** Five flavours — polyglot, anglic,
+  Vilani, founder and functional — and one drawn per planet from the seed, so a
+  map does not carry Barreach next to Ishkhuur next to Depot Three. Polyglot is
+  the common case: a sector is a thousand years of several languages settling each
+  other's worlds, and most of its names are that mixture rather than any one tongue
+  kept clean.
+- **The views are called Survey and Orbital**, and Orbital is what a world opens
+  in. They were Terrain and Visible: both views draw terrain, so the first named
+  nothing that told it apart, and "visible" reads as a switch for whether a thing
+  is shown rather than as a way of drawing it. The new pair says who is looking and
+  from where. A world is a place before it is a measurement, so what it opens in is
+  what it looks like. The manifest of a save records the new names.
+- **Built ground in the local panel.** What people have built is drawn over the
+  ground they built it on, in either view, spreading as far as the population
+  warrants and thinning into open country at the edge. Only there, and
+  it is a question of scale: a hex of the map is sixty thousand square kilometres
+  and the largest built-up area on Earth is an eighth of one, so a map drawing it
+  would be claiming far more concrete than there is. A local hex is a couple of
+  hundred square kilometres and a city covers dozens of them.
+- **Editing a digit that bears on settlement places them again**, and so does
+  Roll. Starport, size, atmosphere, hydrographics and population all move where
+  people would live, so changing one settles the world afresh on the ground the new
+  profile makes. Government, law level and tech level do not, and neither does half
+  a UWP typed on the way to a whole one. Whatever has been renamed or written on
+  comes back with it, which is checkable rather than guessable: a generated name is
+  a function of the seed and the rank, and a generated population line a function
+  of the size recorded beside it, so anything that differs is the user's.
+  - The starport's own reroll rule went with it. It answered the same question for
+    one point of interest that this now answers for all of them, and two rules for
+    one question is one rule too many.
+- **Clicking a point of interest in the local panel opens it** rather than
+  starting a blank one on top of it. It holds the name of the lattice it was placed
+  on and the patch is drawn on a finer one, so the two names differ for the same
+  ground; what makes them one thing is being drawn on the same hex, and that is now
+  what the click reports.
+- **Choosing something in the list goes to it** rather than opening it for
+  editing, and its tooltip now says what the map's does: name, kind, and whatever
+  is written on it.
+- **A settlement carries its size as a number** as well as in its notes. The line
+  is the referee's to rewrite; the number is what the list sorts by, and reading an
+  order back out of prose anyone can edit would stop working the first time they
+  did. It survives an edit and a move, being no part of the form.
+- Open questions 8.2 and 8.3 closed.
+
 ## 1.4.0 — 2026-09-12
 
-- **A Visible view.** Beside the terrain ramp, a second way to colour the world:
+- **An Orbital view.** Beside the height ramp, a second way to colour the world:
   what an eye in orbit would see rather than how high the ground is. Green where
   things grow, brown where the ground is bare but weathered, grey where it is bare
   rock, white where water is frozen, and a darker sea than the map's. All three

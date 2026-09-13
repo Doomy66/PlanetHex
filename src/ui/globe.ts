@@ -46,7 +46,11 @@ const SELECT_LIFT = 1.004;
 /** POI rings sit a shade further out than the selection, so the two never z-fight. */
 const POI_LIFT = 1.006;
 /** Fallbacks, should the stylesheet not have been read yet. */
-const POI_FALLBACK: Record<PoiKind, string> = { starport: "#ff4d47", comment: "#d7dde6" };
+const POI_FALLBACK: Record<PoiKind, string> = {
+  starport: "#ff4d47",
+  city: "#4fd1c5",
+  comment: "#d7dde6",
+};
 const SELECT_FALLBACK = "#e0b341";
 /**
  * How far the axis line stands out past the surface, as a multiple of the radius.
