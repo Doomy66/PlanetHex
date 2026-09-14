@@ -15,7 +15,69 @@
     <link rel="alternate icon" href="./favicon.ico" sizes="16x16 32x32 48x48" />
     <title>PlanetHex</title>
   </head>
-  <body>
+  <body data-view="landing">
+    <!-- The landing page. AppSpec 2: four rows, one per level, smallest first,
+         each with New and Load. The application opens here rather than in a
+         planet, because there are four things a user might have come to do and
+         no way to guess which. AppSpec 1.2.1. -->
+    <section id="landing" class="landing">
+      <div class="landing-card">
+        <h1>PlanetHex</h1>
+        <p class="landing-lead">A world, a system, a chart, a sector. Start where you meant to.</p>
+
+        <ul class="levels">
+          <li class="level">
+            <div class="level-what">
+              <h2>Planet</h2>
+              <p>One world, its surface, and the globe it turns on.</p>
+            </div>
+            <div class="actions">
+              <button id="landing-planet-new" type="button">New</button>
+              <button id="landing-planet-load" type="button">Load</button>
+            </div>
+          </li>
+          <!-- The three levels below are specified and not built. They are on
+               screen rather than left off, because a landing page showing only
+               what exists says the application is a planet generator, and
+               SystemSpec, SubSectorSpec and AppSpec all say it is not going to
+               stay one. Disabled says not yet; absent would say never. -->
+          <li class="level">
+            <div class="level-what">
+              <h2>System</h2>
+              <p>A star or two, its orbits, and the worlds in them.</p>
+            </div>
+            <div class="actions">
+              <button type="button" disabled>New</button>
+              <button type="button" disabled>Load</button>
+            </div>
+          </li>
+          <li class="level">
+            <div class="level-what">
+              <h2>Subsector</h2>
+              <p>Eighty hexes of star systems, drawn as a chart.</p>
+            </div>
+            <div class="actions">
+              <button type="button" disabled>New</button>
+              <button type="button" disabled>Load</button>
+            </div>
+          </li>
+          <li class="level">
+            <div class="level-what">
+              <h2>Sector</h2>
+              <p>Sixteen subsectors, and the worlds in all of them.</p>
+            </div>
+            <div class="actions">
+              <button type="button" disabled>New</button>
+              <button type="button" disabled>Load</button>
+            </div>
+          </li>
+        </ul>
+
+        <p id="landing-status" class="status" role="status"></p>
+        <p class="landing-note">Only the planet is built. The rest are specified.</p>
+      </div>
+    </section>
+
     <main class="layout">
       <section class="panel panel-left" id="left-panel">
         <header class="panel-head">
@@ -29,6 +91,7 @@
           ></button>
           <h1>PlanetHex</h1>
           <span id="dirty" class="dirty" hidden>unsaved</span>
+          <button id="home" class="home" type="button" title="Back to the levels">Levels</button>
           <button id="help" class="help-open" type="button" title="Help and licence (F1 or ?)">?</button>
         </header>
 

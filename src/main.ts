@@ -91,6 +91,7 @@ import {
 import { nextFrame, renderMaps } from "./io/images";
 import { EXPORT_FORMATS, manifest, type ExportContext } from "./io/export";
 import { shaderFor, surfaceOn } from "./surface";
+import { currentAppView, landingSay, setAppView, wireLanding } from "./ui/landing";
 
 const el = <T extends HTMLElement>(id: string): T => {
   const node = document.getElementById(id);
@@ -1334,13 +1335,13 @@ el("toggle-left").addEventListener("click", () => {
 
 /* Buttons ---------------------------------------------------------------- */
 
-el("new").addEventListener("click", () => {
-  if (!confirmDiscard("Start a new planet")) return;
+function startNewPlanet(): void {
   Object.assign(state.planet, newPlanet());
   state.folder = null;
   state.selected = null;
   state.hovered = null;
   state.selectedRef = null;
+  setAppView("planet");
   showPlanet();
   regenerate();
   placeStarport();
@@ -1352,7 +1353,12 @@ el("new").addEventListener("click", () => {
   map.resetView();
   globe.resetView();
   markClean();
-  say(`New planet, seed ${state.planet.seed}.`);
+  say(`New planet, seed ${state.planet.seed}.${saveRoute()}`);
+}
+
+el("new").addEventListener("click", () => {
+  if (!confirmDiscard("Start a new planet")) return;
+  startNewPlanet();
 });
 
 /* Saving. Spec 6.4.1 and 6.23 ------------------------------------------- */
@@ -1625,8 +1631,7 @@ async function gather(choices: SaveChoices, into: string): Promise<SaveFile[]> {
   return files;
 }
 
-el("load").addEventListener("click", async () => {
-  if (!confirmDiscard("Load another planet")) return;
+async function loadPlanet(): Promise<void> {
   try {
     const { planet, name } = isSupported() ? await load() : await loadFromInput();
     Object.assign(state.planet, planet);
@@ -1645,11 +1650,22 @@ el("load").addEventListener("click", async () => {
     map.resetView();
     globe.resetView();
     markClean();
-    say(`Loaded ${name}.`);
+    setAppView("planet");
+    say(`Loaded ${name}.${saveRoute()}`);
   } catch (error) {
     if (error instanceof PickerCancelled) return;
-    say(error instanceof Error ? error.message : String(error), true);
+    const message = error instanceof Error ? error.message : String(error);
+    // Where the user is standing is where the failure has to be reported. A
+    // load that failed on the way in from the landing page has not opened
+    // anything, so the planet panel's status line is not on screen to read.
+    if (currentAppView() === "landing") landingSay(message, true);
+    else say(message, true);
   }
+}
+
+el("load").addEventListener("click", () => {
+  if (!confirmDiscard("Load another planet")) return;
+  void loadPlanet();
 });
 
 /* Help. Spec 4.8 --------------------------------------------------------- */
@@ -1690,18 +1706,33 @@ window.addEventListener("keydown", (event) => {
   else openHelp();
 });
 
+/* The landing page. AppSpec 2 and 3 -------------------------------------- */
+
+/**
+ * Not an error on either path: a browser without the File System Access API
+ * saves as a download rather than writing back into the folder it came from.
+ * Spec 6.4.1. Said once, when a planet opens, since that is when it matters.
+ */
+function saveRoute(): string {
+  return isSupported() ? "" : " This browser saves as a zip download.";
+}
+
+// Back to the levels. AppSpec 2.4, and 7.2: what is open is closed, and what is
+// unsaved is asked about first.
+el("home").addEventListener("click", () => {
+  if (!confirmDiscard("Leave this planet")) return;
+  setAppView("landing");
+  landingSay("");
+});
+
+wireLanding({
+  planetNew: startNewPlanet,
+  planetLoad: loadPlanet,
+});
+
 /* Start ------------------------------------------------------------------ */
 
-showPlanet();
-regenerate();
-placeStarport();
-placeCities();
-markSettled();
-markClean();
-// Not an error on either path: a browser without the API saves as a download
-// rather than writing back into the folder it came from. Spec 6.4.1.
-if (isSupported()) {
-  say(`Seed ${state.planet.seed}. Sea level ${state.seaLevel.toFixed(3)}.`);
-} else {
-  say(`Seed ${state.planet.seed}. This browser saves as a zip download.`);
-}
+// The window opens on the landing page with nothing generated. The planet in
+// state is the one the module built to have something to hold, and it is thrown
+// away and rolled again the moment New is pressed. AppSpec 2.5.
+setAppView("landing");

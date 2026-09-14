@@ -43,6 +43,7 @@ body {
 .left-collapsed .panel-left { padding: 10px 0; overflow: hidden; }
 .left-collapsed .panel-body,
 .left-collapsed .panel-head h1,
+.left-collapsed .panel-head .home,
 .left-collapsed .panel-head .help-open,
 .left-collapsed .panel-head .dirty { display: none; }
 .left-collapsed .panel-head { justify-content: center; }
@@ -506,6 +507,89 @@ label.inline input { width: auto; margin: 0; accent-color: var(--accent); }
 #save-summary { margin: 12px 0 0; }
 /* All and None are the coarse strokes, so they sit away from Save and Cancel. */
 #save-all { margin-left: auto; }
+
+/* The landing page. AppSpec 2 ------------------------------------------- */
+
+/* One attribute on the body says which of the two the window is showing, so
+   neither has to know the other is there and nothing is hidden twice. */
+body[data-view="landing"] .layout { display: none; }
+body[data-view="planet"] .landing { display: none; }
+
+.landing {
+  height: 100vh;
+  overflow: auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+}
+
+.landing-card { width: 100%; max-width: 460px; }
+.landing-card h1 { font-size: 17px; margin: 0 0 4px; }
+.landing-lead { color: var(--muted); margin: 0 0 20px; }
+
+.levels {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+/* A row is what the level is on the left and what can be done with it on the
+   right, which is the shape AppSpec 2.1 asks for and the shape a row of a list
+   already has. */
+.level {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 11px 12px;
+  background: var(--panel);
+}
+.level + .level { border-top: 1px solid var(--line); }
+.level-what { flex: 1; min-width: 0; }
+/* The level's name, which is a heading here rather than the small capitals a
+   heading is in the left panel: this is the thing being chosen between. */
+.level-what h2 {
+  font-size: 14px;
+  margin: 0;
+  color: var(--text);
+  text-transform: none;
+  letter-spacing: 0;
+}
+.level-what p { margin: 2px 0 0; color: var(--muted); }
+.level .actions { flex: none; }
+
+/* A level that is specified and not built. Dimmed rather than absent, for the
+   reason the markup gives. */
+.level button[disabled] {
+  color: #5c6472;
+  background: transparent;
+  border-color: var(--line);
+  cursor: default;
+}
+.level button[disabled]:hover { background: transparent; }
+
+.landing-note { color: var(--muted); margin: 14px 0 0; }
+
+/* Back to the levels, AppSpec 2.4. Quiet, because leaving the planet is not
+   something a user should reach for by accident. */
+.home {
+  flex: none;
+  margin-left: auto;
+  padding: 2px 8px;
+  font-size: 11px;
+  color: var(--muted);
+  background: transparent;
+  border: 1px solid var(--line);
+  border-radius: 3px;
+  cursor: pointer;
+}
+.home:hover { color: var(--text); border-color: var(--muted); background: transparent; }
+/* The help button keeps the far end of the header; with the home button there
+   too, only the first of them pushes. */
+.home + .help-open { margin-left: 6px; }
 
 /* Help, Spec 4.8 --------------------------------------------------------- */
 
