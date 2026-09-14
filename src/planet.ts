@@ -334,6 +334,25 @@ const UWP_PATTERN = /^([A-EX])([0-9A-Z])([0-9A-Z])([0-9A-Z])([0-9A-Z])([0-9A-Z])
  * free text the user can type into, so anything downstream of it has to cope with
  * half-finished input rather than assume eight good positions.
  */
+/**
+ * The digits written back as a profile string. The inverse of parseUwp, for
+ * anything that works out a profile rather than rolling one: a world in a system
+ * under [SystemSpec.md](SystemSpec.md) 6.3 and 6.4 takes its physical digits from
+ * its own seed and its social ones from the world it was settled from, and has to
+ * put the two halves back together.
+ */
+export function formatUwp(profile: Uwp): string {
+  const digits = [
+    profile.size,
+    profile.atmosphere,
+    profile.hydrographics,
+    profile.population,
+    profile.government,
+    profile.law,
+  ];
+  return `${profile.starport}${digits.map(hexDigit).join("")}-${hexDigit(profile.tech)}`;
+}
+
 export function parseUwp(uwp: string): Uwp | null {
   const match = UWP_PATTERN.exec(uwp.trim().toUpperCase());
   if (!match) return null;

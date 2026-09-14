@@ -8,11 +8,13 @@
  * The star and its orbits are rolled in their own right, and the world is then
  * placed in the best orbit they turn out to offer and told where it ended up.
  *
- * What is not here yet is the other worlds of SystemSpec section 6. Every orbit
- * that is not the main world's, a belt's, or a gas giant's is empty for now.
+ * The other worlds of SystemSpec section 6 are satellite.ts, which is where the
+ * seam of 6.6 is: their physical digits are their own seed's and their social
+ * digits are the main world's.
  */
 
-import { rollUwp, seedFrom } from "../planet";
+import { parseUwp, rollUwp, seedFrom } from "../planet";
+import { holdsWorld, orbitWorldSeed, satelliteUwp } from "./satellite";
 import { pbgFor, type Pbg } from "./trade";
 import { planetDetail } from "./detail";
 import { valueFor } from "./rng";
@@ -210,6 +212,22 @@ export function generateSystem(seed: string): StarSystem {
     content.set(index, { kind: "belt" });
   }
 
+  // Everything still empty may hold a world of its own. SystemSpec 4.4 and 6.1:
+  // the orbits the chart's figures did not claim are where the rest of a system
+  // is, and most of what is there is rock nobody has been to.
+  const homeProfile = parseUwp(uwp);
+  for (const orbit of laid) {
+    if (content.has(orbit.index)) continue;
+    if (!holdsWorld(seed, orbit.index)) continue;
+    const worldSeed = orbitWorldSeed(seed, orbit.index);
+    content.set(orbit.index, {
+      kind: "world",
+      main: false,
+      seed: worldSeed,
+      uwp: satelliteUwp(worldSeed, orbit.sunEquivalentAu, homeProfile),
+    });
+  }
+
   const orbits = laid.map((orbit) => ({
     ...orbit,
     content: content.get(orbit.index) ?? { kind: "empty" as const },
@@ -239,8 +257,45 @@ export function generateSystem(seed: string): StarSystem {
  * with the world in its own save, so a world lifted out of its system and opened
  * on its own is still the world that system made. SystemSpec 6.6.3.
  */
-export function worldSettings(system: StarSystem): { orbitAu: number; luminosity: number } {
-  return { orbitAu: system.mainWorld.au, luminosity: system.mainWorld.luminosity };
+export function worldSettings(
+  system: StarSystem,
+  orbitIndex: number = system.mainWorld.orbitIndex,
+): { orbitAu: number; luminosity: number } {
+  const orbit = system.orbits.find((held) => held.index === orbitIndex);
+  return {
+    orbitAu: orbit?.au ?? system.mainWorld.au,
+    luminosity: system.mainWorld.luminosity,
+  };
+}
+
+/**
+ * Every world in a system, the main one first. SystemSpec 6.2: each is a planet
+ * of the planet spec, with its own seed and its own surface, and each opens the
+ * same way.
+ */
+export function worldsOf(system: StarSystem): readonly {
+  orbitIndex: number;
+  au: number;
+  main: boolean;
+  seed: string;
+  uwp: string;
+}[] {
+  return system.orbits
+    .filter((orbit) => orbit.content.kind === "world")
+    .map((orbit) => {
+      const held = orbit.content as { main: boolean; seed: string; uwp: string };
+      return { orbitIndex: orbit.index, au: orbit.au, ...held };
+    })
+    .sort((a, b) => Number(b.main) - Number(a.main) || a.orbitIndex - b.orbitIndex);
+}
+
+/**
+ * What a world in a system is called, before anybody names it. SystemSpec 7.2:
+ * the system's name, a hyphen, and the orbit it is in, which is also the stem
+ * every file of that world is saved under at the app spec 4.2.1.
+ */
+export function worldName(systemName: string, orbitIndex: number): string {
+  return `${systemName}-${orbitIndex}`;
 }
 
 function countOf(content: Map<number, OrbitContent>, kind: OrbitContent["kind"]): number {

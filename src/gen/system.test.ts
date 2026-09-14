@@ -51,12 +51,16 @@ describe("generateSystem", () => {
   });
 
   it("puts the main world in one orbit and only one", () => {
+    // Other worlds there may be, under section 6, but exactly one of them is the
+    // world the chart drew and the sector line describes. SystemSpec 1.5.
     for (const seed of SEEDS) {
       const system = generateSystem(seed);
-      const worlds = system.orbits.filter((orbit) => orbit.content.kind === "world");
-      expect(worlds.length, seed).toBe(1);
-      expect(worlds[0]!.index).toBe(system.mainWorld.orbitIndex);
-      expect(worlds[0]!.au).toBe(system.mainWorld.au);
+      const main = system.orbits.filter(
+        (orbit) => orbit.content.kind === "world" && orbit.content.main,
+      );
+      expect(main.length, seed).toBe(1);
+      expect(main[0]!.index).toBe(system.mainWorld.orbitIndex);
+      expect(main[0]!.au).toBe(system.mainWorld.au);
     }
   });
 

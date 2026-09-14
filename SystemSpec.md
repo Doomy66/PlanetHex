@@ -134,7 +134,15 @@ This document sits under [SubSectorSpec.md](SubSectorSpec.md) and over [PlanetSp
 
 6.4.1 Rolling a second mainworld in the next orbit out is the error this clause exists to prevent. Traveller's main world rules assume the world being rolled is the reason anybody came to the system, and applied to a moon of a gas giant they produce a moon with its own interstellar port and a billion people on it.
 
+6.4.2 A settled second world keeps its system's government, since a colony is not a country of its own, and its law within a point of the main world's. Its starport is what the traffic it sees can support, which is no better than a C and usually an E.
+
+6.4.3 A system whose main world holds nobody settles nothing. There was no one to settle from.
+
 6.5 Most systems have no other inhabited world, and most other worlds are empty rock. A busy system is the exception and should read as one.
+
+6.5.1 As generated, about one system in eleven has somebody living anywhere but its main world, and those places hold hundreds to tens of thousands rather than millions. An orbit with a mining camp on it is worth noticing, and it stops being worth noticing when every rock has one.
+
+6.5.2 Rather more than half the orbits a system's belts and gas giants have not claimed hold a world of some kind, which is between one and two other worlds in the average system. They are almost all airless rock, and they are there because a system with one world in it and nine empty slots reads as a system the generator gave up on.
 
 ### 6.6 The seam
 
