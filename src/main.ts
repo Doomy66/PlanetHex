@@ -418,6 +418,8 @@ function showPlanet(): void {
   showWorld(currentDetail());
   showDetail();
   document.title = `${state.planet.name || "Unnamed"} — PlanetHex`;
+  // The trail says the world's own name, so it is redrawn whenever the panel is.
+  showCrumbs();
 }
 
 /** What the slider is set to, in the terms the user cares about. Spec 2.2.2. */
