@@ -1,0 +1,158 @@
+# PlanetHex Application
+
+One application at four levels — a planet, a system, a subsector, a sector — and the landing page that opens them.
+
+This document is the shell. [PlanetSpec.md](PlanetSpec.md) specifies a planet, [SystemSpec.md](SystemSpec.md) specifies a system, and [SubSectorSpec.md](SubSectorSpec.md) specifies a subsector and the sector above it; none of them changes because of what is here. Clauses are numbered the same way, and *the planet spec*, *the system spec*, and *the subsector spec* mean those three documents.
+
+## Contents
+
+1. [Purpose](#1-purpose)
+2. [The landing page](#2-the-landing-page)
+3. [New and Load](#3-new-and-load)
+4. [What a folder holds](#4-what-a-folder-holds)
+5. [Loading a folder](#5-loading-a-folder)
+6. [Moving between levels](#6-moving-between-levels)
+7. [Unsaved work](#7-unsaved-work)
+8. [Open questions](#8-open-questions)
+
+---
+
+## 1. Purpose
+
+1.1 The application works at four levels. A **planet** is one world, its surface, and everything the planet spec describes. A **system** is one star or several, with its belts, its gas giants, and its worlds. A **subsector** is eighty hexes, each of which is empty space or a system. A **sector** is sixteen subsectors.
+
+1.2 Each level is a document of its own with its own seed, its own save, and its own view. The application opens on a landing page that offers New and Load at each of the four, and nothing else.
+
+1.2.1 A landing page rather than opening straight into a planet, because there are now four things a user might have come to do and no way to guess which. The application used to have one answer and so needed no question.
+
+1.3 The levels form a chain of seeds: a sector seed fixes its sixteen subsector seeds, a subsector seed fixes the seed of the system in each of its eighty hexes, a system seed fixes its stars and the seed of each world in it, and a world seed fixes the surface. So a whole sector is one short string, and every world in it is the same world whether it was reached from the top or opened alone.
+
+1.3.1 This is the subsector spec 1.3 extended along the whole chain, and it carries the same obligation at every link: a document generated from above must be identical to the same document opened by its own seed. Nothing at a higher level may modify what a lower level generates, only record what the user typed over it.
+
+1.3.1.1 What a higher level may do is fill in a stored field that was waiting to be filled in: a profile under the planet spec 6.7, a world's orbit and rotation under 6.15, where null means nobody has said and a value means somebody has. A value arriving from a parent is that field arriving filled in, exactly as one typed by the user is. The system spec 6.6 is where this matters most and where it is argued out, since placing a world in an orbit reaches its climate and so its surface.
+
+1.3.1.2 So the obligation of 1.3.1 is precise rather than absolute: what a seed fixes is the document given its settings, and a parent that writes a setting must write it into the document rather than hold it privately. That is what keeps the app spec 4.8 true - a document saved inside a parent still stands by itself.
+
+1.3.2 The system level is the link that was missing. The subsector spec 3.8.3 had a hex hold a main world and two counts, because there was nothing to open a second world into. There is now, so a hex holds a system, and the main world is the one the chart draws rather than the only one there is.
+
+1.4 A planet opened from the landing page behaves exactly as the planet spec 6.4 already describes, including its file picker and the folder of 6.4.1.
+
+1.4.1 A planet reached through a system does not get a folder of its own. The system folder is the floor, and a planet in one is files in it, under 4.2. This is the only thing in this document that changes how a planet is saved.
+
+## 2. The landing page
+
+2.1 The landing page is four rows, one per level, each with New and Load, each saying in a line what the level is for.
+
+2.2 The rows read planet, system, subsector, sector, smallest first. Most sessions are a planet, the levels above are the new thing rather than the usual thing, and a user looking for what they did last time should find it without reading down.
+
+2.3 Below the rows is the recent list: the documents last opened, each with its level, its name, and where it came from, most recent first.
+
+2.3.1 A recent entry reopens what it names without a picker where the browser still holds permission for it, and asks for the folder again where it does not. The File System Access API keeps handles across sessions but not the grant to use them, so a reopen can cost one click. The desktop shell has no such limit and pays nothing.
+
+2.3.2 An entry whose folder has been moved or deleted says so where it sits and offers to be forgotten, rather than failing when it is clicked.
+
+2.4 The landing page is reachable from every level, and returning to it closes the open document under 7.2.
+
+2.5 Nothing is generated by the landing page itself. It is a chooser, and a user who opens it and closes it again has rolled nothing.
+
+## 3. New and Load
+
+3.1 **New** at any level opens a fresh document with a new random seed, immediately, with no dialogue in front of it. The name, the seed, and the settings are all editable once it is open, and the planet spec 6.4 already works this way.
+
+3.1.1 No dialogue first because every field it could ask for is on screen a second later anyway, and because the fastest way to find out whether a seed is any good is to look at it. A new document is not a commitment: New again is one click.
+
+3.2 **Load** at the planet level opens a file picker on the planet's JSON, unchanged from the planet spec 6.4.1.1.
+
+3.3 **Load** at the system, subsector, and sector levels opens a directory picker, and what is chosen is the folder holding that level's data, not a file inside it.
+
+3.3.1 A folder rather than a file because at these levels a document is a folder of things: a system holds its worlds, a subsector holds its systems and the exports of the subsector spec section 6, and a sector holds its subsectors. Picking the JSON would name one file out of a set and leave the application unable to reach the rest, which is exactly the trap the planet spec 6.4.1.4 documents.
+
+3.3.2 A folder load knows where it loaded from, so the folder is the save folder from that moment on and no later Save asks. This is the one thing a planet load still cannot do, and 8.1 asks whether a planet should be loaded by folder too.
+
+3.3.3 Where the directory picker is not available — a browser that is not Chromium, under the planet spec 6.4.1.3 — the level loads from a zip of the folder instead, through the same fallback the planet save already uses in [src/io/files.ts](src/io/files.ts). A zip of a folder holds the folder's shape, so nothing about sections 4 and 5 changes.
+
+## 4. What a folder holds
+
+4.1 Every document's JSON carries the level it is, alongside the version the planet spec 6.4.2 requires. A loader that opens a folder is looking for a document of a stated level, and a document that says what it is can be checked rather than guessed at from its shape.
+
+4.2 **A planet is files, not a folder.** Its JSON and whatever images and exports were asked for, all named on one stem, written into the folder of the system it belongs to.
+
+4.2.1 The stem is the system's name and the world's orbit, under the system spec 7.2: the third world of Sol is `Sol-3.json`, with `Sol-3` on every image and export beside it. `stemFor` in [src/io/files.ts](src/io/files.ts) builds a stem from the planet's name today and gains the system form for a world that has a system.
+
+4.2.1.1 The stem is where the world is, not what it is called. A world named Earth is still `Sol-3` on disk, because a folder of files is read by somebody looking for the third orbit of a system whose folder they are already standing in. The name is in the document, on the map, and on the sheet; the filename's job is to say which world this is among the eight in the folder.
+
+4.2.2 A folder each would mean a system of eight worlds was eight folders holding one file apiece. A folder is the unit of a save, and a system is the smallest thing worth one: the worlds in it are a set that arrived together and belong together.
+
+4.2.3 Nothing collides, because the stem carries the system name and the orbit, and a system has one third orbit. Two systems each with a third world are `Sol-3` and `Regina-3`, in two folders, and neither has to know about the other.
+
+4.2.4 A planet opened from the landing page under 1.4 has no system and so no orbit to be named for. It keeps the stem it has today, its own name, and is saved into a folder the user picks with nothing else in it. That folder is a system folder with no system document, which 5.3 already knows how to open.
+
+4.3 **A system folder** is the lowest folder there is. It holds the system's JSON, the files of 4.2 for each world the user has worked up and saved, and the system's own exports.
+
+4.4 **A subsector folder** holds the subsector's JSON, the exports of the subsector spec section 6 that were asked for, and a `Systems` folder holding a system folder for each system the user has worked up and saved, named for the world and its hex.
+
+4.5 **A sector folder** holds the sector's JSON and a folder for each subsector that has been saved, named for its letter and its name. Each of those is an ordinary subsector folder under 4.4.
+
+4.6 At every level, only what was actually saved. The subsector spec 5.7.1 refuses to write eighty folders for systems nobody has looked at, and that reasoning runs the whole way up: a system is its seed until somebody does something to it, and so is a subsector. A sector whose sixteen are all still as generated is one JSON file in an otherwise empty folder, and that is a complete sector.
+
+4.7 Every folder at every level is an ordinary folder of its own level, and opens on its own. A system folder copied out of a subsector opens as a system, and a planet file copied out of one opens as a planet through the picker of 3.2, with no system anywhere near it.
+
+4.8 A document saved inside a parent is written with its derived seed spelled out, not with a note saying which parent to ask.
+
+4.8.1 This is what makes 1.3's chain a convenience rather than a dependency. The chain fixes what a document starts as; once written, the document stands by itself.
+
+4.9 A folder at any level may hold anything else the user has put in it. Nothing is deleted, and nothing unrecognised is complained about. A referee's own notes, maps, and handouts belong in the folder with the thing they are about.
+
+## 5. Loading a folder
+
+5.1 Load looks in the chosen folder for a document of the level asked for, and opens it.
+
+5.2 Where the folder holds a document of a different level, the application says which level it actually found and offers to open it at that level. A user who picks a system folder from the subsector row has told the application what they want well enough.
+
+5.3 Where the folder holds no document at all, but holds folders that do, the application says so and names what it found. The commonest way to reach this is picking the folder above the one meant.
+
+5.4 Where the folder holds more than one document of the level asked for, the application lists them and asks which.
+
+5.5 A document that fails validation fails loudly and names the file, as the planet spec 6.4.3 requires. A sector whose subsector folder holds a broken document opens anyway, with that subsector generated from the seed and the failure reported, because the other fifteen are not at fault. The same holds at every level: a broken child is one child, and its parent is not wrong.
+
+5.6 Reading a folder needs directory iteration, which the handle type in [src/io/files.ts](src/io/files.ts) does not yet expose: it can get a file by name and nothing else. That type grows the two methods the API already has for listing entries and reaching subfolders.
+
+## 6. Moving between levels
+
+6.1 Opening a system from a subsector chart is a move down, and so is opening a world from a system, and a subsector from a sector. One route, used at three joins.
+
+6.2 A move down keeps the parent open. Coming back arrives at the same view with the same selection and nothing regenerated.
+
+6.3 A document opened by moving down inherits its save folder from the parent: a world opened from a system saves as files in that system's folder under 4.2, with no picker, and the system into its subsector's `Systems` folder.
+
+6.3.1 This is the one place a save folder is chosen for the user rather than by them, and it is chosen because the answer is not in doubt. A world reached through a system belongs to that system's folder. Save As, under 8.3, is how somebody disagrees.
+
+6.3.2 Saving a document whose parent has never been saved saves the parent too, up as far as the first ancestor that has a folder, or to a picker where none of them has. A world three levels down cannot be written into folders that do not exist, and asking the user to save four documents in order is asking them to do the application's arithmetic.
+
+6.4 A document opened from the landing page has no parent and no folder until it is saved, as a planet does today.
+
+6.5 The view says which chain it is in — sector, subsector, system, world — so a user three levels down knows what is behind them, and each step back up is one click on it.
+
+## 7. Unsaved work
+
+7.1 Each open document tracks its own unsaved edits, under the planet spec 6.4.4 and the subsector spec 5.6. Four levels open is four flags, and a prompt names the document it is about.
+
+7.2 Returning to the landing page closes the open chain and checks every document in it first. The prompt lists what is unsaved and offers to save all, discard all, or cancel.
+
+7.2.1 One prompt for the chain rather than one per level, because a user closing a sector is answering a single question about their session, and four dialogues in a row is a way of getting Discard clicked by accident.
+
+7.3 A move down under 6.1 discards nothing and prompts about nothing, since the parent stays open.
+
+7.4 Leaving the page checks the whole chain, on the same terms the planet spec 6.4.4.3 sets out and with the desktop shell's own dialogue of 6.4.4.3.1 where there is no browser one.
+
+## 8. Open questions
+
+8.1 **Loading a planet by folder.** A folder load knows where it came from and a file load does not, under 3.3.2, so planets are the only level that still asks for the folder on the next Save. Changing the planet row to a directory picker would close that, at the cost of making a bare JSON file harder to open than it is today. Worth answering; not urgent.
+
+8.2 **Recent list storage.** 2.3 needs handles kept across sessions, which means IndexedDB in the browser and something simpler in the desktop shell. Whether the two share a mechanism or each does what suits it is unanswered.
+
+8.3 **Save As.** Nothing above lets a document be saved somewhere other than where it came from, and 6.3.1 wants it to exist. It is a small feature that touches every level, so it is listed here rather than four times.
+
+8.4 **A workspace above sectors.** Several sectors, a map of how they sit against each other, and a name for the whole setting. The arithmetic does not stop at a sector and neither does a campaign. Nothing here forbids it, and nothing here builds it.
+
+8.5 **How deep the chain goes.** [SystemSpec.md](SystemSpec.md) 13.1 would make a moon of a gas giant openable as a planet, which is a fifth level in all but name. Whether that is a level, or a system with one more kind of thing in it, is unanswered.

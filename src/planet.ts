@@ -4,7 +4,7 @@ import { splitLegacyLocation } from "./location";
 import { parsePois, type Poi } from "./poi";
 
 /**
- * The planet record, and the thing a save file holds. Spec.md section 6.1.
+ * The planet record, and the thing a save file holds. PlanetSpec.md section 6.1.
  *
  * Heights are absent on purpose: they are rebuilt from seed and size on load, so
  * a save can never disagree with what the generator produces.

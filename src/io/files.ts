@@ -3,7 +3,7 @@ import { parsePlanet } from "../planet";
 import { buildZip, readZip, type ZipEntry } from "./zip";
 
 /**
- * Local saves through the File System Access API. Spec.md 6.4.1.
+ * Local saves through the File System Access API. PlanetSpec.md 6.4.1.
  *
  * A save is a folder rather than a single file: the planet's JSON, and the map
  * images of 6.4.5 beside it. A file handle cannot reach the folder it came from,

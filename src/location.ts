@@ -1,6 +1,6 @@
 /**
  * Where a planet sits in the setting: a sector name and a four digit hex within
- * it, which is Traveller convention. Spec.md 6.14.
+ * it, which is Traveller convention. PlanetSpec.md 6.14.
  *
  * This grid is nothing to do with the surface grid of section 2. A sector is a
  * flat 32 by 40 chart of star systems, one hex per system, and the four digits

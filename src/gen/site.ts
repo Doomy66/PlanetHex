@@ -1,7 +1,7 @@
 import type { CellId, Grid } from "../grid/grid";
 
 /**
- * Where to put the starport of a new world. Spec.md 6.5.8.
+ * Where to put the starport of a new world. PlanetSpec.md 6.5.8.
  *
  * A starport is built where people are, and on a world drawn only as height that
  * means the coast: ships come down beside water, on ground large enough to hold a

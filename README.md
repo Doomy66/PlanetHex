@@ -132,12 +132,15 @@ which electron-builder cannot package onto, so the build has to land elsewhere.
 | `src/ui/` | The three panels: flat map, globe, local detail, plus colour and scale bars. |
 | `src/io/` | Save, load, the map images, and the export formats in `src/io/export/`. |
 | `electron/` | The desktop shell and its packaging script. |
-| `Spec.md` | The specification. Every decision, and why. |
+| `PlanetSpec.md` | The specification for a planet. Every decision, and why. |
+| `SystemSpec.md` | The specification for a star system: its stars, its orbits, and its worlds. |
+| `SubSectorSpec.md` | The specification for a subsector of star systems. |
+| `AppSpec.md` | The shell: the landing page, the four levels, and what a save folder holds. |
 | `CHANGELOG.md` | What changed in each release, and what it was for. |
 
 ## The specification
 
-[Spec.md](Spec.md) is the authority on behaviour, and it is numbered so the code
+[PlanetSpec.md](PlanetSpec.md) is the authority on behaviour, and it is numbered so the code
 can cite it. Sub-clauses carry the reasoning: why the detail slider is safe to
 move, why a hex on a seam belongs to both faces, why the ice-capped trade code
 is a floor and not a gate. Read it before changing anything about the grid or
@@ -146,6 +149,13 @@ the field.
 Reference material used while building — the example maps and the UWP
 cheatsheet — is third party and held for private use only. It sits in
 `Examples/`, which is excluded from the repository.
+
+[SubSectorSpec.md](SubSectorSpec.md) is its companion, numbered the same way, for the
+eighty hex chart a world sits on and the systems that fill it.
+[SystemSpec.md](SystemSpec.md) sits between the two: one star system, its orbits, and
+the worlds in them.
+[AppSpec.md](AppSpec.md) is the shell above all three: the landing page, the four levels a
+document can be, and the folder each of them saves into.
 
 [CHANGELOG.md](CHANGELOG.md) is the other half of the record: the spec says what
 the application does now, and the changelog says when each piece of it arrived

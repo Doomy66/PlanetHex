@@ -2,6 +2,8 @@
 
 A browser application that generates planet surfaces procedurally and shows them two ways at once: as a flat Traveller-style hex map, and as a rotating sphere.
 
+This document is the specification for one planet. [SubSectorSpec.md](SubSectorSpec.md) is its companion, numbered the same way, for the eighty hex chart a world sits on.
+
 ## Contents
 
 1. [Purpose](#1-purpose)

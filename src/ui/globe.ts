@@ -8,7 +8,7 @@ import { isIced, type IceCaps } from "../gen/ice";
 import type { PoiKind } from "../poi";
 
 /**
- * The planet as a sphere. Spec.md section 4.4.
+ * The planet as a sphere. PlanetSpec.md section 4.4.
  *
  * The mesh is built from the cell outlines of whatever grid it is handed, each one
  * filled with the flat colour its height maps to, so the globe and the flat map

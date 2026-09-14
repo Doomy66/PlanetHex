@@ -3,7 +3,7 @@ import { add, normalise, scale, type Vec3 } from "./vec3";
 import type { CellId, Grid } from "./grid";
 
 /**
- * Cell identity that survives a change of detail level. Spec.md section 2.4.
+ * Cell identity that survives a change of detail level. PlanetSpec.md section 2.4.
  *
  * A cell's `CellId` is the index it was given while the grid was built, so it is
  * only good for as long as that grid is. The (face, i, j) of a NetPlacement is

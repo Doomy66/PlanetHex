@@ -1,5 +1,5 @@
 /**
- * Height to colour. Spec.md section 5: blue for sea, ground colour for land, grey
+ * Height to colour. PlanetSpec.md section 5: blue for sea, ground colour for land, grey
  * and white for mountains, with the coastline reading the same on the map and on
  * the globe.
  *
