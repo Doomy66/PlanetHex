@@ -657,7 +657,7 @@ body[data-view="system"] .subsector { display: none; }
 .sub-chart { background: #0a0c10; }
 
 /* A chart hex, and what is drawn in it. The grid is thin and even and the same
-   everywhere: the published maps let the worlds carry all the weight. */
+   everywhere: the published charts let the worlds carry all the weight. */
 .chart-cell {
   fill: transparent;
   stroke: #39414d;
@@ -670,28 +670,35 @@ body[data-view="system"] .subsector { display: none; }
 .chart-hex:focus .chart-cell { fill: #1f252e; }
 
 .chart-at {
-  fill: #5a6470;
+  fill: #59636f;
   font-size: 11px;
   text-anchor: middle;
   font-variant-numeric: tabular-nums;
 }
-/* Blue where there is water and air to stand in, grey where there is neither,
-   hollow where nobody is there at all. */
-.chart-wet { fill: #4d92d9; }
-.chart-dry { fill: #b9c2cd; }
-.chart-bare { fill: none; stroke: #8b97a5; stroke-width: 1.6; }
-.chart-rock { fill: #9aa5b2; }
+.chart-port { fill: #dbe3ec; font-size: 14px; text-anchor: middle; font-weight: 600; }
+.chart-name { fill: #f0f4f9; font-size: 13px; text-anchor: middle; }
+.chart-loud { font-weight: 700; letter-spacing: 0.03em; }
 
-.chart-name { fill: #e8edf4; font-size: 12px; text-anchor: middle; }
-.chart-loud { font-weight: 700; letter-spacing: 0.04em; }
-.chart-uwp {
-  fill: #8e9aa8;
-  font-size: 10.5px;
-  text-anchor: middle;
-  font-family: var(--mono, ui-monospace, "Cascadia Mono", Consolas, monospace);
-}
-.chart-base { fill: #cbd4df; font-size: 12px; text-anchor: middle; }
+/* The colour the charts never had: water and air is blue, dry with air is tan,
+   an airless rock is grey, and a world nobody lives on is hollow. The globe is
+   drawn over this as soon as there is one. */
+.chart-wet { fill: #3f7fc4; }
+.chart-dusty { fill: #b08b5e; }
+.chart-airless { fill: #8d96a2; }
+.chart-empty { fill: none; stroke: #7b8694; stroke-width: 1.6; }
+.chart-rock { fill: #9aa5b2; }
+.chart-globe { pointer-events: none; }
+
+.chart-naval { fill: #e6ebf2; }
+.chart-scout { fill: #9fb0c4; }
 .chart-giant { fill: #d7b273; }
+.chart-giant-ring { fill: none; stroke: #d7b273; stroke-width: 1.4; }
+
+/* The lanes. Under the worlds, over the grid, and heavier where both ends have
+   a port worth keeping to a timetable. */
+.chart-route { stroke: #3d6ea8; stroke-width: 2; opacity: 0.75; }
+.chart-main { stroke: #6aa6e8; stroke-width: 3.4; opacity: 0.9; }
+
 /* A travel zone is a ring around the world, not around the hex: the warning is
    about the world, and the hex is only where it is. */
 .chart-zone { fill: none; stroke: #e0b341; stroke-width: 1.6; stroke-dasharray: 5 5; }

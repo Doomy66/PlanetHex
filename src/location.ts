@@ -90,6 +90,21 @@ export interface PlanetLocation {
  * it. Empty when neither field has been filled in, and it says what it has when
  * only one of them has been.
  */
+/**
+ * How many jumps apart two hexes are. SubSectorSpec 3.9.1.1.
+ *
+ * The chart's columns are offset against each other, so a step sideways is also
+ * half a step up or down, and counting rows and columns separately gets it
+ * wrong. Rows are counted in halves instead: a sideways step pays for half a row
+ * of the vertical distance for free, and only what is left over costs a jump.
+ */
+export function hexDistance(a: SectorHex, b: SectorHex): number {
+  const across = Math.abs(b.col - a.col);
+  const halves = (hex: SectorHex) => hex.row * 2 + (hex.col % 2 === 0 ? 1 : 0);
+  const down = Math.abs(halves(b) - halves(a));
+  return down <= across ? across : across + (down - across) / 2;
+}
+
 export function formatLocation(location: PlanetLocation): string {
   const sector = location.sector.trim();
   const hex = parseSectorHex(location.hex);

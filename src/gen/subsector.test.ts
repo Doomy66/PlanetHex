@@ -1,11 +1,12 @@
 import { describe, expect, it } from "vitest";
-import { parseSectorHex, subsectorHexes, subsectorLetter } from "../location";
+import { hexDistance, parseSectorHex, subsectorHexes, subsectorLetter } from "../location";
 import { mainWorldSeed } from "./system";
 import { rollUwp } from "../planet";
 import {
   DENSITIES,
   generateSubsector,
   holdsSystem,
+  routesBetween,
   systemSeedFor,
   type Density,
 } from "./subsector";
@@ -137,6 +138,127 @@ describe("what the chart holds", () => {
     const names = chart.worlds.map((world) => world.name);
     expect(new Set(names).size).toBeGreaterThan(names.length / 2);
     expect(names.every((name) => name !== "")).toBe(true);
+  });
+});
+
+describe("how far apart two hexes are", () => {
+  // SubSectorSpec 3.9.1.1. The columns are offset, so counting rows and columns
+  // separately gets it wrong, and a chart that got this wrong would draw lanes
+  // between worlds that cannot reach each other.
+  const at = (text: string) => parseSectorHex(text)!;
+
+  it("counts a hex as no distance from itself", () => {
+    expect(hexDistance(at("0101"), at("0101"))).toBe(0);
+  });
+
+  it("counts every neighbour of a hex as one jump", () => {
+    // The six around 0202, which in this layout are the hexes above and below
+    // it and the two in each of the columns either side.
+    for (const near of ["0201", "0203", "0102", "0103", "0302", "0303"]) {
+      expect(hexDistance(at("0202"), at(near)), near).toBe(1);
+    }
+  });
+
+  it("does not count a step sideways twice", () => {
+    // 0403 is two columns across and one row down from 0202, which the offset
+    // pays for: two jumps, not three.
+    expect(hexDistance(at("0202"), at("0403"))).toBe(2);
+    expect(hexDistance(at("0101"), at("0110"))).toBe(9);
+  });
+
+  it("does not care which way round it is asked", () => {
+    for (const [a, b] of [
+      ["0101", "0810"],
+      ["0304", "0607"],
+      ["0202", "0403"],
+    ]) {
+      expect(hexDistance(at(a!), at(b!))).toBe(hexDistance(at(b!), at(a!)));
+    }
+  });
+});
+
+describe("the lanes", () => {
+  const charts = SEEDS.map((seed) => generateSubsector(seed, "A"));
+
+  it("runs no lane to a world nobody is on", () => {
+    // SubSectorSpec 3.9.2: two inhabited worlds, or no lane. A rock with a
+    // beacon on it is not a destination.
+    for (const chart of charts) {
+      const empty = new Set(
+        chart.worlds.filter((world) => world.profile.population === 0).map((world) => world.at),
+      );
+      for (const route of chart.routes) {
+        expect(empty.has(route.from), route.from).toBe(false);
+        expect(empty.has(route.to), route.to).toBe(false);
+      }
+    }
+  });
+
+  it("keeps every lane inside the reach of the poorer port", () => {
+    // 3.9.2: A and B reach two hexes, C, D and E reach one, X reaches nothing.
+    const reach = (port: string) => ("AB".includes(port) ? 2 : "CDE".includes(port) ? 1 : 0);
+    for (const chart of charts) {
+      const where = new Map(chart.worlds.map((world) => [world.at, world]));
+      for (const route of chart.routes) {
+        const from = where.get(route.from)!;
+        const to = where.get(route.to)!;
+        const far = hexDistance(from.hex, to.hex);
+        expect(far, `${route.from}-${route.to}`).toBeGreaterThan(0);
+        expect(far).toBeLessThanOrEqual(
+          Math.min(reach(from.profile.starport), reach(to.profile.starport)),
+        );
+      }
+    }
+  });
+
+  it("calls a lane main only where both ends can refit a ship", () => {
+    for (const chart of charts) {
+      const where = new Map(chart.worlds.map((world) => [world.at, world]));
+      for (const route of chart.routes) {
+        const ends = [where.get(route.from)!, where.get(route.to)!];
+        const good = ends.every((world) => "AB".includes(world.profile.starport));
+        expect(route.main, `${route.from}-${route.to}`).toBe(good);
+      }
+    }
+  });
+
+  it("draws each pair once and never a world to itself", () => {
+    for (const chart of charts) {
+      const seen = new Set<string>();
+      for (const route of chart.routes) {
+        expect(route.from).not.toBe(route.to);
+        const key = [route.from, route.to].sort().join("-");
+        expect(seen.has(key), key).toBe(false);
+        seen.add(key);
+      }
+    }
+  });
+
+  it("leaves a web rather than a thicket", () => {
+    // 3.9.2.1: about one lane per world. Enough to follow across a subsector,
+    // few enough that the chart still reads.
+    const worlds = charts.reduce(
+      (count, chart) => count + chart.worlds.filter((w) => w.profile.population > 0).length,
+      0,
+    );
+    const lanes = charts.reduce((count, chart) => count + chart.routes.length, 0);
+    expect(lanes / worlds).toBeGreaterThan(0.5);
+    expect(lanes / worlds).toBeLessThan(2);
+  });
+
+  it("takes an interdicted world off the web altogether", () => {
+    // 3.9.2.2. Nothing generates a red zone, so this is the referee's edit of
+    // 5.3 arriving at the lanes.
+    const chart = generateSubsector("REGINA42", "C", "standard");
+    const busy = [...chart.worlds]
+      .filter((world) => world.profile.population > 0)
+      .sort((a, b) => b.profile.population - a.profile.population)[0]!;
+    expect(chart.routes.some((route) => route.from === busy.at || route.to === busy.at)).toBe(true);
+    const shut = chart.worlds.map((world) =>
+      world.at === busy.at ? { ...world, zone: "R" } : world,
+    );
+    const after = routesBetween(shut);
+    expect(after.some((route) => route.from === busy.at || route.to === busy.at)).toBe(false);
   });
 });
 

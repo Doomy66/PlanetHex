@@ -138,13 +138,38 @@ This document is the companion to [PlanetSpec.md](PlanetSpec.md) and is numbered
 
 3.8.3 The other worlds of a system are the system level's, not the chart's. A hex holds a system; what the chart draws and what a sector line carries is that system's main world plus its counts of belts and gas giants, which is what a referee reads a chart for. The rest is a level down, and [AppSpec.md](AppSpec.md) 1.3.2 puts it there.
 
+### 3.9 The lanes between worlds
+
+3.9.1 Every published subsector map has lines on it between the hexes, and a chart without them is a list of worlds rather than a region. A lane says which worlds are in reach of each other, which is the question a referee is actually asking when they look at a chart.
+
+3.9.1.1 How far apart two hexes are is a jump count, not a row and column difference. The columns are offset against each other, so a step sideways is also half a step up or down: rows are counted in halves, a sideways step pays for half a row of the vertical distance for free, and only what is left over costs a jump.
+
+3.9.2 A lane runs between two inhabited worlds when they are within the reach of the poorer of the two ports. A port that can refine fuel and refit a ship — class A or B — reaches two hexes; C, D and E reach one; X reaches nothing and is on no schedule.
+
+3.9.2.1 The numbers are small on purpose. A lane between every pair of worlds that could reach each other is a chart with a hundred lines on it, which is a chart that says nothing. Roughly one lane per world leaves a web that can be followed from one end of a subsector to the other.
+
+3.9.2.2 A Red zone carries no lanes. An interdiction is exactly the thing a scheduled run is not flown through, so the world drops off the web entirely rather than being drawn and warned about twice.
+
+3.9.3 A lane is main where both ends have a class A or B port, and a feeder otherwise. The difference is drawn, because it is the difference between a route somebody keeps to a timetable and a route somebody flies when there is a reason to.
+
+3.9.4 Nothing about a lane is rolled. Two profiles and two hex numbers decide it, which means a lane cannot disagree with the worlds at its ends, and a chart regenerated from its seed has the same web on it.
+
+
 ## 4. Display
 
 4.1 The chart is a panel of eighty hexes with the controls beside it, in the shape the planet view already uses: a left panel of settings, the chart in the middle.
 
-4.2 Each occupied hex carries what a Traveller subsector map carries: the world's name, a dot sized by population, the starport class, and marks for bases, gas giant, and travel zone. The four digits sit in every hex, occupied or not, because an empty hex still has to be referrable.
+4.2 Each occupied hex carries what a Traveller subsector map carries, laid out where those maps lay it out: the hex number small at the top, the starport class above the world, the world in the middle, its name below, the bases as their own marks to the left, a gas giant to the right, and the lanes of 3.9 drawn between hexes underneath the lot. The four digits sit in every hex, occupied or not, because an empty hex still has to be referrable.
 
-4.2.1 A dot sized by population rather than by the size digit, because population is what a referee is looking for when they scan a chart. Physical size is a digit away in the profile and nobody navigates by it.
+4.2.1 The published maps are black on white and say everything with position and shape. This one keeps the positions and adds colour, which is the one liberty it takes: colour says what kind of world it is without a legend and without another line of text in a hex that has no room for one.
+
+4.2.2 A world is drawn as its own globe — the planet spec 4.4 surface, small — rather than as a dot. A dot with a colour chosen for it says what somebody decided a world of that profile looks like; the globe says what this world looks like, and it is the same surface the planet view draws if the world is opened.
+
+4.2.2.1 A world is drawn where its own system puts it, so the globe on the chart is the globe the system view shows for the same world rather than a near miss. This costs the chart a system layout per hex, which is cheap, and a surface per hex, which is not.
+
+4.2.2.2 So the globes arrive one at a time over a chart that is already readable without them. Eighty of them drawn before anything appeared would be a chart nobody could roll. A name, a port and a place are on screen immediately; the picture catches up.
+
+4.2.2.3 An asteroid belt has no globe, and is drawn as a scatter of rocks the way the maps have always drawn one.
 
 4.3 Selecting a hex fills a panel with the system: the profile digit by digit as the planet spec 6.7 shows it, the trade classifications, the PBG figures, the stars, the bases, the zone, and the world's seed.
 
@@ -245,7 +270,7 @@ This document is the companion to [PlanetSpec.md](PlanetSpec.md) and is numbered
 
 9.1.1 Sixteen subsectors is a sector, and the arithmetic is the same arithmetic. Whether that is a container above this one or just this one generated sixteen times with the letter varying is worth answering before section 5's save format is settled, because the answer decides whether a subsector file needs to be nestable. Leaning towards the second: a sector is a folder of sixteen files and a name, and nothing about the chart changes.
 
-9.2 **Trade and communication routes.** Derivable from the profiles, drawn as lines between hexes on every published subsector map, and genuinely useful. Left out of the first pass because a route is a path rather than a per-hex value, which is the shape of problem the planet spec 8.3.2 set rivers aside for. The same reasoning applies and so does the same caveat: it is worth more than several things that are in.
+9.2 **Trade and communication routes.** Closed: section 3.9. The worry was that a route is a path rather than a per-hex value, which is what set rivers aside in the planet spec 8.3.2. It turned out not to apply — a lane is a pair of hexes and nothing longer, so there is no path to trace and nothing to keep consistent along one. What a path would still be needed for is a route that runs across a subsector boundary, which waits on the sector level.
 
 9.3 **Polities.** Allegiance is a column with `Na` in it, and a subsector with two or three small states in it is a more interesting document than one with none. Generating them needs a notion of neighbours and borders that nothing here has, and hand-drawn borders need a drawing tool. Open.
 

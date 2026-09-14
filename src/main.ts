@@ -110,6 +110,7 @@ import { liveGlobe, worldImage } from "./ui/worldimage";
 import { giantImage } from "./ui/giant";
 import {
   beltName,
+  generateSystem,
   moonKey,
   moonsOf,
   namesOf,
@@ -2565,6 +2566,10 @@ el("sys-open").addEventListener("click", () => {
 // Read only at this stage: the chart draws, the panel says what is in a hex,
 // and a hex opens as a system. Overrides and saving are SubSectorSpec 5.
 
+/** How big a chart globe is drawn. Twice its size on the page, so it stays
+ * crisp on a chart that scales itself to whatever panel it is in. */
+const CHART_GLOBE_PX = 64;
+
 const chart = createChart();
 el("sub-chart").append(chart.element);
 
@@ -2601,6 +2606,7 @@ function drawSubsector(next: Subsector): void {
   openLevels.system = false;
   openLevels.planet = false;
   chart.render(next);
+  drawChartWorldsSoon(next);
   showSubsectorAbout();
   showSubsectorList();
   showCrumbs();
@@ -2611,6 +2617,55 @@ function drawSubsector(next: Subsector): void {
   )[0];
   selectHex(first?.at ?? null);
   subSay(`${next.worlds.length} systems in eighty hexes.`);
+}
+
+
+/**
+ * The globes on the chart. SubSectorSpec 4.2.2.
+ *
+ * A dot with a colour chosen for it says what somebody decided a world of that
+ * profile looks like; the globe says what this world looks like, and it is the
+ * same surface the planet view would draw if the world were opened. Worth the
+ * work, but not worth it all at once: forty of them one after another is a
+ * second and a half with nothing on screen, so they arrive one at a time over a
+ * chart that is already readable without them.
+ *
+ * A world is drawn where its own system puts it, not at some standard distance,
+ * because a world's climate is where it orbits - so the globe here is the globe
+ * the system view shows for the same world rather than a near miss.
+ */
+let chartPending: { subsector: Subsector; worlds: ChartWorld[] } | null = null;
+
+function drawChartWorldsSoon(next: Subsector): void {
+  chartPending = {
+    subsector: next,
+    worlds: next.worlds.filter((world) => world.profile.size > 0),
+  };
+  setTimeout(drawNextChartWorld, 0);
+}
+
+function drawNextChartWorld(): void {
+  if (chartPending === null) return;
+  const world = chartPending.worlds.shift();
+  // A roll while these are in flight moves on to the new chart rather than
+  // drawing pictures into the old one.
+  if (world === undefined || chartPending.subsector !== subsector) {
+    chartPending = null;
+    return;
+  }
+  const held = generateSystem(world.systemSeed);
+  chart.setPicture(
+    world.at,
+    worldImage(
+      {
+        seed: world.seed,
+        uwp: world.uwp,
+        ...worldSettings(held, held.mainWorld.orbitIndex),
+      },
+      CHART_GLOBE_PX,
+    ),
+  );
+  setTimeout(drawNextChartWorld, 0);
 }
 
 function showSubsectorAbout(): void {

@@ -14,7 +14,7 @@
  * chart is the same world opened on its own, which is AppSpec 1.3.
  */
 
-import { formatSectorHex, subsectorHexes, type SectorHex } from "../location";
+import { formatSectorHex, hexDistance, subsectorHexes, type SectorHex } from "../location";
 import { parseUwp, rollUwp, seedFrom, type Uwp } from "../planet";
 import { mainWorldSeed } from "./system";
 import { starsFor, starsLabel, systemLuminosity, type Stars } from "./star";
@@ -65,12 +65,70 @@ export interface ChartWorld {
   readonly zone: string;
 }
 
+/**
+ * A lane between two worlds. SubSectorSpec 3.9.
+ *
+ * Main where both ends have a port good enough to build a scheduled run around,
+ * and a feeder otherwise: the difference is worth drawing, because it is the
+ * difference between a route somebody keeps to a timetable and a route somebody
+ * flies when there is a reason to.
+ */
+export interface Route {
+  readonly from: string;
+  readonly to: string;
+  readonly main: boolean;
+}
+
 export interface Subsector {
   readonly seed: string;
   readonly letter: string;
   readonly density: Density;
   /** The eighty hexes, in reading order, with the worlds among them. */
   readonly worlds: readonly ChartWorld[];
+  /** The lanes between them, each pair once. 3.9. */
+  readonly routes: readonly Route[];
+}
+
+/**
+ * How far a world's own traffic reaches, in jumps. SubSectorSpec 3.9.2.
+ *
+ * A port is what a lane is flown to, so the port decides how far the lane comes
+ * from: a yard that can refine fuel and refit a ship is worth crossing two hexes
+ * for, anywhere else is worth crossing one, and a world with no port at all is
+ * on nobody's schedule.
+ *
+ * 3.9.2.1 The numbers are small on purpose. A lane between every pair of worlds
+ * that could reach each other is a chart with a hundred lines on it, which is a
+ * chart that says nothing. Roughly one lane per world leaves a web a referee can
+ * follow from one end of a subsector to the other.
+ */
+function reachOf(profile: Uwp): number {
+  if (profile.starport === "A" || profile.starport === "B") return 2;
+  if ("CDE".includes(profile.starport)) return 1;
+  return 0;
+}
+
+/**
+ * The lanes. SubSectorSpec 3.9.
+ *
+ * Both ends have to be worth the trip and close enough for the poorer of the
+ * two to be reached at all, which is what makes the web thin out around bad
+ * ports and thicken between good ones without anything being rolled for. A red
+ * zone is off the lanes entirely: an interdiction is exactly the thing a
+ * scheduled run is not flown through.
+ */
+export function routesBetween(worlds: readonly ChartWorld[]): Route[] {
+  const open = worlds.filter((world) => world.profile.population > 0 && world.zone !== "R");
+  const routes: Route[] = [];
+  for (const [at, from] of open.entries()) {
+    for (const to of open.slice(at + 1)) {
+      const reach = Math.min(reachOf(from.profile), reachOf(to.profile));
+      if (reach === 0 || hexDistance(from.hex, to.hex) > reach) continue;
+      const main = "AB".includes(from.profile.starport) && "AB".includes(to.profile.starport);
+      routes.push({ from: from.at, to: to.at, main });
+    }
+  }
+  return routes;
 }
 
 /** The seed of the system in a hex. SubSectorSpec 3.1.3. */
@@ -172,7 +230,13 @@ export function generateSubsector(
     const world = chartWorld(seed, at, hex, density, regional);
     if (world !== null) worlds.push(world);
   }
-  return { seed, letter: letter.toUpperCase(), density, worlds };
+  return {
+    seed,
+    letter: letter.toUpperCase(),
+    density,
+    worlds,
+    routes: routesBetween(worlds),
+  };
 }
 
 /** What lights a world's orbits, which is both stars of a close pair. 2.4.2. */
