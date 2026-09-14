@@ -15,6 +15,7 @@
 
 import { parseUwp, rollUwp, seedFrom, type Uwp } from "../planet";
 import { holdsWorld, moonSeed, moonUwp, orbitWorldSeed, satelliteUwp } from "./satellite";
+import { settlementNames } from "./settle";
 import { pbgFor, type Pbg } from "./trade";
 import { planetDetail } from "./detail";
 import { valueFor } from "./rng";
@@ -377,6 +378,79 @@ export function ordinalOf(
  */
 export function worldName(systemName: string, planet: number): string {
   return `${systemName}-${planet}`;
+}
+
+/**
+ * The names of the places in a system that anybody lives on. SystemSpec 7.3.
+ *
+ * People name where they live, and a numbered rock is a rock nobody stayed on.
+ * So every inhabited body gets a name of its own, and everything else keeps the
+ * number that says where it is and nothing more.
+ *
+ * Drawn in one go from the naming machinery of the planet spec 6.24.6, which
+ * picks one flavour and then makes as many names as are asked for without
+ * repeating itself. One system, one way of naming things, and no two places in
+ * it called the same.
+ *
+ * The first name drawn is the system's, which is its main world's under 7.1:
+ * a system is named for the world people mean when they say its name, whether
+ * or not the main world is the only inhabited one.
+ */
+export interface SystemNames {
+  /** The system's name, which is its main world's. */
+  readonly system: string;
+  /** The name of the world in an orbit, where anybody lives there. */
+  readonly worlds: ReadonlyMap<number, string>;
+  /** The name of a moon, keyed by its orbit and its own number. */
+  readonly moons: ReadonlyMap<string, string>;
+}
+
+/** How a moon is keyed in SystemNames. */
+export function moonKey(orbitIndex: number, moon: number): string {
+  return `${orbitIndex}:${moon}`;
+}
+
+export function namesOf(system: StarSystem): SystemNames {
+  const worlds = new Map<number, string>();
+  const moons = new Map<string, string>();
+
+  // Who wants a name, in the order the names are handed out: the main world
+  // first, since the system is called after it, then everything else outward.
+  const wanting: { orbit: number; moon: number | null }[] = [];
+  for (const orbit of system.orbits) {
+    if (orbit.content.kind === "world" && orbit.content.main) wanting.push({ orbit: orbit.index, moon: null });
+  }
+  for (const orbit of system.orbits) {
+    const content = orbit.content;
+    if (content.kind === "world" && !content.main && livedOn(content.uwp)) {
+      wanting.push({ orbit: orbit.index, moon: null });
+    }
+    if (content.kind !== "giant") continue;
+    for (const moon of content.moons) {
+      if (livedOn(moon.uwp)) wanting.push({ orbit: orbit.index, moon: moon.index });
+    }
+  }
+
+  // The main world is always drawn for, even where nobody lives on it: the
+  // system still has to be called something.
+  const drawn = settlementNames(`${system.seed}:names`, Math.max(1, wanting.length));
+  wanting.forEach((place, at) => {
+    const name = drawn[at] ?? `${system.seed}-${at}`;
+    if (place.moon === null) worlds.set(place.orbit, name);
+    else moons.set(moonKey(place.orbit, place.moon), name);
+  });
+
+  const main = system.mainWorld.orbitIndex;
+  const name = worlds.get(main) ?? drawn[0] ?? system.seed;
+  // A main world nobody lives on has lent its name to the system and kept none
+  // of its own: an empty rock is a place on a chart, not somewhere with a name.
+  if (!livedOn(system.mainWorld.uwp)) worlds.delete(main);
+  return { system: name, worlds, moons };
+}
+
+function livedOn(uwp: string): boolean {
+  const profile = parseUwp(uwp);
+  return profile !== null && profile.population > 0;
 }
 
 /** What a belt is called. Belts are counted apart from planets. SystemSpec 7.4. */

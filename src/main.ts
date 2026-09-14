@@ -101,12 +101,15 @@ import { liveGlobe, worldImage } from "./ui/worldimage";
 import { giantImage } from "./ui/giant";
 import {
   beltName,
+  moonKey,
   moonsOf,
+  namesOf,
   ordinalOf,
   worldName,
   worldSettings,
   worldsOf,
   type StarSystem,
+  type SystemNames,
 } from "./gen/system";
 import {
   newSystemDoc,
@@ -1919,13 +1922,20 @@ function showHeader(): void {
 }
 
 /**
- * What a system is called. SystemSpec 7.1 has it named for its main world, which
- * the subsector chart names - and there is no chart yet, so the name is drawn
- * here from the same machinery, which SubSectorSpec 3.4 will move out of
- * settle.ts when the chart arrives.
+ * What everything in the open system is called. SystemSpec 7.3.
+ *
+ * Drawn once with the system rather than asked for a name at a time, because
+ * the names of one system are one draw: they share a flavour and none of them
+ * repeats another.
  */
-function systemName(seed: string): string {
-  return settlementNames(`${seed}:system`, 1)[0] ?? seed;
+let names: SystemNames | null = null;
+
+/** The name of the world or moon a body is, where anybody lives on it. */
+function properName(orbitIndex: number, moon: number | null): string | null {
+  if (names === null) return null;
+  return moon === null
+    ? (names.worlds.get(orbitIndex) ?? null)
+    : (names.moons.get(moonKey(orbitIndex, moon)) ?? null);
 }
 
 function sysSay(message: string, isError = false): void {
@@ -1938,7 +1948,7 @@ function startNewSystem(): void {
   if (!confirmSystemDiscard("Roll another system")) return;
   const seed = randomSeed();
   systemFolder = null;
-  openSystem(newSystemDoc(seed, systemName(seed)));
+  openSystem(newSystemDoc(seed, namesOf(systemOf(newSystemDoc(seed, ""))).system));
   markSystemClean();
 }
 
@@ -1946,6 +1956,7 @@ function startNewSystem(): void {
 function openSystem(next: SystemDoc): void {
   doc = next;
   system = systemOf(next);
+  names = namesOf(system);
   orbitShown = system.mainWorld.orbitIndex;
   setAppView("system");
   el<HTMLInputElement>("sys-name").value = next.name;
@@ -2006,6 +2017,10 @@ function showOrbit(index: number | null): void {
   const content = orbit.content;
   const what = contentLabel(orbit);
   el("sys-what").textContent = `${bodyName(system, orbit.index)} — ${what}`;
+  // Where the name is the world's own, what it is filed under is worth saying:
+  // SystemSpec 7.3.1 wants both, one for the player and one for the referee.
+  const called = positionName(system, orbit.index);
+  if (called !== bodyName(system, orbit.index)) row("Designation", called);
   row("Distance", auLabel(orbit.au));
   row("Sunlight", sunlightNote(orbit.sunEquivalentAu));
   row("Year", yearNote(orbit.au, system.stars.primary.luminosity));
@@ -2022,6 +2037,8 @@ function showOrbit(index: number | null): void {
     const settings = worldSettings(system, orbit.index);
     const detail = planetDetail(moon.seed, moon.uwp, settings);
     el("sys-what").textContent = `${moonName(system, orbit.index, moon.index)} — moon`;
+    const called = moonPositionName(system, orbit.index, moon.index);
+    if (called !== moonName(system, orbit.index, moon.index)) row("Designation", called);
     row("Moon of", `the gas giant at ${auLabel(orbit.au)}`);
     row("Profile", moon.uwp);
     row("Seed", moon.seed);
@@ -2306,11 +2323,21 @@ function showTree(): void {
  * thing there is to say about them.
  */
 function bodyName(open: StarSystem, orbitIndex: number): string {
+  return properName(orbitIndex, null) ?? positionName(open, orbitIndex);
+}
+
+/**
+ * Where a body is, written as a name. SystemSpec 7.2: the system's name and
+ * which planet it is, which is what a place with nobody on it is called and what
+ * every body is filed under.
+ */
+function positionName(open: StarSystem, orbitIndex: number): string {
   const orbit = open.orbits.find((held) => held.index === orbitIndex);
   if (orbit === undefined) return "";
+  const stem = names?.system ?? open.seed;
   const held = ordinalOf(open, orbitIndex);
-  if (held.kind === "planet") return worldName(systemName(open.seed), held.n);
-  if (held.kind === "belt") return beltName(systemName(open.seed), held.n);
+  if (held.kind === "planet") return worldName(stem, held.n);
+  if (held.kind === "belt") return beltName(stem, held.n);
   // An empty orbit is a place rather than a thing, and how far out it is the
   // only thing there is to say about it.
   return auLabel(orbit.au);
@@ -2408,8 +2435,13 @@ function showMoons(open: StarSystem, orbitIndex: number): void {
 
 /** A moon is its planet and a letter. SystemSpec 7.2. */
 function moonName(open: StarSystem, orbitIndex: number, moon: number): string {
+  return properName(orbitIndex, moon) ?? moonPositionName(open, orbitIndex, moon);
+}
+
+/** A moon is its planet and a letter. SystemSpec 7.2. */
+function moonPositionName(open: StarSystem, orbitIndex: number, moon: number): string {
   const letter = String.fromCharCode(96 + Math.min(26, moon));
-  return `${bodyName(open, orbitIndex)}${letter}`;
+  return `${positionName(open, orbitIndex)}${letter}`;
 }
 
 

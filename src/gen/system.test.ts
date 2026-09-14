@@ -4,6 +4,8 @@ import { pbgFor } from "./trade";
 import {
   beltName,
   generateSystem,
+  moonKey,
+  namesOf,
   mainWorldSeed,
   ordinalOf,
   orbitsFor,
@@ -239,6 +241,51 @@ describe("what a body is called", () => {
         const held = ordinalOf(system, orbit.index);
         if (held.kind !== "none") expect(held.n).toBeGreaterThan(0);
       }
+    }
+  });
+
+  it("names the places people live and numbers the rest", () => {
+    // SystemSpec 7.3: people name where they live, and a numbered rock is a rock
+    // nobody stayed on.
+    let named = 0;
+    for (const seed of SEEDS) {
+      const system = generateSystem(seed);
+      const names = namesOf(system);
+      expect(names.system, seed).not.toBe("");
+      for (const orbit of system.orbits) {
+        const content = orbit.content;
+        if (content.kind === "world") {
+          const people = parseUwp(content.uwp)!.population > 0;
+          expect(names.worlds.has(orbit.index), `${seed} orbit ${orbit.index}`).toBe(people);
+          if (people) named++;
+        }
+        if (content.kind !== "giant") continue;
+        for (const moon of content.moons) {
+          const people = parseUwp(moon.uwp)!.population > 0;
+          expect(names.moons.has(moonKey(orbit.index, moon.index))).toBe(people);
+        }
+      }
+    }
+    expect(named).toBeGreaterThan(100);
+  });
+
+  it("gives no two places in a system the same name", () => {
+    for (const seed of SEEDS) {
+      const names = namesOf(generateSystem(seed));
+      const all = [...names.worlds.values(), ...names.moons.values()];
+      expect(new Set(all).size, seed).toBe(all.length);
+    }
+  });
+
+  it("calls the system after its main world", () => {
+    // SystemSpec 7.3.3. A main world nobody lives on lends its name and keeps
+    // none of its own, since the system still has to be called something.
+    for (const seed of SEEDS) {
+      const system = generateSystem(seed);
+      const names = namesOf(system);
+      const main = names.worlds.get(system.mainWorld.orbitIndex);
+      if (parseUwp(system.mainWorld.uwp)!.population > 0) expect(main).toBe(names.system);
+      else expect(main).toBeUndefined();
     }
   });
 

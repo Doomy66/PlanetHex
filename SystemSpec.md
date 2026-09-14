@@ -186,7 +186,11 @@ This document sits under [SubSectorSpec.md](SubSectorSpec.md) and over [PlanetSp
 
 7.3 A world with people on it takes a name of its own as well, drawn from the flavour machinery of the planet spec 6.24.6 with the system's own flavour, and the main world's is the one the chart gave it under the subsector spec 3.4. People name where they live; a numbered rock is a rock nobody stayed on.
 
-7.3.1 As well as, not instead of. The name is what the world is called and 7.2 is where it sits, and a referee needs both: the app spec 4.2.1.1 saves under the second, and everything a player sees uses the first.
+7.3.1 As well as, not instead of. The name is what the world is called and 7.2 is where it sits, and a referee needs both: the app spec 4.2.1.1 saves under the second, and everything a player sees uses the first. Where a body has a name of its own, the panel says what it is filed under beside it.
+
+7.3.2 The names of one system are one draw. The machinery picks a flavour and then makes as many names as are asked for without repeating itself, so a system's places sound like each other's neighbours and no two of them are called the same thing.
+
+7.3.3 The system's name is the first of that draw, and it is the main world's. A main world nobody lives on lends its name to the system and keeps none of its own, because an empty rock is a place on a chart rather than somewhere with a name, and the system still has to be called something.
 
 7.4 A gas giant is a planet and is counted as one. A belt is not, and takes a numbering of its own: the system name, Belt, and which belt it is, so Sol Belt-1 is the one between Mars and Jupiter.
 
