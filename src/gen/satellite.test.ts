@@ -100,7 +100,7 @@ describe("the other worlds", () => {
     for (const { system, world } of OTHERS.slice(0, 200)) {
       const settings = worldSettings(system, world.orbitIndex);
       expect(settings.orbitAu).toBe(world.au);
-      expect(settings.luminosity).toBe(system.stars.primary.luminosity);
+      expect(settings.luminosity).toBe(system.mainWorld.luminosity);
       const alone = planetDetail(world.seed, world.uwp, settings);
       expect(alone.orbitAu).toBeCloseTo(world.au, 6);
       expect(Number.isFinite(alone.meanTempK)).toBe(true);

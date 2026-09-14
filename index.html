@@ -48,7 +48,7 @@
             </div>
             <div class="actions">
               <button id="landing-system-new" type="button">New</button>
-              <button type="button" disabled>Load</button>
+              <button id="landing-system-load" type="button">Load</button>
             </div>
           </li>
           <li class="level">
@@ -74,7 +74,7 @@
         </ul>
 
         <p id="landing-status" class="status" role="status"></p>
-        <p class="landing-note">Planets and systems are built. A system cannot be saved yet.</p>
+        <p class="landing-note">Planets and systems are built. Subsectors and sectors are specified.</p>
       </div>
     </section>
 
@@ -83,11 +83,15 @@
          Read only, at this stage: nothing here edits a system. -->
     <section id="system" class="system">
       <header class="system-head">
-        <h1>System</h1>
+        <input id="sys-name" class="sys-name" type="text" autocomplete="off" aria-label="System name" />
         <span id="sys-stars" class="sys-stars"></span>
         <span id="sys-counts" class="sys-counts"></span>
+        <span id="sys-dirty" class="dirty" hidden>unsaved</span>
         <span class="system-actions">
+          <label class="sys-where">Sector<input id="sys-sector" type="text" autocomplete="off" /></label>
+          <label class="sys-where">Hex<input id="sys-hex" type="text" autocomplete="off" placeholder="0000" maxlength="5" /></label>
           <button id="sys-roll" type="button" title="Another system">Roll</button>
+          <button id="sys-save" type="button">Save</button>
           <button id="sys-home" class="home" type="button" title="Back to the levels">Levels</button>
         </span>
       </header>
@@ -99,6 +103,9 @@
           <h2 id="sys-what">Select an orbit</h2>
           <dl id="sys-facts" class="sys-facts"></dl>
           <p id="sys-note" class="sys-note"></p>
+          <label class="sys-written">Notes
+            <textarea id="sys-written" rows="2" placeholder="What a referee wants to write here"></textarea>
+          </label>
           <button id="sys-open" class="sys-open" type="button" hidden>Open as a planet</button>
         </div>
         <p id="sys-status" class="status" role="status"></p>

@@ -68,6 +68,10 @@ This document sits under [SubSectorSpec.md](SubSectorSpec.md) and over [PlanetSp
 
 2.4.1 This is the simplification that lets section 3 have one set of orbits rather than three. A real binary has orbits around each star and around the pair, and modelling that is a week of work to produce a diagram most referees will read as "there are two suns".
 
+2.4.2 A close companion lights the system and a far one does not. Every orbit is outside a close pair, so a world in one sees both stars close together in its sky and takes the light of both; a far companion is outside every orbit and is a bright star in the night rather than a second sun. The habitable zone, where the worlds are placed, and the star setting a world carries away under 5.2.2.1 are all worked out on that total.
+
+2.4.2.1 Getting this wrong is visible on the diagram rather than buried: the zone is drawn where one star's light would put it and the main world sits outside the band it belongs in. Two stars of a Sun each make a zone half again as far out as one does, and a reader can see that the mark is on the wrong orbit.
+
 2.5 The star is rolled in its own right, and no draw is rejected for being inconvenient. A world in a system with an awkward star is a world with an awkward star, and 5.2 puts it in the best orbit that star has rather than redrawing until the system is comfortable.
 
 ## 3. Orbits

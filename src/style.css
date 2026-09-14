@@ -661,6 +661,25 @@ body[data-view="planet"] .system { display: none; }
 .orbit-au { fill: var(--muted); font-size: 11px; text-anchor: middle; }
 .orbit-label { fill: var(--muted); font-size: 10px; text-anchor: middle; opacity: 0.75; }
 
+.sys-name {
+  width: 200px;
+  font-size: 15px;
+  letter-spacing: 0.04em;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 3px;
+  color: var(--text);
+  padding: 2px 6px;
+  margin: 0;
+}
+.sys-name:hover { border-color: var(--line); }
+.sys-name:focus { border-color: var(--muted); background: var(--bg); }
+.sys-where { display: flex; align-items: center; gap: 5px; margin: 0; color: var(--muted); }
+.sys-where input { width: 110px; margin: 0; }
+.sys-where:last-of-type input { width: 62px; }
+.sys-written { display: block; margin: 10px 0 0; color: var(--muted); }
+.sys-written textarea { margin-top: 4px; }
+
 .sys-below { display: flex; flex-direction: column; gap: 4px; }
 .sys-detail {
   border: 1px solid var(--line);

@@ -78,6 +78,7 @@ import { orbitalShader } from "./ui/orbital";
 import {
   download,
   isSupported,
+  loadFolder,
   load,
   loadFromInput,
   PickerCancelled,
@@ -95,7 +96,16 @@ import { EXPORT_FORMATS, manifest, type ExportContext } from "./io/export";
 import { shaderFor, surfaceOn } from "./surface";
 import { currentAppView, landingSay, setAppView, wireLanding } from "./ui/landing";
 import { auLabel, contentLabel, createOrbitDiagram } from "./ui/orbits";
-import { generateSystem, worldName, worldSettings, worldsOf, type StarSystem } from "./gen/system";
+import { worldName, worldSettings, worldsOf, type StarSystem } from "./gen/system";
+import {
+  newSystemDoc,
+  overrideFor,
+  parseSystemDoc,
+  setOverride,
+  subsectorOf,
+  systemOf,
+  type SystemDoc,
+} from "./system";
 import { starsLabel } from "./gen/star";
 import { formatPbg, tradeCodes } from "./gen/trade";
 
@@ -1781,9 +1791,50 @@ el("home").addEventListener("click", () => {
 const orbits = createOrbitDiagram();
 el("sys-diagram").append(orbits.element);
 
-/** The open system, and which of its orbits the panel is about. */
+/**
+ * The open system: the document that would be saved, the system it describes,
+ * and which orbit the panel is about.
+ *
+ * Two of them rather than one because they are two different things. The
+ * document is the seed and what the user wrote; the system is what that
+ * generates, rebuilt whenever the document changes. SystemSpec 9.2.
+ */
+let doc: SystemDoc | null = null;
 let system: StarSystem | null = null;
 let orbitShown: number | null = null;
+/** The folder this system was loaded from or last saved into. AppSpec 3.3.2. */
+let systemFolder: DirectoryHandle | null = null;
+let systemDirty = false;
+
+function markSystemDirty(): void {
+  systemDirty = true;
+  el("sys-dirty").hidden = false;
+}
+
+function markSystemClean(): void {
+  systemDirty = false;
+  el("sys-dirty").hidden = true;
+}
+
+/** What the header says about the system as a whole. SystemSpec 8.6. */
+function showHeader(): void {
+  if (doc === null || system === null) return;
+  const letter = subsectorOf(doc);
+  const place = [
+    doc.sector.trim(),
+    letter === "" ? "" : `${doc.hex.trim()} (subsector ${letter})`,
+  ].filter(Boolean);
+  el("sys-stars").textContent = starsLabel(system.stars);
+  // SystemSpec 4.2.1 where the two counts disagree: the chart's figures are the
+  // chart's, and what would not fit is said rather than quietly dropped.
+  const short =
+    system.placed.belts === system.pbg.belts && system.placed.gasGiants === system.pbg.gasGiants
+      ? ""
+      : ` (room for ${system.placed.belts} and ${system.placed.gasGiants})`;
+  el("sys-counts").textContent = [`seed ${doc.seed}`, `PBG ${formatPbg(system.pbg)}${short}`, ...place].join(
+    " · ",
+  );
+}
 
 /**
  * What a system is called. SystemSpec 7.1 has it named for its main world, which
@@ -1802,35 +1853,45 @@ function sysSay(message: string, isError = false): void {
 }
 
 function startNewSystem(): void {
-  showSystem(generateSystem(randomSeed()));
+  if (!confirmSystemDiscard("Roll another system")) return;
+  const seed = randomSeed();
+  systemFolder = null;
+  openSystem(newSystemDoc(seed, systemName(seed)));
+  markSystemClean();
 }
 
-function showSystem(next: StarSystem): void {
-  system = next;
-  orbitShown = next.mainWorld.orbitIndex;
+/** Put a document on screen, and the system it describes with it. */
+function openSystem(next: SystemDoc): void {
+  doc = next;
+  system = systemOf(next);
+  orbitShown = system.mainWorld.orbitIndex;
   setAppView("system");
-  el("sys-stars").textContent = starsLabel(next.stars);
-  // SystemSpec 8.6, and 4.2.1 where the two counts disagree: the chart's figures
-  // are the chart's, and what would not fit is said rather than quietly dropped.
-  const short =
-    next.placed.belts === next.pbg.belts && next.placed.gasGiants === next.pbg.gasGiants
-      ? ""
-      : ` (room for ${next.placed.belts} and ${next.placed.gasGiants})`;
-  el("sys-counts").textContent =
-    `${systemName(next.seed)} · seed ${next.seed} · PBG ${formatPbg(next.pbg)}${short}`;
-  orbits.render(next);
+  el<HTMLInputElement>("sys-name").value = next.name;
+  el<HTMLInputElement>("sys-sector").value = next.sector;
+  el<HTMLInputElement>("sys-hex").value = next.hex;
+  orbits.render(system);
   orbits.setSelected(orbitShown);
+  showHeader();
   showOrbit(orbitShown);
-  sysSay(`${next.orbits.length} orbits, ${worldsOf(next).length} worlds.`);
+  sysSay(`${system.orbits.length} orbits, ${worldsOf(system).length} worlds.`);
+}
+
+/** What a save would lose, asked before anything discards it. SystemSpec 9.6. */
+function confirmSystemDiscard(action: string): boolean {
+  if (doc === null || !systemDirty) return true;
+  return confirm(`${doc.name || "This system"} has unsaved changes. ${action} and lose them?`);
 }
 
 /** The panel for one orbit. SystemSpec 8.4. */
 function showOrbit(index: number | null): void {
   const open = el<HTMLButtonElement>("sys-open");
   const facts = el("sys-facts");
+  const written = el<HTMLTextAreaElement>("sys-written");
   facts.replaceChildren();
   el("sys-note").textContent = "";
   open.hidden = true;
+  written.value = doc === null || index === null ? "" : (overrideFor(doc, index)?.note ?? "");
+  written.disabled = doc === null || index === null;
   if (system === null || index === null) {
     el("sys-what").textContent = "Select an orbit";
     return;
@@ -1891,6 +1952,29 @@ function yearNote(au: number, luminosity: number): string {
   return years < 1 ? `${(years * 12).toFixed(1)} months` : `${years.toFixed(1)} years`;
 }
 
+el<HTMLInputElement>("sys-name").addEventListener("input", (event) => {
+  if (doc === null) return;
+  doc.name = (event.target as HTMLInputElement).value;
+  markSystemDirty();
+});
+
+for (const field of ["sector", "hex"] as const) {
+  el<HTMLInputElement>(`sys-${field}`).addEventListener("input", (event) => {
+    if (doc === null) return;
+    doc[field] = (event.target as HTMLInputElement).value;
+    markSystemDirty();
+    showHeader();
+  });
+}
+
+// Free prose about whatever is in an orbit, which is an override under
+// SystemSpec 9.3 and stored only where there is something to store.
+el<HTMLTextAreaElement>("sys-written").addEventListener("input", (event) => {
+  if (doc === null || orbitShown === null) return;
+  setOverride(doc, orbitShown, "note", (event.target as HTMLTextAreaElement).value);
+  markSystemDirty();
+});
+
 orbits.onSelect((index) => {
   orbitShown = index;
   orbits.setSelected(index);
@@ -1900,9 +1984,73 @@ orbits.onSelect((index) => {
 el("sys-roll").addEventListener("click", startNewSystem);
 
 el("sys-home").addEventListener("click", () => {
+  if (!confirmSystemDiscard("Leave this system")) return;
   setAppView("landing");
   landingSay("");
 });
+
+/* Saving and loading a system. SystemSpec 9.5, AppSpec 3.3 and 4.3 ------- */
+
+/** The file a system is saved as, named for the system. AppSpec 4.3. */
+function systemFile(open: SystemDoc): SaveFile {
+  const stem = open.name.replace(/[^A-Za-z0-9 _-]/g, "").trim() || "system";
+  return { name: `${stem}.json`, data: JSON.stringify(open, null, 2) };
+}
+
+el("sys-save").addEventListener("click", async () => {
+  if (doc === null) return;
+  try {
+    // The folder is asked for once: a load or an earlier save has already said
+    // where this system lives, and AppSpec 3.3.2 has it stay there.
+    systemFolder ??= await pickFolder();
+    await saveTo(systemFolder, [systemFile(doc)]);
+    markSystemClean();
+    sysSay(`Saved ${systemFile(doc).name} into ${systemFolder.name}.`);
+  } catch (error) {
+    if (error instanceof PickerCancelled) return;
+    sysSay(error instanceof Error ? error.message : String(error), true);
+  }
+});
+
+/**
+ * Open a system from the folder holding it. AppSpec 3.3 and section 5: what is
+ * chosen is the folder, not a file in it, and the folder is the save folder from
+ * that moment on.
+ */
+async function loadSystem(): Promise<void> {
+  if (!confirmSystemDiscard("Load another system")) return;
+  try {
+    const { dir, files } = await loadFolder();
+    const found: { name: string; doc: SystemDoc }[] = [];
+    const refused: string[] = [];
+    for (const file of files) {
+      try {
+        found.push({ name: file.name, doc: parseSystemDoc(file.text) });
+      } catch (error) {
+        refused.push(`${file.name}: ${error instanceof Error ? error.message : String(error)}`);
+      }
+    }
+    if (found.length === 0) {
+      // AppSpec 5.3 and 5.5: say what was found rather than failing blankly, and
+      // name the file where something in the folder claimed to be a system.
+      const detail = refused.length === 0 ? "" : ` ${refused[0]!}`;
+      throw new Error(`No system in ${dir.name}.${detail}`);
+    }
+    // AppSpec 5.4 wants the user asked which; until there is somewhere to ask,
+    // the first by name is opened and the rest are named in the status line.
+    const first = found[0]!;
+    systemFolder = dir;
+    openSystem(first.doc);
+    markSystemClean();
+    const others = found.length === 1 ? "" : ` (${found.length - 1} more in the folder)`;
+    sysSay(`Loaded ${first.name} from ${dir.name}.${others}`);
+  } catch (error) {
+    if (error instanceof PickerCancelled) return;
+    const message = error instanceof Error ? error.message : String(error);
+    if (currentAppView() === "landing") landingSay(message, true);
+    else sysSay(message, true);
+  }
+}
 
 /**
  * A world out of a system, opened as a planet. SystemSpec 6.2 and the app spec
@@ -1944,6 +2092,7 @@ wireLanding({
   planetNew: startNewPlanet,
   planetLoad: loadPlanet,
   systemNew: startNewSystem,
+  systemLoad: loadSystem,
 });
 
 /* Start ------------------------------------------------------------------ */

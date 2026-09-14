@@ -96,7 +96,8 @@ describe("generateSystem", () => {
       const system = generateSystem(seed);
       const settings = worldSettings(system);
       expect(settings.orbitAu, seed).toBe(system.mainWorld.au);
-      expect(settings.luminosity, seed).toBe(system.stars.primary.luminosity);
+      // What lights the orbits, which is both stars of a close pair. 2.4.2.
+      expect(settings.luminosity, seed).toBe(system.mainWorld.luminosity);
 
       // Opened from nothing but those settings, the world comes up in the orbit
       // the system put it in, at the temperature that orbit implies.
@@ -137,6 +138,42 @@ describe("generateSystem", () => {
       expect(sunlit, `${seed} at ${home.au} AU`).toBeLessThan(330);
     }
     expect(checked).toBeGreaterThan(20);
+  });
+
+  it("lights a close pair by both its stars", () => {
+    // SystemSpec 2.4.2: every orbit is outside a close pair, so a world in one
+    // takes the light of both. Read off the primary alone, the habitable zone is
+    // drawn too far in and the main world sits outside the band it belongs in.
+    let checked = 0;
+    for (const seed of SEEDS) {
+      const system = generateSystem(seed);
+      const { primary, companion, companionOrbit } = system.stars;
+      if (companion === null) continue;
+      const pair = primary.luminosity + companion.luminosity;
+      if (companionOrbit === "close") {
+        checked++;
+        expect(system.mainWorld.luminosity, seed).toBeCloseTo(pair, 10);
+      } else {
+        // A far companion is outside every orbit: a bright star in the night
+        // rather than a second sun.
+        expect(system.mainWorld.luminosity, seed).toBe(primary.luminosity);
+      }
+    }
+    expect(checked).toBeGreaterThan(10);
+  });
+
+  it("puts the habitable zone where the light actually is", () => {
+    for (const seed of SEEDS) {
+      const system = generateSystem(seed);
+      for (const orbit of system.orbits) {
+        // The sunlight-equivalent distance is the true one divided by the reach
+        // of what lights it, and the tag follows that and nothing else.
+        expect(orbit.sunEquivalentAu, seed).toBeCloseTo(
+          orbit.au / Math.sqrt(system.mainWorld.luminosity),
+          8,
+        );
+      }
+    }
   });
 
   it("gives every system at least one orbit", () => {

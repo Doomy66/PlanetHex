@@ -174,6 +174,23 @@ export function starsFor(seed: string): Stars {
   return { primary, companion, companionOrbit: close ? "close" : "far" };
 }
 
+/**
+ * What the orbits of a system are lit by, relative to the Sun.
+ *
+ * A close companion orbits inside every orbit a world could hold, under
+ * SystemSpec 2.4, so a world out here sees two stars close together in its sky
+ * and gets the light of both. A far companion is outside all of them and lights
+ * nothing: it is a bright star in the night, not a second sun.
+ *
+ * This is what the habitable zone and every distance in system.ts are worked out
+ * on, and what a world of this system carries away as its own star setting.
+ */
+export function systemLuminosity(stars: Stars): number {
+  const companion =
+    stars.companion !== null && stars.companionOrbit === "close" ? stars.companion.luminosity : 0;
+  return stars.primary.luminosity + companion;
+}
+
 /** One star as a sector file writes it: class, subclass, then luminosity class. */
 export function starLabel(star: Star): string {
   return star.size === "D" ? "D" : `${star.spectral}${star.subclass} ${star.size}`;

@@ -18,7 +18,7 @@ import { holdsWorld, orbitWorldSeed, satelliteUwp } from "./satellite";
 import { pbgFor, type Pbg } from "./trade";
 import { planetDetail } from "./detail";
 import { valueFor } from "./rng";
-import { starsFor, type Stars } from "./star";
+import { starsFor, systemLuminosity, type Stars } from "./star";
 
 /**
  * The orbits, in AU. The solar system's own spacing, which is the pattern
@@ -84,9 +84,10 @@ export interface MainWorld {
   /** Where it is, in AU, and what goes into its orbit setting. SystemSpec 5.2.2. */
   readonly au: number;
   /**
-   * The output of the star it orbits, which goes into its luminosity setting.
-   * Without it the orbit above means nothing: the same distance is a furnace
-   * around one star and a cinder around another.
+   * The output of what it orbits, which goes into its luminosity setting: both
+   * stars of a close pair, or the primary alone. Without it the orbit above
+   * means nothing, since the same distance is a furnace around one star and a
+   * cinder around another.
    */
   readonly luminosity: number;
 }
@@ -182,12 +183,14 @@ function shuffled(seed: string, stream: string, of: readonly number[]): number[]
  */
 export function generateSystem(seed: string): StarSystem {
   const stars = starsFor(seed);
-  const laid = orbitsFor(stars.primary.luminosity);
+  // What the orbits are lit by, which is both stars where the companion is
+  // inside them all and the primary alone where it is outside them all.
+  const luminosity = systemLuminosity(stars);
+  const laid = orbitsFor(luminosity);
   const worldSeed = mainWorldSeed(seed);
   const uwp = rollUwp(worldSeed);
   const pbg = pbgFor(worldSeed, uwp);
 
-  const luminosity = stars.primary.luminosity;
   const home = nearestOrbit(laid, wantedAu(worldSeed, uwp, luminosity));
   const content = new Map<number, OrbitContent>();
   content.set(home.index, { kind: "world", main: true, seed: worldSeed, uwp });

@@ -44,6 +44,8 @@ export interface LandingHandlers {
   planetLoad(): void | Promise<void>;
   /** Roll a new system and open it. AppSpec 3.1, SystemSpec section 8. */
   systemNew(): void;
+  /** Pick the folder a system lives in and open it. AppSpec 3.3. */
+  systemLoad(): void | Promise<void>;
 }
 
 export function wireLanding(handlers: LandingHandlers): void {
@@ -58,4 +60,5 @@ export function wireLanding(handlers: LandingHandlers): void {
   click("landing-planet-new", handlers.planetNew);
   click("landing-planet-load", handlers.planetLoad);
   click("landing-system-new", handlers.systemNew);
+  click("landing-system-load", handlers.systemLoad);
 }

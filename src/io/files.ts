@@ -32,6 +32,15 @@ export interface FileHandle extends WritableFile {
 export interface DirectoryHandle {
   readonly name: string;
   getFileHandle(name: string, options?: { create?: boolean }): Promise<FileHandle>;
+  /**
+   * What is in the folder. AppSpec 5.6: a level above the planet is loaded by
+   * picking its folder, and a folder cannot be read without listing it.
+   */
+  values?(): AsyncIterableIterator<FileHandle | DirectoryHandle>;
+  getDirectoryHandle?(
+    name: string,
+    options?: { create?: boolean },
+  ): Promise<DirectoryHandle>;
 }
 interface PickerWindow {
   showDirectoryPicker?(options: unknown): Promise<DirectoryHandle>;
@@ -118,6 +127,36 @@ export async function load(): Promise<{ planet: Planet; name: string }> {
   if (!handle) throw new PickerCancelled();
   const text = await (await handle.getFile()).text();
   return { planet: parsePlanet(text), name: handle.name };
+}
+
+/**
+ * Every JSON file sitting in a folder, with its text. Shallow: a system folder
+ * holds its own document and the files of its worlds under the app spec 4.3, and
+ * the levels below are reached by opening those, not by scanning past them.
+ */
+export async function readFolder(dir: DirectoryHandle): Promise<{ name: string; text: string }[]> {
+  if (!dir.values) throw new Error("This browser cannot read a folder.");
+  const out: { name: string; text: string }[] = [];
+  for await (const entry of dir.values()) {
+    const handle = entry as FileHandle;
+    if (typeof handle.getFile !== "function") continue;
+    if (!/\.json$/i.test(handle.name)) continue;
+    out.push({ name: handle.name, text: await (await handle.getFile()).text() });
+  }
+  return out.sort((a, b) => a.name.localeCompare(b.name));
+}
+
+/**
+ * Ask for a folder and read what is in it. AppSpec 3.3: what is chosen is the
+ * folder holding a level's data, not a file inside it, and the folder is the
+ * save folder from that moment on.
+ */
+export async function loadFolder(): Promise<{
+  dir: DirectoryHandle;
+  files: { name: string; text: string }[];
+}> {
+  const dir = await pickFolder();
+  return { dir, files: await readFolder(dir) };
 }
 
 /* The fallback, for a browser without the API above --------------------- */
