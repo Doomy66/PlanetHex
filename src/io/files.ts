@@ -92,9 +92,18 @@ export interface SaveFile {
   readonly data: string | Blob;
 }
 
-/** The name a planet's files are built on. Spec 6.4.1. */
+/**
+ * The name a planet's files are built on. Spec 6.4.1, AppSpec 4.2.1.
+ *
+ * Where the world is, not what it is called: a world of a system is named for
+ * its place in that system, so the third world of Sol is Sol-3 whatever its
+ * inhabitants call it. A world with no system has no place to be named for and
+ * keeps its own name, which is AppSpec 4.2.4 - a planet rolled on its own is
+ * still a planet, and this application began with nothing else.
+ */
 export function stemFor(planet: Planet): string {
-  return sanitise(planet.name);
+  const designation = planet.designation ?? "";
+  return sanitise(designation.trim() !== "" ? designation : planet.name);
 }
 
 /** The planet's own JSON, which every save writes whatever else it does. */

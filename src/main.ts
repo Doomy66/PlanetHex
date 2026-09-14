@@ -2540,10 +2540,15 @@ function openWorld(
   name: string,
   settings: { orbitAu: number; luminosity: number },
   au: number,
+  designation: string,
 ): void {
   setPlanetParent("system");
   Object.assign(state.planet, newPlanet(seed), {
     name,
+    // Which body of which system this is, which is what its files are named
+    // for and what it goes on being called after it has been saved and
+    // reopened with no system in sight. AppSpec 4.2.1.
+    designation,
     uwp,
     orbitAu: settings.orbitAu,
     luminosity: settings.luminosity,
@@ -2577,6 +2582,7 @@ el("sys-open").addEventListener("click", () => {
       moonName(system, orbit.index, moon.index),
       worldSettings(system, orbit.index),
       orbit.au,
+      moonName(system, orbit.index, moon.index),
     );
     return;
   }
@@ -2588,6 +2594,7 @@ el("sys-open").addEventListener("click", () => {
     bodyName(system, orbit.index),
     worldSettings(system, orbit.index),
     orbit.au,
+    positionName(system, orbit.index),
   );
 });
 

@@ -13,6 +13,21 @@ export interface Planet {
   /** Save format version, so a later phase can add fields. Spec 6.4.2. */
   readonly version: 1;
   name: string;
+  /**
+   * Where the world sits in its system - "Sol-3", "Regina Belt-1" - or null for
+   * a world that has no system. SystemSpec 7.2 and AppSpec 4.2.1.
+   *
+   * A world's name is what people call it and can be anything; its designation
+   * is which body of which system it is, and is what its files are named for. A
+   * world named Earth is still Sol-3 on disk, because a folder of files is read
+   * by somebody looking for the third orbit of a system whose folder they are
+   * standing in.
+   *
+   * Stored rather than worked out, because a world opened from a file has no
+   * system to ask. Null for a planet rolled on its own, which is named for
+   * itself and saved into a folder of its own - AppSpec 4.2.4.
+   */
+  designation: string | null;
   /** The sector the world sits in, free text. Spec 6.14. */
   sector: string;
   /** Its four digit hex within that sector, held as typed. Spec 6.14. */
@@ -70,6 +85,7 @@ export function blankPlanet(): Planet {
     tiltDeg: null,
     orbitAu: null,
     luminosity: null,
+    designation: null,
     rotationHours: null,
     craters: null,
     seed: "",
@@ -89,6 +105,7 @@ export function newPlanet(seed = randomSeed()): Planet {
     tiltDeg: null,
     orbitAu: null,
     luminosity: null,
+    designation: null,
     rotationHours: null,
     craters: null,
     seed,
@@ -259,6 +276,13 @@ export function parsePlanet(text: string): Planet {
   return {
     version: 1,
     name: typeof r["name"] === "string" ? r["name"] : "Unnamed",
+    // A save written before systems existed has no designation, which is the
+    // same planet as one rolled on its own: named for itself, and saved under
+    // its own name. AppSpec 4.2.4.
+    designation:
+      typeof r["designation"] === "string" && r["designation"].trim() !== ""
+        ? r["designation"]
+        : null,
     ...readLocation(r),
     // "upp" is the field name this build used before the rename to UWP.
     uwp: typeof r["uwp"] === "string" ? r["uwp"] : typeof r["upp"] === "string" ? r["upp"] : "",

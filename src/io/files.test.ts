@@ -9,7 +9,7 @@ import {
   type SaveFile,
 } from "./files";
 import { readZip } from "./zip";
-import { newPlanet } from "../planet";
+import { newPlanet, parsePlanet } from "../planet";
 
 /**
  * The folder a save writes into, stubbed. Spec 6.4.1: whatever the dialogue of
@@ -149,5 +149,42 @@ describe("saving a planet as an archive", () => {
     const entries = await entriesOf([{ name: "Regina.csv", data: "hex\r\nF00R00C00\r\n" }]);
 
     expect(new TextDecoder().decode(entries[0]!.data)).toBe("hex\r\nF00R00C00\r\n");
+  });
+});
+
+describe("what a planet's files are named", () => {
+  // AppSpec 4.2.1. Where the world is, not what it is called.
+  it("names a world of a system for its place in it", () => {
+    const planet = { ...newPlanet(), name: "Earth", designation: "Sol-3" };
+    expect(stemFor(planet)).toBe("Sol-3");
+  });
+
+  it("names a world with no system for itself", () => {
+    // 4.2.4: a planet rolled on its own has no orbit to be named for, and this
+    // application began with nothing else.
+    expect(stemFor({ ...newPlanet(), name: "Hadley", designation: null })).toBe("Hadley");
+  });
+
+  it("treats a blank designation as none at all", () => {
+    expect(stemFor({ ...newPlanet(), name: "Hadley", designation: "  " })).toBe("Hadley");
+  });
+
+  it("cleans a designation the way it cleans a name", () => {
+    expect(stemFor({ ...newPlanet(), name: "Earth", designation: "Sol/3: ?" })).toBe("Sol3");
+  });
+
+  it("carries the designation through a save and back", () => {
+    const planet = { ...newPlanet(), name: "Earth", designation: "Sol-3" };
+    const back = parsePlanet(JSON.stringify(planet));
+    expect(back.designation).toBe("Sol-3");
+    expect(stemFor(back)).toBe("Sol-3");
+  });
+
+  it("reads a save written before designations as a planet of its own", () => {
+    const planet = { ...newPlanet(), name: "Hadley" } as Record<string, unknown>;
+    delete planet["designation"];
+    const back = parsePlanet(JSON.stringify(planet));
+    expect(back.designation).toBeNull();
+    expect(stemFor(back)).toBe("Hadley");
   });
 });

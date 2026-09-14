@@ -77,7 +77,9 @@ This document is the shell. [PlanetSpec.md](PlanetSpec.md) specifies a planet, [
 
 4.2 **A planet is files, not a folder.** Its JSON and whatever images and exports were asked for, all named on one stem, written into the folder of the system it belongs to.
 
-4.2.1 The stem is the system's name and the world's orbit, under the system spec 7.2: the third world of Sol is `Sol-3.json`, with `Sol-3` on every image and export beside it. `stemFor` in [src/io/files.ts](src/io/files.ts) builds a stem from the planet's name today and gains the system form for a world that has a system.
+4.2.1 The stem is the system's name and the world's orbit, under the system spec 7.2: the third world of Sol is `Sol-3.json`, with `Sol-3` on every image and export beside it.
+
+4.2.1.2 A world carries its own designation in its document. It cannot be worked out at save time, because a world opened from a file has no system to ask: the file is the whole of what is known about it, which is the same reason 1.3.1 has a saved world carry its star and its orbit. A world handed down from a system is given its designation as it is opened, and keeps it from then on.
 
 4.2.1.1 The stem is where the world is, not what it is called. A world named Earth is still `Sol-3` on disk, because a folder of files is read by somebody looking for the third orbit of a system whose folder they are already standing in. The name is in the document, on the map, and on the sheet; the filename's job is to say which world this is among the eight in the folder.
 
@@ -85,7 +87,11 @@ This document is the shell. [PlanetSpec.md](PlanetSpec.md) specifies a planet, [
 
 4.2.3 Nothing collides, because the stem carries the system name and the orbit, and a system has one third orbit. Two systems each with a third world are `Sol-3` and `Regina-3`, in two folders, and neither has to know about the other.
 
-4.2.4 A planet opened from the landing page under 1.4 has no system and so no orbit to be named for. It keeps the stem it has today, its own name, and is saved into a folder the user picks with nothing else in it. That folder is a system folder with no system document, which 5.3 already knows how to open.
+4.2.4 A planet opened from the landing page under 1.4 has no system and so no orbit to be named for. Its designation is empty, it is named for itself, and it is saved into a folder the user picks with nothing else in it. That folder is a system folder with no system document, which 5.3 already knows how to open.
+
+4.2.4.1 This is not a fallback, it is the other half of the feature. A planet on its own is a whole document at the level this application began with, and a world of a system is the same document with a place in one. Nothing about a planet requires a system; the designation is a thing a system gives it, and a world that was never given one is not missing anything.
+
+4.2.4.2 A save written before designations existed reads as a planet of its own, since that is what every planet was when it was written.
 
 4.3 **A system folder** is the lowest folder there is. It holds the system's JSON, the files of 4.2 for each world the user has worked up and saved, and the system's own exports.
 

@@ -816,7 +816,11 @@ This document is the specification for one planet. [SubSectorSpec.md](SubSectorS
 
 6.14.3 This grid has nothing to do with the surface grid of section 2. A sector hex is one star system on a chart; a surface hex is a piece of ground on one planet. Nothing in generation reads either location field, so under 6.11 they stay user owned, and a world's place in the setting cannot change its terrain.
 
-6.14.4 Saves written before this was settled carried a single free text location. Load splits one on a trailing four digit group, so a file that followed the convention by hand arrives in the two fields and one that did not keeps its text in the sector field. Nothing is discarded either way.
+6.14.5 A world of a system also carries its designation - which body of which system it is, "Sol-3" or "Regina Belt-1" - written in by the system that handed it down. It is what the world's files are named for, under the app spec 4.2.1: a world named Earth is still Sol-3 on disk, because the name is what people call it and the designation is which world it is.
+
+6.14.5.1 Null for a world with no system, which is named for itself. A planet rolled on its own is a whole document at the level this application began with, and is not missing anything by having no designation.
+
+6.14.6 Saves written before this was settled carried a single free text location. Load splits one on a trailing four digit group, so a file that followed the convention by hand arrives in the two fields and one that did not keeps its text in the sector field. Nothing is discarded either way.
 
 
 ### 6.15 World settings
