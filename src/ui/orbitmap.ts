@@ -378,25 +378,55 @@ export function createOrbitMap(): OrbitMap {
 
   /* Turning it round ------------------------------------------------------ */
 
-  let dragging: { x: number; y: number; moved: number; pan: boolean } | null = null;
+/**
+   * The press in hand, if there is one.
+   *
+   * `turning` is false until the pointer has moved further than the slop, and
+   * nothing happens to the view before it does. That is what keeps a click a
+   * click: the pointer is not captured until a drag is really under way, and a
+   * captured pointer would send the click that ends it to this element rather
+   * than to the body under the pointer, which is a body that could never be
+   * selected by clicking it.
+   */
+  let press: {
+    readonly fromX: number;
+    readonly fromY: number;
+    x: number;
+    y: number;
+    readonly pan: boolean;
+    turning: boolean;
+  } | null = null;
   /** Whether the click now arriving is the end of a drag. */
   let dragged = false;
 
   svg.addEventListener("pointerdown", (event) => {
     if (event.button !== 0) return;
     dragged = false;
-    dragging = { x: event.clientX, y: event.clientY, moved: 0, pan: event.shiftKey };
-    svg.setPointerCapture(event.pointerId);
+    press = {
+      fromX: event.clientX,
+      fromY: event.clientY,
+      x: event.clientX,
+      y: event.clientY,
+      pan: event.shiftKey,
+      turning: false,
+    };
   });
 
   svg.addEventListener("pointermove", (event) => {
-    if (dragging === null) return;
-    const dx = event.clientX - dragging.x;
-    const dy = event.clientY - dragging.y;
-    dragging.moved += Math.abs(dx) + Math.abs(dy);
-    dragging.x = event.clientX;
-    dragging.y = event.clientY;
-    if (dragging.pan) {
+    if (press === null) return;
+    if (!press.turning) {
+      // Measured from where the press began rather than added up along the way,
+      // so the hand's own shake during a click never totals into a drag.
+      const far = Math.hypot(event.clientX - press.fromX, event.clientY - press.fromY);
+      if (far <= DRAG_SLOP) return;
+      press.turning = true;
+      svg.setPointerCapture(event.pointerId);
+    }
+    const dx = event.clientX - press.x;
+    const dy = event.clientY - press.y;
+    press.x = event.clientX;
+    press.y = event.clientY;
+    if (press.pan) {
       // In drawing units, so a drag moves the same amount of system however far
       // in the view is and whatever the panel is sized at.
       const units = SIZE / view.zoom / Math.max(1, svg.clientWidth);
@@ -413,14 +443,12 @@ export function createOrbitMap(): OrbitMap {
   });
 
   const letGo = (event: PointerEvent): void => {
-    if (dragging === null) return;
+    if (press === null) return;
     if (svg.hasPointerCapture(event.pointerId)) svg.releasePointerCapture(event.pointerId);
     // Held until after the click that ends the drag, so that click can be told
-    // apart from a click on whatever the pointer happens to be over. Cleared by
-    // the next press rather than by the click, since a drag that ends on nothing
-    // produces no click at all.
-    dragged = dragging.moved > DRAG_SLOP;
-    dragging = null;
+    // apart from a click on whatever the pointer happens to be over.
+    dragged = press.turning;
+    press = null;
   };
   svg.addEventListener("pointerup", letGo);
   svg.addEventListener("pointercancel", letGo);

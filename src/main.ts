@@ -1997,7 +1997,7 @@ function showOrbit(index: number | null): void {
 
   const content = orbit.content;
   const what = contentLabel(orbit);
-  el("sys-what").textContent = `Orbit ${orbit.index} — ${what}`;
+  el("sys-what").textContent = `${bodyName(system, orbit.index)} — ${what}`;
   row("Distance", auLabel(orbit.au));
   row("Sunlight", sunlightNote(orbit.sunEquivalentAu));
   row("Year", yearNote(orbit.au, system.stars.primary.luminosity));
@@ -2110,6 +2110,8 @@ function yearNote(au: number, luminosity: number): string {
   const years = orbitalPeriodHours(au, luminosity) / (24 * 365.25);
   return years < 1 ? `${(years * 12).toFixed(1)} months` : `${years.toFixed(1)} years`;
 }
+
+el("sys-inhabited").addEventListener("change", showTree);
 
 el<HTMLInputElement>("sys-name").addEventListener("input", (event) => {
   if (doc === null) return;
@@ -2254,10 +2256,21 @@ function showTree(): void {
   fact("Gas giants", String(system.placed.gasGiants));
   fact("Seed", doc.seed);
 
+  const peopleOnly = el<HTMLInputElement>("sys-inhabited").checked;
   for (const orbit of system.orbits) {
+    // Whatever is selected stays in the list whether anybody lives on it or
+    // not: a filter that hides what the rest of the window is about is a filter
+    // that has lost the user.
+    const chosen = orbit.index === orbitShown;
+    if (peopleOnly && !chosen && !anybodyHome(system, orbit.index)) continue;
     const row = document.createElement("li");
     row.append(treeButton(orbit.index, null));
-    const moons = moonsOf(system, orbit.index);
+    const moons = moonsOf(system, orbit.index).filter(
+      (moon) =>
+        !peopleOnly ||
+        livedOn(moon.uwp) ||
+        (chosen && moon.index === moonShown),
+    );
     if (moons.length > 0) {
       const nested = document.createElement("ul");
       for (const moon of moons) {
@@ -2269,7 +2282,41 @@ function showTree(): void {
     }
     tree.append(row);
   }
+  if (tree.children.length === 0) {
+    const empty = document.createElement("li");
+    empty.className = "tree-none";
+    empty.textContent = "Nobody lives anywhere in this system.";
+    tree.append(empty);
+  }
   markTree();
+}
+
+/**
+ * What to call the thing in an orbit.
+ *
+ * A world and a gas giant are both bodies and both get the system's name and
+ * their orbit, under SystemSpec 7.2. A belt and an empty orbit are places rather
+ * than things, so they are named by how far out they are, which is the only
+ * thing there is to say about them.
+ */
+function bodyName(open: StarSystem, orbitIndex: number): string {
+  const orbit = open.orbits.find((held) => held.index === orbitIndex);
+  if (orbit === undefined) return "";
+  const named = orbit.content.kind === "world" || orbit.content.kind === "giant";
+  return named ? worldName(systemName(open.seed), orbitIndex) : `${auLabel(orbit.au)}`;
+}
+
+/** Whether anybody lives on the body in an orbit, or on any of its moons. */
+function anybodyHome(open: StarSystem, orbitIndex: number): boolean {
+  const orbit = open.orbits.find((held) => held.index === orbitIndex);
+  if (orbit === undefined) return false;
+  if (orbit.content.kind === "world" && livedOn(orbit.content.uwp)) return true;
+  return moonsOf(open, orbitIndex).some((moon) => livedOn(moon.uwp));
+}
+
+function livedOn(uwp: string): boolean {
+  const profile = parseUwp(uwp);
+  return profile !== null && profile.population > 0;
 }
 
 /** One row of the tree. Its name, what it is, and whether anybody lives there. */
@@ -2287,9 +2334,7 @@ function treeButton(orbitIndex: number, moon: number | null): HTMLButtonElement 
   name.textContent =
     held !== null && held !== undefined
       ? moonName(open, orbitIndex, held.index)
-      : orbit.content.kind === "world"
-        ? worldName(systemName(open.seed), orbitIndex)
-        : `${orbit.au} AU`;
+      : bodyName(open, orbitIndex);
   button.append(name);
 
   if (uwp !== null && uwp !== undefined) {

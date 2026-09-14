@@ -651,6 +651,11 @@ body[data-view="planet"] .system { display: none; }
 .sys-tree-panel h2 { margin: 0 0 6px; }
 .sys-tree-panel h2 + dl { margin-bottom: 14px; }
 
+/* Most of a system is empty rock, and a referee working on the places people
+   are should be able to put the rest away. */
+.sys-only { display: flex; align-items: center; gap: 6px; margin: 0 0 8px; }
+.sys-only input { margin: 0; }
+
 /* The tree: the system's bodies in order, a giant's moons indented under it. */
 .sys-tree { list-style: none; margin: 0; padding: 0; }
 .sys-tree ul { list-style: none; margin: 0; padding: 0 0 0 14px; border-left: 1px solid var(--line); }
@@ -669,6 +674,7 @@ body[data-view="planet"] .system { display: none; }
 .sys-tree button:hover { background: #262b33; }
 .sys-tree button[aria-current="true"] { border-color: var(--select); color: var(--text); }
 .sys-tree .tree-what { color: var(--muted); font-size: 11px; margin-left: auto; }
+.sys-tree .tree-none { color: var(--muted); padding: 4px 6px; }
 .sys-tree .tree-uwp { color: var(--muted); font-size: 11px; }
 .sys-tree .tree-people { color: var(--accent); }
 
