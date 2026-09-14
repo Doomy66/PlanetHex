@@ -276,11 +276,32 @@ export function createOrbitDiagram(): OrbitDiagram {
         });
         return [path, image, edge];
       }
-      case "giant":
+      case "giant": {
+        const r = 19;
+        const ring = make("ellipse", { class: "orbit-ring", cx: x, cy: AXIS_Y, rx: 30, ry: 7 });
+        const picture = pictures.get(orbit.index) ?? null;
+        if (picture === null) {
+          return [make("circle", { class: "orbit-giant", cx: x, cy: AXIS_Y, r }), ring];
+        }
+        const clip = `giant-clip-${orbit.index}`;
+        const path = make("clipPath", { id: clip });
+        path.append(make("circle", { cx: x, cy: AXIS_Y, r }));
         return [
-          make("circle", { class: "orbit-giant", cx: x, cy: AXIS_Y, r: 15 }),
-          make("ellipse", { class: "orbit-ring", cx: x, cy: AXIS_Y, rx: 24, ry: 6 }),
+          path,
+          make("image", {
+            class: "orbit-globe",
+            href: picture,
+            x: x - r,
+            y: AXIS_Y - r,
+            width: r * 2,
+            height: r * 2,
+            "clip-path": `url(#${clip})`,
+            preserveAspectRatio: "xMidYMid slice",
+          }),
+          make("circle", { class: "orbit-edge", cx: x, cy: AXIS_Y, r }),
+          ring,
         ];
+      }
       case "belt":
         // A scatter rather than a body, because that is what a belt is. The dots
         // are placed off the orbit's own number so a belt looks the same every

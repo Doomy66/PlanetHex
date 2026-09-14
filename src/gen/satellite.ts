@@ -55,6 +55,44 @@ export function orbitWorldSeed(systemSeed: string, orbitIndex: number): string {
   return seedFrom(systemSeed, `orbit-${orbitIndex}`);
 }
 
+/** The seed of one moon of the gas giant in an orbit. Its own, for the same reason. */
+export function moonSeed(systemSeed: string, orbitIndex: number, moon: number): string {
+  return seedFrom(systemSeed, `orbit-${orbitIndex}`, `moon-${moon}`);
+}
+
+/**
+ * How large a moon can be. A moon is held by a planet rather than by a star, and
+ * the ones the solar system has top out around Mars: big enough to walk on, and
+ * nowhere near big enough to be a world in its own right.
+ */
+const MOON_SIZE_LIMIT = 5;
+
+/**
+ * The profile of a moon of a gas giant. SystemSpec 4.5.1.
+ *
+ * The same two halves as any other world of a system, under 6.3 and 6.4, with
+ * its size held down: it is a moon, and a moon the size of an Earth would be a
+ * world that had been mislabelled. Everything else follows the rules that put
+ * people on any other world, which is what lets a gas giant's moon be somewhere
+ * anybody lives.
+ */
+export function moonUwp(seed: string, sunEquivalentAu: number, main: Uwp | null): string {
+  const held = parseUwp(satelliteUwp(seed, sunEquivalentAu, main));
+  if (held === null) return "X000000-0";
+  if (held.size <= MOON_SIZE_LIMIT) return formatUwp(held);
+  // Too big for a moon: brought down to what a moon can be, and its air and
+  // water brought down with it, since both are held by the gravity it no longer
+  // has. The digits below are the same rules satelliteUwp applied, reapplied.
+  const size = MOON_SIZE_LIMIT;
+  const atmosphere = size <= AIRLESS_SIZE ? 0 : Math.min(held.atmosphere, 9);
+  return formatUwp({
+    ...held,
+    size,
+    atmosphere,
+    hydrographics: atmosphere === 0 ? 0 : held.hydrographics,
+  });
+}
+
 function draw(seed: string, stream: string, index: number): number {
   return valueFor(`${seed}:satellite:${stream}`, index);
 }

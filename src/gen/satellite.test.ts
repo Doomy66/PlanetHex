@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { parseUwp, rollUwp } from "../planet";
 import { generateSystem, worldsOf, worldSettings } from "./system";
-import { orbitWorldSeed, satelliteUwp } from "./satellite";
+import { moonSeed, orbitWorldSeed, satelliteUwp } from "./satellite";
 import { planetDetail } from "./detail";
 
 const SEEDS = Array.from({ length: 500 }, (_, i) => `system-${i}`);
@@ -105,6 +105,50 @@ describe("the other worlds", () => {
       expect(alone.orbitAu).toBeCloseTo(world.au, 6);
       expect(Number.isFinite(alone.meanTempK)).toBe(true);
     }
+  });
+
+  it("gives every gas giant moons that are worlds of their own", () => {
+    // SystemSpec 4.5.1: a moon has its own seed, its own profile and its own
+    // surface, so one with people on it opens like anywhere else.
+    const seeds = new Set<string>();
+    let moons = 0;
+    for (const seed of SEEDS) {
+      const system = generateSystem(seed);
+      for (const orbit of system.orbits) {
+        if (orbit.content.kind !== "giant") continue;
+        expect(orbit.content.moons.length, seed).toBeGreaterThan(0);
+        for (const moon of orbit.content.moons) {
+          moons++;
+          seeds.add(moon.seed);
+          expect(moon.seed).toBe(moonSeed(seed, orbit.index, moon.index));
+          const profile = parseUwp(moon.uwp);
+          expect(profile, `${seed} moon ${moon.seed}`).not.toBeNull();
+          // A moon the size of an Earth would be a world that had been
+          // mislabelled. SystemSpec 4.5.2.
+          expect(profile!.size, moon.uwp).toBeLessThanOrEqual(5);
+        }
+      }
+    }
+    expect(moons).toBeGreaterThan(SEEDS.length);
+    expect(seeds.size).toBe(moons);
+  });
+
+  it("lets a moon be somewhere people live, and rarely", () => {
+    // The user's question, answered by the rules rather than by an exception:
+    // a moon is settled on the same terms as any other world of a system.
+    let moons = 0;
+    let settled = 0;
+    for (const seed of SEEDS) {
+      for (const orbit of generateSystem(seed).orbits) {
+        if (orbit.content.kind !== "giant") continue;
+        for (const moon of orbit.content.moons) {
+          moons++;
+          if (parseUwp(moon.uwp)!.population > 0) settled++;
+        }
+      }
+    }
+    expect(settled).toBeGreaterThan(0);
+    expect(settled / moons).toBeLessThan(0.2);
   });
 
   it("gives the same world to the same seed and orbit", () => {

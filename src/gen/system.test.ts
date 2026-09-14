@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { rollUwp } from "../planet";
+import { parseUwp, rollUwp } from "../planet";
 import { pbgFor } from "./trade";
 import { generateSystem, mainWorldSeed, orbitsFor, worldSettings } from "./system";
 import { planetDetail } from "./detail";
@@ -160,6 +160,23 @@ describe("generateSystem", () => {
       }
     }
     expect(checked).toBeGreaterThan(10);
+  });
+
+  it("puts a world with water and air in the zone it marks", () => {
+    // SystemSpec 5.2.1.2. The mark and the world are both on the diagram, and a
+    // world of that description one slot outside the band reads as a mistake
+    // whatever the arithmetic behind it was.
+    let checked = 0;
+    for (const seed of SEEDS) {
+      const system = generateSystem(seed);
+      if (!system.orbits.some((orbit) => orbit.habitable)) continue;
+      const profile = parseUwp(system.mainWorld.uwp)!;
+      if (profile.hydrographics < 1 || profile.atmosphere < 2 || profile.atmosphere > 9) continue;
+      checked++;
+      const home = system.orbits.find((o) => o.index === system.mainWorld.orbitIndex)!;
+      expect(home.habitable, `${seed} at ${home.au} AU`).toBe(true);
+    }
+    expect(checked).toBeGreaterThan(100);
   });
 
   it("puts the habitable zone where the light actually is", () => {

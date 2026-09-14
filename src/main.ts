@@ -96,8 +96,9 @@ import { EXPORT_FORMATS, manifest, type ExportContext } from "./io/export";
 import { shaderFor, surfaceOn } from "./surface";
 import { currentAppView, landingSay, setAppView, wireLanding } from "./ui/landing";
 import { auLabel, contentLabel, createOrbitDiagram } from "./ui/orbits";
-import { worldImage } from "./ui/worldimage";
-import { worldName, worldSettings, worldsOf, type StarSystem } from "./gen/system";
+import { liveGlobe, worldImage } from "./ui/worldimage";
+import { giantImage } from "./ui/giant";
+import { moonsOf, worldName, worldSettings, worldsOf, type StarSystem } from "./gen/system";
 import {
   newSystemDoc,
   overrideFor,
@@ -1932,6 +1933,12 @@ function openSystem(next: SystemDoc): void {
   el<HTMLInputElement>("sys-sector").value = next.sector;
   el<HTMLInputElement>("sys-hex").value = next.hex;
   orbits.render(system);
+  // The gas giants first, because they cost nothing: a picture of one is bands
+  // on a canvas rather than a surface generated and photographed.
+  for (const orbit of system.orbits) {
+    if (orbit.content.kind !== "giant") continue;
+    orbits.setPicture(orbit.index, giantImage(`${system.seed}:${orbit.index}`, GLOBE_PX));
+  }
   orbits.setSelected(orbitShown);
   showHeader();
   showOrbit(orbitShown);
@@ -1951,9 +1958,10 @@ function showOrbit(index: number | null): void {
   const open = el<HTMLButtonElement>("sys-open");
   const facts = el("sys-facts");
   const written = el<HTMLTextAreaElement>("sys-written");
-  const globe = el<HTMLImageElement>("sys-globe");
+  const globe = el("sys-globe");
   globe.hidden = true;
   facts.replaceChildren();
+  el("sys-moons").replaceChildren();
   el("sys-note").textContent = "";
   open.hidden = true;
   written.value = doc === null || index === null ? "" : (overrideFor(doc, index)?.note ?? "");
@@ -1992,13 +2000,19 @@ function showOrbit(index: number | null): void {
     // The world itself beside its profile, drawn the way the planet view draws
     // it rather than as a mark standing in for it. On a timer for the reason the
     // diagram's are: the panel should be readable before the picture arrives.
-    globe.alt = `${worldName(systemName(system.seed), orbit.index)} from orbit`;
     showWorldPicture(system, orbit.index);
     open.hidden = false;
     open.textContent = `Open ${worldName(systemName(system.seed), orbit.index)}`;
   } else if (content.kind === "giant") {
-    const moons = content.moons === 1 ? "one moon" : `${content.moons} moons`;
-    el("sys-note").textContent = `A gas giant with ${moons}. Nothing to land on, and fuel for anybody who can skim it.`;
+    const moons = content.moons.length === 1 ? "one moon" : `${content.moons.length} moons`;
+    el("sys-note").textContent =
+      `A gas giant with ${moons}. Nothing to land on, and fuel for anybody who can skim it.`;
+    const picture = document.createElement("img");
+    picture.src = giantImage(`${system.seed}:${orbit.index}`, GLOBE_PX);
+    picture.alt = "";
+    globe.replaceChildren(picture);
+    globe.hidden = false;
+    showMoons(system, orbit.index);
   } else if (content.kind === "belt") {
     el("sys-note").textContent = "A planetoid belt: where a world would have formed and did not.";
   } else {
@@ -2024,13 +2038,19 @@ function sunlightNote(sunEquivalentAu: number): string {
  * landing in a panel that has moved on to another orbit.
  */
 function showWorldPicture(open: StarSystem, orbitIndex: number): void {
-  const globe = el<HTMLImageElement>("sys-globe");
+  const box = el("sys-globe");
   setTimeout(() => {
     if (system !== open || orbitShown !== orbitIndex) return;
-    const picture = pictureOf(open, orbitIndex);
-    if (picture === null) return;
-    globe.src = picture;
-    globe.hidden = false;
+    const orbit = open.orbits.find((held) => held.index === orbitIndex);
+    if (orbit === undefined || orbit.content.kind !== "world") return;
+    box.replaceChildren(
+      liveGlobe({
+        seed: orbit.content.seed,
+        uwp: orbit.content.uwp,
+        ...worldSettings(open, orbitIndex),
+      }),
+    );
+    box.hidden = false;
   }, 0);
 }
 
@@ -2147,15 +2167,67 @@ async function loadSystem(): Promise<void> {
  * world that opens is the world the system made rather than one that happens to
  * share its seed.
  */
-el("sys-open").addEventListener("click", () => {
-  if (system === null || orbitShown === null) return;
-  const orbit = system.orbits.find((held) => held.index === orbitShown);
-  if (orbit === undefined || orbit.content.kind !== "world") return;
-  const settings = worldSettings(system, orbit.index);
+/** The moons of a gas giant, each one a world that opens. SystemSpec 4.5.1. */
+function showMoons(open: StarSystem, orbitIndex: number): void {
+  const list = el("sys-moons");
+  for (const moon of moonsOf(open, orbitIndex)) {
+    const profile = parseUwp(moon.uwp);
+    const button = document.createElement("button");
+    button.type = "button";
+    const name = document.createElement("span");
+    name.textContent = moonName(open, orbitIndex, moon.index);
+    const uwp = document.createElement("span");
+    uwp.className = "moon-uwp";
+    uwp.textContent = moon.uwp;
+    button.append(name, uwp);
+    if (profile !== null && profile.population > 0) {
+      const people = document.createElement("span");
+      people.className = "moon-people";
+      people.textContent = "inhabited";
+      button.append(people);
+    }
+    button.addEventListener("click", () => {
+      openWorld(
+        moon.seed,
+        moon.uwp,
+        moonName(open, orbitIndex, moon.index),
+        worldSettings(open, orbitIndex),
+        orbitOf(open, orbitIndex),
+      );
+    });
+    list.append(button);
+  }
+}
+
+/** A moon is its planet and a letter. SystemSpec 7.2. */
+function moonName(open: StarSystem, orbitIndex: number, moon: number): string {
+  const letter = String.fromCharCode(96 + Math.min(26, moon));
+  return `${worldName(systemName(open.seed), orbitIndex)}${letter}`;
+}
+
+function orbitOf(open: StarSystem, orbitIndex: number): number {
+  return open.orbits.find((held) => held.index === orbitIndex)?.au ?? 0;
+}
+
+/**
+ * A world out of a system, opened as a planet. SystemSpec 6.2 and the app spec
+ * 6.1: the same planet view, reached by moving down a level.
+ *
+ * The settings the system wrote travel with it, under SystemSpec 6.6.3, so the
+ * world that opens is the world the system made rather than one that happens to
+ * share its seed.
+ */
+function openWorld(
+  seed: string,
+  uwp: string,
+  name: string,
+  settings: { orbitAu: number; luminosity: number },
+  au: number,
+): void {
   setPlanetParent("system");
-  Object.assign(state.planet, newPlanet(orbit.content.seed), {
-    name: worldName(systemName(system.seed), orbit.index),
-    uwp: orbit.content.uwp,
+  Object.assign(state.planet, newPlanet(seed), {
+    name,
+    uwp,
     orbitAu: settings.orbitAu,
     luminosity: settings.luminosity,
   });
@@ -2172,7 +2244,20 @@ el("sys-open").addEventListener("click", () => {
   map.resetView();
   globe.resetView();
   markClean();
-  say(`${state.planet.name}, ${orbit.au} AU out.${saveRoute()}`);
+  say(`${name}, ${au} AU out.${saveRoute()}`);
+}
+
+el("sys-open").addEventListener("click", () => {
+  if (system === null || orbitShown === null) return;
+  const orbit = system.orbits.find((held) => held.index === orbitShown);
+  if (orbit === undefined || orbit.content.kind !== "world") return;
+  openWorld(
+    orbit.content.seed,
+    orbit.content.uwp,
+    worldName(systemName(system.seed), orbit.index),
+    worldSettings(system, orbit.index),
+    orbit.au,
+  );
 });
 
 wireLanding({

@@ -37,6 +37,7 @@ export interface WorldPicture {
 const cache = new Map<string, string>();
 let globe: Globe | null = null;
 let host: HTMLElement | null = null;
+let live: Globe | null = null;
 
 /** The renderer, made on first use and kept: a GL context is not free. */
 function renderer(px: number): Globe {
@@ -58,18 +59,30 @@ function renderer(px: number): Globe {
 }
 
 /**
- * A PNG of one world, at the size asked for.
+ * The world on screen and turning, for the panel that has room for one.
  *
- * Everything it needs is what a save holds: the seed builds the surface and the
- * profile and the two settings shape it, which is the planet spec 6.15.13.2 in
- * miniature. A world drawn here and the same world opened as a planet are the
- * same world.
+ * A globe of its own rather than a picture, because a picture cannot turn and
+ * the planet spec 4.4.2 has a world turn on its own axis. One instance, moved
+ * from panel to panel and re-rendered, since a GL context is not free.
  */
-export function worldImage(world: WorldPicture, px: number): string {
-  const key = `${world.seed}|${world.uwp}|${world.orbitAu}|${world.luminosity}|${px}`;
-  const held = cache.get(key);
-  if (held !== undefined) return held;
+export function liveGlobe(world: WorldPicture): HTMLElement {
+  if (live === null) live = createGlobe();
+  const { grid, surface, detail } = surfaceFor(world);
+  live.render(
+    grid,
+    surface.heights,
+    surface.diameterKm,
+    surface.caps,
+    shaderFor(surface, "orbital"),
+    surface.clouds,
+    detail.axialTiltDeg,
+  );
+  live.resetView();
+  return live.element;
+}
 
+/** Everything a picture of a world is built from, which is what a save holds. */
+function surfaceFor(world: WorldPicture) {
   const planet = {
     ...newPlanet(world.seed),
     uwp: world.uwp,
@@ -82,7 +95,23 @@ export function worldImage(world: WorldPicture, px: number): string {
     luminosity: planet.luminosity,
   });
   const grid = buildGrid(THUMBNAIL_ROWS);
-  const surface = surfaceOn(planet, detail, grid);
+  return { grid, detail, surface: surfaceOn(planet, detail, grid) };
+}
+
+/**
+ * A PNG of one world, at the size asked for.
+ *
+ * Everything it needs is what a save holds: the seed builds the surface and the
+ * profile and the two settings shape it, which is the planet spec 6.15.13.2 in
+ * miniature. A world drawn here and the same world opened as a planet are the
+ * same world.
+ */
+export function worldImage(world: WorldPicture, px: number): string {
+  const key = `${world.seed}|${world.uwp}|${world.orbitAu}|${world.luminosity}|${px}`;
+  const held = cache.get(key);
+  if (held !== undefined) return held;
+
+  const { grid, surface, detail } = surfaceFor(world);
 
   const drawn = renderer(px);
   drawn.render(

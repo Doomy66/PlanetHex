@@ -13,8 +13,8 @@
  * digits are the main world's.
  */
 
-import { parseUwp, rollUwp, seedFrom } from "../planet";
-import { holdsWorld, orbitWorldSeed, satelliteUwp } from "./satellite";
+import { parseUwp, rollUwp, seedFrom, type Uwp } from "../planet";
+import { holdsWorld, moonSeed, moonUwp, orbitWorldSeed, satelliteUwp } from "./satellite";
 import { pbgFor, type Pbg } from "./trade";
 import { planetDetail } from "./detail";
 import { valueFor } from "./rng";
@@ -43,8 +43,24 @@ const SWEPT_INSIDE = 0.05;
  */
 const REACHES_TO = 40;
 
-/** The sunlight-equivalent band a world can hold liquid water in. */
-const HABITABLE_BAND = { near: 0.8, far: 1.5 } as const;
+/**
+ * The sunlight-equivalent band a world can hold liquid water in.
+ *
+ * Wider than a bare rock's freezing point either side, because a world's own air
+ * moves it: a thick atmosphere keeps water liquid further out and a bright cloudy
+ * one stays cool further in. The band is what the star offers, and section 5 is
+ * where a particular world's own reading of it is taken.
+ */
+const HABITABLE_BAND = { near: 0.75, far: 1.5 } as const;
+
+/**
+ * What makes a world one that wants the habitable zone: water to keep liquid,
+ * and air worth the name to keep it under. SystemSpec 5.2.
+ */
+function wantsTheZone(profile: Uwp | null): boolean {
+  if (profile === null) return false;
+  return profile.hydrographics >= 1 && profile.atmosphere >= 2 && profile.atmosphere <= 9;
+}
 
 /**
  * Where ices survive planet formation, in sunlight-equivalent AU. Gas giants
@@ -53,10 +69,21 @@ const HABITABLE_BAND = { near: 0.8, far: 1.5 } as const;
  */
 const SNOW_LINE = 2.7;
 
+/**
+ * A moon of a gas giant. SystemSpec 4.5.1: a world like any other, with its own
+ * seed and its own surface, so one with people on it opens like anywhere else.
+ */
+export interface Moon {
+  /** Its place in the giant's own family, from 1 outwards. */
+  readonly index: number;
+  readonly seed: string;
+  readonly uwp: string;
+}
+
 export type OrbitContent =
   | { readonly kind: "empty" }
   | { readonly kind: "belt" }
-  | { readonly kind: "giant"; readonly moons: number }
+  | { readonly kind: "giant"; readonly moons: readonly Moon[] }
   | { readonly kind: "world"; readonly main: boolean; readonly seed: string; readonly uwp: string };
 
 export interface Orbit {
@@ -191,7 +218,17 @@ export function generateSystem(seed: string): StarSystem {
   const uwp = rollUwp(worldSeed);
   const pbg = pbgFor(worldSeed, uwp);
 
-  const home = nearestOrbit(laid, wantedAu(worldSeed, uwp, luminosity));
+  // A world with water and breathable air goes in the habitable zone where the
+  // star has one, and takes the orbit nearest what its profile asks for within
+  // it. SystemSpec 5.2: the zone is drawn on the diagram, and a world of that
+  // description sitting one slot outside the band reads as a mistake whatever
+  // the arithmetic behind it was.
+  const wanted = wantedAu(worldSeed, uwp, luminosity);
+  const zone = laid.filter((orbit) => orbit.habitable);
+  const home =
+    wantsTheZone(parseUwp(uwp)) && zone.length > 0
+      ? nearestOrbit(zone, wanted)
+      : nearestOrbit(laid, wanted);
   const content = new Map<number, OrbitContent>();
   content.set(home.index, { kind: "world", main: true, seed: worldSeed, uwp });
 
@@ -203,9 +240,14 @@ export function generateSystem(seed: string): StarSystem {
 
   // Gas giants form outside the snow line, so they take the outer orbits and
   // fall back on the inner ones only where a small star has none to give.
+  const homeProfileForMoons = parseUwp(uwp);
   for (const index of [...shuffled(seed, "giants", outer), ...shuffled(seed, "giants-in", inner)]) {
     if (countOf(content, "giant") >= pbg.gasGiants) break;
-    content.set(index, { kind: "giant", moons: moonsFor(seed, index) });
+    const at = laid.find((orbit) => orbit.index === index)!;
+    content.set(index, {
+      kind: "giant",
+      moons: moonsFor(seed, index, at.sunEquivalentAu, homeProfileForMoons),
+    });
   }
   // A belt is where a world would have formed and did not, which is any orbit
   // still empty. SystemSpec 4.2.
@@ -292,6 +334,12 @@ export function worldsOf(system: StarSystem): readonly {
     .sort((a, b) => Number(b.main) - Number(a.main) || a.orbitIndex - b.orbitIndex);
 }
 
+/** The moons of the gas giant in an orbit, or none where there is no giant. */
+export function moonsOf(system: StarSystem, orbitIndex: number): readonly Moon[] {
+  const orbit = system.orbits.find((held) => held.index === orbitIndex);
+  return orbit !== undefined && orbit.content.kind === "giant" ? orbit.content.moons : [];
+}
+
 /**
  * What a world in a system is called, before anybody names it. SystemSpec 7.2:
  * the system's name, a hyphen, and the orbit it is in, which is also the stem
@@ -307,7 +355,23 @@ function countOf(content: Map<number, OrbitContent>, kind: OrbitContent["kind"])
   return count;
 }
 
-/** How many moons a gas giant carries. A count and a name, and no more. 4.5. */
-function moonsFor(seed: string, index: number): number {
-  return Math.floor(valueFor(`${seed}:system:moons`, index) * 12) + 1;
+/**
+ * The moons of the gas giant in one orbit. SystemSpec 4.5.
+ *
+ * Each is a world of its own rather than a tally, because a gas giant's moon is
+ * one of the places people live: it has the gravity, it has the ices, and it is
+ * a fuel stop with a view of the primary. 4.5.1.
+ */
+function moonsFor(
+  seed: string,
+  index: number,
+  sunEquivalentAu: number,
+  main: Uwp | null,
+): readonly Moon[] {
+  const count = Math.floor(valueFor(`${seed}:system:moons`, index) * 12) + 1;
+  return Array.from({ length: count }, (_, at) => {
+    const moon = at + 1;
+    const held = moonSeed(seed, index, moon);
+    return { index: moon, seed: held, uwp: moonUwp(held, sunEquivalentAu, main) };
+  });
 }
