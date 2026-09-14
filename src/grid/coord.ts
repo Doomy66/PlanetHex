@@ -269,6 +269,9 @@ export interface RefIndex {
   at(ref: RefCoord): CellId | null;
 }
 
+/** The index of a grid with no cells in it. See EMPTY_GRID. */
+export const EMPTY_REFS: RefIndex = { of: [], at: () => null };
+
 export function buildRefIndex(grid: Grid): RefIndex {
   const of = new Array<RefCoord>(grid.cells.length);
   const filled = new Array<boolean>(grid.cells.length).fill(false);

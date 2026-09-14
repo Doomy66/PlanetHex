@@ -38,6 +38,34 @@ export interface Planet {
 
 export const DEFAULT_SIZE = DEFAULT_DETAIL;
 
+/**
+ * A planet record with nothing rolled into it, for a window that has not opened
+ * a planet yet. AppSpec 2.5: the landing page is a chooser, and choosing nothing
+ * must cost nothing.
+ *
+ * Every field is the empty form of itself rather than a default worth looking
+ * at, because nothing reads this record: New replaces it under AppSpec 3.1 and
+ * Load overwrites it. A blank seed is the tell. No seed means no world, where a
+ * seed that happened to be lying about would mean a world nobody asked for.
+ */
+export function blankPlanet(): Planet {
+  return {
+    version: 1,
+    name: "",
+    sector: "",
+    hex: "",
+    uwp: "",
+    narrative: "",
+    tiltDeg: null,
+    orbitAu: null,
+    rotationHours: null,
+    craters: null,
+    seed: "",
+    size: DEFAULT_DETAIL,
+    pois: [],
+  };
+}
+
 export function newPlanet(seed = randomSeed()): Planet {
   return {
     version: 1,

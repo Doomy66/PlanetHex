@@ -1,9 +1,10 @@
 import "./style.css";
-import { buildGrid, cellCount, nearestCell, type Grid } from "./grid/grid";
+import { buildGrid, cellCount, EMPTY_GRID, nearestCell, type Grid } from "./grid/grid";
 import {
   asLatticeRef,
   buildRefIndex,
   DETAIL_LEVELS,
+  EMPTY_REFS,
   formatLattice,
   formatRef,
   latticeKey,
@@ -14,7 +15,7 @@ import {
   type RefCoord,
   type RefIndex,
 } from "./grid/coord";
-import { generateHeights, heightsOn } from "./gen/height";
+import { heightsOn } from "./gen/height";
 import {
   craterList,
   craterOptionsFor,
@@ -26,7 +27,7 @@ import {
 } from "./gen/crater";
 import { isIced, type IceCaps } from "./gen/ice";
 import { DEFAULT_FIELD_OPTIONS, type HeightFieldOptions } from "./gen/field";
-import { newPlanet, parseUwp, rollUwp, type Planet } from "./planet";
+import { blankPlanet, newPlanet, parseUwp, rollUwp, type Planet } from "./planet";
 import { starportSite } from "./gen/site";
 import {
   MAX_SETTLEMENTS,
@@ -186,15 +187,24 @@ el("local-view").append(local.element);
 /** The view a session opens in. Spec 5.7.1.3: the world as it looks. */
 const DEFAULT_VIEW: ViewMode = "orbital";
 
+/**
+ * The state the window holds, starting empty.
+ *
+ * Nothing here is generated: the application opens on the landing page of
+ * AppSpec 2, where no planet has been chosen, and AppSpec 2.5 has a user who
+ * opens it and closes it again roll nothing. The planet is blank, the grid has
+ * no cells, and there are no heights. Opening a planet under AppSpec 3.1 or 3.2
+ * fills all three in through regenerate, which is what fills them in whenever
+ * the detail level changes as well.
+ */
 const state: State = (() => {
-  const planet = newPlanet();
-  const grid = buildGrid(planet.size);
+  const planet = blankPlanet();
   const biome = biomeWorldFor("", planetDetail(planet.seed, planet.uwp));
   return {
     planet,
-    grid,
-    refs: buildRefIndex(grid),
-    heights: generateHeights(grid, planet.seed),
+    grid: EMPTY_GRID,
+    refs: EMPTY_REFS,
+    heights: new Float64Array(0),
     seaLevel: DEFAULT_SEA_LEVEL,
     diameterKm: null,
     options: DEFAULT_FIELD_OPTIONS,

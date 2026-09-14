@@ -1,10 +1,27 @@
 import { describe, expect, it } from "vitest";
-import { newPlanet, parseUwp, parsePlanet, rollUwp } from "./planet";
+import { blankPlanet, newPlanet, parseUwp, parsePlanet, rollUwp } from "./planet";
 
 /** A spread of seeds, enough that every branch of the rules is exercised. */
 const WORLDS = Array.from({ length: 500 }, (_, i) => {
   const seed = `roll-${i}`;
   return { seed, uwp: rollUwp(seed), w: parseUwp(rollUwp(seed))! };
+});
+
+describe("blankPlanet", () => {
+  it("rolls nothing", () => {
+    // AppSpec 2.5: the landing page is a chooser, and a window that has not
+    // opened a planet must not have generated one. A blank seed is the tell.
+    const planet = blankPlanet();
+    expect(planet.seed).toBe("");
+    expect(planet.uwp).toBe("");
+    expect(planet.pois).toHaveLength(0);
+  });
+
+  it("is a different record each time", () => {
+    // Shared would mean two windows editing one planet, and the record is
+    // written into rather than replaced.
+    expect(blankPlanet()).not.toBe(blankPlanet());
+  });
 });
 
 describe("rollUwp", () => {
