@@ -74,6 +74,12 @@ This document sits under [SubSectorSpec.md](SubSectorSpec.md) and over [PlanetSp
 
 2.5 The star is rolled in its own right, and no draw is rejected for being inconvenient. A world in a system with an awkward star is a world with an awkward star, and 5.2 puts it in the best orbit that star has rather than redrawing until the system is comfortable.
 
+2.5 A star has a size in kilometres, and it is not rolled. Brightness is area times how hard each piece of that area radiates, and the spectral class gives the second, so the class and the luminosity class already drawn between them fix it: a red giant is vast, a white dwarf is the size of a planet.
+
+2.5.1 Except the white dwarf, which is held to about the size of the Earth however the arithmetic lands. It is degenerate matter rather than a smaller version of the star it was, and nothing in a spectral class knows that.
+
+2.5.2 The size is here for one reason: 4.8 measures a jump shadow from it. Nothing else in this document needs to know how wide a star is.
+
 ## 3. Orbits
 
 3.1 A system has a numbered sequence of orbits outward from the primary. How many depends on the primary: a large, hot star sweeps and scatters the inner ones, a small one has few that are far enough out to matter.
@@ -95,6 +101,8 @@ This document sits under [SubSectorSpec.md](SubSectorSpec.md) and over [PlanetSp
 4.2.1 Except where there are not enough orbits to hold them. The counts were drawn from a seed under the planet spec 6.16.2 with nothing knowing what star they would have to fit around, and a star whose inner orbits are swept away or which reaches nowhere can have fewer orbits than the counts ask for. What fits is placed, and the system says how many that was.
 
 4.2.2 Placing what fits rather than stacking two gas giants in one orbit, and saying so rather than quietly amending the chart's figures. The disagreement is real: it is the price of 1.6.3, where the counts are read from a level that could not have known. A system that reported the amended figures would be the tail wagging the chart.
+
+4.2.3 A gas giant has a size: a Jupiter or a Neptune, with a spread inside each, since no two are the same width. The difference is worth holding rather than drawing every giant the same, because 4.8 measures its jump shadow from it — the giant everybody refuels at is the one they then have to crawl away from, and how long that takes depends on which kind it is.
 
 4.3 A main world whose size digit is zero is an asteroid belt, and the orbit it takes holds that belt. Not a world and a belt in separate orbits, and not a world 0km across: the profile is the belt's, and the people in it live in the belt.
 
@@ -121,6 +129,20 @@ This document sits under [SubSectorSpec.md](SubSectorSpec.md) and over [PlanetSp
 4.7.2 Derived from the main world's seed by the same rule the chart derives it — the subsector spec 3.5 — rather than handed down. The chart and the system then agree without either telling the other, which is 11.1 again: what both levels can work out, neither owns.
 
 4.7.3 What a port can carry is what limits it: naval at class A and B, scout at A through D. A base without a port to service it is a base nobody can reach.
+
+### 4.8 Jump shadows
+
+4.8.1 Every mass in a system has a sphere round it that a ship cannot jump from, a hundred of its own diameters across. It is the one piece of astrography that decides how a system is actually travelled: where a ship arriving has to come out, how long one leaving has to run before it can go, and why the gas giant everybody refuels at costs more than the fuel.
+
+4.8.2 A hundred diameters, not a mass. So the longest shadows belong to the widest bodies rather than the heaviest, and a bloated red giant casts one far longer than a white dwarf of the same mass. The rule is Traveller's and the consequence is the interesting part of it.
+
+4.8.3 The system records shadows for the star and for every gas giant. Worlds have them too and they are small — a hundred Earth diameters is a bit over a million kilometres, three and a half hours at one gravity — while the primary's is most of an AU and is what a ship is actually waiting on.
+
+4.8.3.1 Both stars of a close pair share one shadow. A companion riding beside the primary is well inside a hundred diameters of it, so a shadow drawn round each would be one shadow drawn twice.
+
+4.8.4 Drawn on the model as a filled disc lying in the orbital plane, leaning with everything else on it. A shadow is really a sphere, but the question it answers is how far out along the plane a ship has to get before it can go, and a sphere drawn as a true circle stands up out of the picture and reads as a bubble in front of it rather than a distance in it.
+
+4.8.5 The panel gives the figure in kilometres and in hours at one gravity, from a standing start and without stopping at the far end. To jump, a ship has to be outside the shadow, not at rest outside it.
 
 ## 5. The main world
 

@@ -19,8 +19,9 @@ import { settlementNames } from "./settle";
 import { pbgFor, type Pbg } from "./trade";
 import { planetDetail } from "./detail";
 import { valueFor } from "./rng";
-import { starsFor, systemLuminosity, type Stars } from "./star";
+import { diameterKm, starsFor, systemLuminosity, type Stars } from "./star";
 import { basesFor, zoneFor } from "./base";
+import { jumpShadowKm, kmToAu } from "./jump";
 
 /**
  * The orbits, in AU. The solar system's own spacing, which is the pattern
@@ -95,7 +96,18 @@ export type OrbitContent =
       readonly seed?: string;
       readonly uwp?: string;
     }
-  | { readonly kind: "giant"; readonly moons: readonly Moon[] }
+  /**
+   * A gas giant, and how big it is. SystemSpec 4.2.3: large is a Jupiter, small
+   * is a Neptune, and the difference is worth holding because it is what its
+   * jump shadow is measured from - the giant everybody refuels at is the one
+   * they then have to crawl away from.
+   */
+  | {
+      readonly kind: "giant";
+      readonly large: boolean;
+      readonly diameterKm: number;
+      readonly moons: readonly Moon[];
+    }
   | { readonly kind: "world"; readonly main: boolean; readonly seed: string; readonly uwp: string };
 
 export interface Orbit {
@@ -164,6 +176,20 @@ export interface StarSystem {
    * saying so beats stacking two gas giants in one orbit.
    */
   readonly placed: { readonly belts: number; readonly gasGiants: number };
+}
+
+/**
+ * How big a gas giant is. SystemSpec 4.2.3.
+ *
+ * Two kinds, because the sky has two kinds: the Jupiters, which are mostly
+ * hydrogen and enormous, and the Neptunes, which are ices and a third of the
+ * width. A spread inside each, since no two are the same size.
+ */
+function giantSize(seed: string, index: number): { large: boolean; diameterKm: number } {
+  const large = valueFor(`${seed}:giant-size`, index) < 0.5;
+  const spread = valueFor(`${seed}:giant-span`, index);
+  const diameterKm = large ? 110_000 + spread * 55_000 : 42_000 + spread * 30_000;
+  return { large, diameterKm: Math.round(diameterKm) };
 }
 
 /** The seed of a system's main world. SystemSpec 5.1. */
@@ -280,6 +306,7 @@ export function generateSystem(seed: string): StarSystem {
     const at = laid.find((orbit) => orbit.index === index)!;
     content.set(index, {
       kind: "giant",
+      ...giantSize(seed, index),
       moons: moonsFor(seed, index, at.sunEquivalentAu, homeProfileForMoons),
     });
   }
@@ -388,6 +415,17 @@ export function worldIn(
     return { main: content.main === true, seed: content.seed, uwp: content.uwp };
   }
   return null;
+}
+
+/**
+ * How far out the primary's jump shadow reaches, in AU. SystemSpec 4.8.
+ *
+ * Both stars of a close pair sit inside it together, near enough: a companion
+ * riding beside the primary is well within a hundred diameters of it, and a
+ * shadow drawn round each would be one shadow drawn twice.
+ */
+export function starShadowAu(system: StarSystem): number {
+  return kmToAu(jumpShadowKm(diameterKm(system.stars.primary)));
 }
 
 /** The moons of the gas giant in an orbit, or none where there is no giant. */

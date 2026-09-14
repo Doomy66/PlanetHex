@@ -110,6 +110,52 @@ const SIZE_FACTOR: Readonly<Record<StarSize, number>> = {
 /** Luminosity is clamped here: the model has nothing to say past either end. */
 const LUMINOSITY_LIMITS = { dim: 0.00005, bright: 1e6 } as const;
 
+/**
+ * The surface temperature of each class, in kelvin, near enough for what it is
+ * used for. The Sun is a G at 5,772K, and the run from blue to red is the one
+ * thing about a spectral class everybody already knows.
+ */
+const CLASS_TEMPERATURE_K: Readonly<Record<SpectralClass, number>> = {
+  O: 40000,
+  B: 20000,
+  A: 8750,
+  F: 6750,
+  G: 5600,
+  K: 4450,
+  M: 3200,
+};
+
+const SUN_TEMPERATURE_K = 5772;
+export const SUN_RADIUS_KM = 695_700;
+
+/**
+ * How big a star is, in km. SystemSpec 2.5.
+ *
+ * Not rolled: a star's brightness and its colour between them fix its size,
+ * because brightness is area times how hard each piece of that area radiates,
+ * and temperature says the second. So a red giant is vast and a white dwarf is
+ * the size of a planet, and neither had to be decided separately from the class
+ * and size already drawn.
+ *
+ * This is what a jump shadow is measured from, which is the only reason the
+ * generator needs it: 4.8.
+ */
+export function radiusKm(star: Star): number {
+  const temperature = CLASS_TEMPERATURE_K[star.spectral];
+  const relative =
+    Math.sqrt(star.luminosity) * Math.pow(SUN_TEMPERATURE_K / temperature, 2);
+  // A white dwarf is a cinder the size of the Earth however the arithmetic
+  // above lands: it is degenerate matter rather than a smaller version of the
+  // star it was, and nothing in a spectral class knows that.
+  const capped = star.size === "D" ? Math.min(relative, 0.02) : relative;
+  return capped * SUN_RADIUS_KM;
+}
+
+/** The diameter, which is the figure a hundred of them is counted in. */
+export function diameterKm(star: Star): number {
+  return radiusKm(star) * 2;
+}
+
 /** One companion in how many systems. SystemSpec 2.3. */
 const COMPANION_SHARE = 1 / 3;
 

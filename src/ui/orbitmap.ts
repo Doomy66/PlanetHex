@@ -1,4 +1,6 @@
 import type { Orbit, StarSystem } from "../gen/system";
+import { starShadowAu } from "../gen/system";
+import { jumpShadowKm, kmToAu } from "../gen/jump";
 import { valueFor } from "../gen/rng";
 import type { SpectralClass } from "../gen/star";
 
@@ -85,9 +87,10 @@ export interface OrbitMap {
 export function createOrbitMap(): OrbitMap {
   const svg = make("svg", { class: "orbitmap", tabindex: 0 });
   const planeLayer = make("g");
+  const shadowLayer = make("g");
   const bodyLayer = make("g");
   const selectLayer = make("g");
-  svg.append(planeLayer, bodyLayer, selectLayer);
+  svg.append(planeLayer, shadowLayer, bodyLayer, selectLayer);
 
   const handlers: ((orbitIndex: number) => void)[] = [];
   const pictures = new Map<number, string>();
@@ -172,6 +175,7 @@ export function createOrbitMap(): OrbitMap {
   function draw(): void {
     const system = shown;
     planeLayer.replaceChildren();
+    shadowLayer.replaceChildren();
     bodyLayer.replaceChildren();
     places = new Map();
     showView();
@@ -215,6 +219,7 @@ export function createOrbitMap(): OrbitMap {
       if (orbit.content.kind === "belt") drawBelt(system, orbit, r);
     }
 
+    drawShadows(system);
     drawStars(system);
     drawBases(system);
     // Back to front, so a world on the far side of its star goes behind it.
@@ -265,6 +270,41 @@ export function createOrbitMap(): OrbitMap {
       );
     }
     planeLayer.append(group);
+  }
+
+/**
+   * The jump shadows. SystemSpec 4.8.
+   *
+   * A hundred diameters out from the star and from every gas giant, which is the
+   * one thing on this drawing that decides how the system is travelled: where a
+   * ship arriving has to come out, and how long one leaving has to run before it
+   * can go.
+   *
+   * A shadow is a sphere, but it is drawn as a disc lying in the orbital plane
+   * with the rest of the drawing. The question it answers is how far out along
+   * the plane a ship has to get, and a sphere drawn as a true circle stands up
+   * out of the picture and reads as a bubble in front of it rather than a
+   * distance in it.
+   */
+  function drawShadows(system: StarSystem): void {
+    const far = system.orbits.at(-1)?.au ?? 1;
+    const lean = leanOf();
+    const toUnits = (au: number) => (far <= 0 ? 0 : CENTRE * RING.furthest * (au / far));
+    const disc = (cx: number, cy: number, r: number, cls: string) =>
+      make("ellipse", { class: cls, cx, cy, rx: r, ry: Math.max(0.5, r * lean) });
+
+    const star = toUnits(starShadowAu(system));
+    if (star > 0) {
+      shadowLayer.append(disc(CENTRE, CENTRE, star, "map-shadow map-shadow-star"));
+    }
+
+    for (const orbit of system.orbits) {
+      if (orbit.content.kind !== "giant") continue;
+      const r = toUnits(kmToAu(jumpShadowKm(orbit.content.diameterKm)));
+      if (r <= 0) continue;
+      const at = pointOn(radiusOf(orbit, system.orbits), angleOf(system, orbit));
+      shadowLayer.append(disc(at.x, at.y, r, "map-shadow"));
+    }
   }
 
   /**

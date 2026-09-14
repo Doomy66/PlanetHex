@@ -109,6 +109,7 @@ import { SUBSECTOR_LETTERS } from "./location";
 import { liveGlobe, worldImage } from "./ui/worldimage";
 import { giantImage } from "./ui/giant";
 import { basesLabel } from "./gen/base";
+import { crossingLabel, hoursAt1g, jumpShadowKm, kmLabel } from "./gen/jump";
 import {
   beltName,
   generateSystem,
@@ -117,6 +118,7 @@ import {
   namesOf,
   ordinalOf,
   worldName,
+  starShadowAu,
   worldIn,
   worldSettings,
   worldsOf,
@@ -2089,6 +2091,9 @@ function showOrbit(index: number | null): void {
     if (inOrbit.main && system.bases.letter !== "") {
       row("Bases", basesLabel(system.bases.letter));
     }
+    // 4.8.3: a world can sit inside its own star's shadow, and around a dim
+    // star it usually does - which is a fact about every departure from it.
+    if (orbit.au < starShadowAu(system)) row("Jump", "inside the star's shadow");
     // The description says it is a belt where it is one, since a belt profile
     // reads as a belt wherever it is read. SystemSpec 4.3.
     el("sys-note").textContent = describeUwp(inOrbit.uwp, detail) ?? "";
@@ -2098,6 +2103,9 @@ function showOrbit(index: number | null): void {
     if (content.kind === "world") showWorldPicture(system, orbit.index);
     open.hidden = false;
   } else if (content.kind === "giant") {
+    row("Diameter", kmLabel(content.diameterKm));
+    const shadow = jumpShadowKm(content.diameterKm);
+    row("Jump shadow", `${kmLabel(shadow)}, ${crossingLabel(hoursAt1g(shadow))}`);
     const moons = content.moons.length === 1 ? "one moon" : `${content.moons.length} moons`;
     el("sys-note").textContent =
       `A gas giant with ${moons}. Nothing to land on, and fuel for anybody who can skim it.`;
@@ -2335,6 +2343,16 @@ function showTree(): void {
   fact("Belts", String(system.placed.belts));
   fact("Gas giants", String(system.placed.gasGiants));
   if (system.bases.letter !== "") fact("Bases", basesLabel(system.bases.letter));
+  // SystemSpec 4.8: how far out a ship has to be before it can jump, and how
+  // far in an arriving one comes out.
+  const shadowAu = starShadowAu(system);
+  const inside = system.orbits.filter((orbit) => orbit.au < shadowAu).length;
+  fact(
+    "Jump shadow",
+    inside === 0
+      ? `${shadowAu.toFixed(2)} AU`
+      : `${shadowAu.toFixed(2)} AU, over ${inside === 1 ? "one orbit" : `${inside} orbits`}`,
+  );
   fact("Seed", doc.seed);
 
   const peopleOnly = el<HTMLInputElement>("sys-inhabited").checked;
