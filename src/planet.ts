@@ -84,12 +84,41 @@ export function newPlanet(seed = randomSeed()): Planet {
   };
 }
 
+/**
+ * The alphabet a seed is written in. No letters that can be read as digits, since
+ * a seed is meant to be copied off a screen and typed back in.
+ */
+const SEED_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+const SEED_LENGTH = 8;
+
 /** A short readable seed. Uses Math.random because this is a choice, not generation. */
 export function randomSeed(): string {
-  const alphabet = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
   let out = "";
-  for (let i = 0; i < 8; i++) {
-    out += alphabet[Math.floor(Math.random() * alphabet.length)];
+  for (let i = 0; i < SEED_LENGTH; i++) {
+    out += SEED_ALPHABET[Math.floor(Math.random() * SEED_ALPHABET.length)];
+  }
+  return out;
+}
+
+/**
+ * A seed derived from other seeds, in the same form and alphabet as one drawn at
+ * random. SubSectorSpec 3.1.3 and SystemSpec 5.1.
+ *
+ * This is what makes a chain of levels a chain: a subsector names its hexes'
+ * system seeds, a system names its worlds' seeds, and every one of them is an
+ * ordinary seed that can be copied off the screen and opened on its own. Under
+ * AppSpec 1.3 the world that comes back has to be the same world, which needs
+ * only that the derivation is a function of its parts and nothing else.
+ *
+ * The parts are joined with a separator that cannot appear in them, so no two
+ * different chains can collide by running together into the same string.
+ */
+export function seedFrom(...parts: readonly string[]): string {
+  const key = parts.join("\u0000");
+  let out = "";
+  for (let i = 0; i < SEED_LENGTH; i++) {
+    const value = valueFor(key, i);
+    out += SEED_ALPHABET[Math.min(SEED_ALPHABET.length - 1, Math.floor(value * SEED_ALPHABET.length))];
   }
   return out;
 }

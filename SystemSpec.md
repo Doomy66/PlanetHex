@@ -62,6 +62,8 @@ This document sits under [SubSectorSpec.md](SubSectorSpec.md) and over [PlanetSp
 
 2.3.1 No third star, for the reason the subsector spec 3.7.2.1 gives: a binary changes how a system is travelled, a trinary changes a line of text.
 
+2.3.2 A companion drawn brighter than the primary is drawn again, and where several attempts all come up brighter the pair is a matched one: the companion takes the primary's own class and size. Equal is not brighter, so the pair is still named the right way round, and the case only arises where the primary is already about as dim as a star gets and there is nothing dimmer to draw.
+
 2.4 A companion is either **close**, orbiting inside where any world sits, or **far**, orbiting outside every world. Nothing orbits between the two stars.
 
 2.4.1 This is the simplification that lets section 3 have one set of orbits rather than three. A real binary has orbits around each star and around the pair, and modelling that is a week of work to produce a diagram most referees will read as "there are two suns".
@@ -86,6 +88,10 @@ This document sits under [SubSectorSpec.md](SubSectorSpec.md) and over [PlanetSp
 
 4.2 The gas giants and the belts are placed to the counts of 1.6.3, exactly. Gas giants go to the outer orbits, belts to the gaps where a world would have formed and did not, which is where a real belt is.
 
+4.2.1 Except where there are not enough orbits to hold them. The counts were drawn from a seed under the planet spec 6.16.2 with nothing knowing what star they would have to fit around, and a star whose inner orbits are swept away or which reaches nowhere can have fewer orbits than the counts ask for. What fits is placed, and the system says how many that was.
+
+4.2.2 Placing what fits rather than stacking two gas giants in one orbit, and saying so rather than quietly amending the chart's figures. The disagreement is real: it is the price of 1.6.3, where the counts are read from a level that could not have known. A system that reported the amended figures would be the tail wagging the chart.
+
 4.3 Empty orbits are normal and stay empty. A system with every slot filled reads as a generator that could not leave anything out.
 
 4.4 The main world takes the orbit section 5 gives it. Every remaining orbit draws whether it holds a world at all, and section 6 says what that world is.
@@ -101,6 +107,10 @@ This document sits under [SubSectorSpec.md](SubSectorSpec.md) and over [PlanetSp
 5.2.1 Best available rather than ideal. The planet spec 6.15 derives an orbital distance from the profile, and that figure is what the world is matched against, but the star was rolled without reference to it and may have nothing at that distance. The world goes to the nearest orbit that exists.
 
 5.2.2 The orbit it lands in is then written into the world's orbit setting, under 1.6.2. A world in a system knows where it is, rather than falling back on where a world of its description usually is.
+
+5.2.2.1 What is written is the sunlight-equivalent distance, not the distance in the system. The planet spec's climate is written against the Sun throughout - a world at 1 AU gets Earth's light - and it knows nothing of stars. So a world in the habitable zone of a dim red star, a tenth of an AU out, carries an orbit of about 1: the distance from the Sun that would give it the same light.
+
+5.2.2.2 Two readings of one distance, and the display shows the true one. A referee needs to know the world is a tenth of an AU out, because that is how far the trip is and how fast the year goes by; the surface generator needs to know how much light falls on it. Writing the true distance into a model that assumes the Sun would make every world of every red dwarf a cinder, and teaching the planet spec about luminosity would be a second place where a world's temperature is decided.
 
 5.2.3 That reaches the surface. The planet spec 6.15 has orbit feed climate, and climate feed ice, life, and ground cover, so a world placed further out than its profile expected is colder than the same seed opened alone. This is intended, and 6.6 argues it out for every world rather than twice.
 
