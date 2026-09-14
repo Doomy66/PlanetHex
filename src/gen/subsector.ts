@@ -21,6 +21,7 @@ import { starsFor, starsLabel, systemLuminosity, type Stars } from "./star";
 import { formatPbg, pbgFor, tradeCodes, type Pbg, type TradeCode } from "./trade";
 import { flavourFor, settlementNames } from "./settle";
 import { valueFor } from "./rng";
+import { basesFor } from "./base";
 
 /**
  * How thickly the stars lie. SubSectorSpec 3.2.2.
@@ -150,24 +151,6 @@ export function holdsSystem(seed: string, at: string, density: Density): boolean
 
 function presenceOf(seed: string, at: string): number {
   return valueFor(`${seed}:presence`, Number(at));
-}
-
-/**
- * The bases a world's port can support. SubSectorSpec 3.5.
- *
- * Derived rather than invented, which is why they are here and the travel zone
- * of 3.6 is more careful: the profile says what quality of port the world has,
- * and the rules say what a port of that quality can carry.
- */
-function basesFor(seed: string, profile: Uwp): string {
-  const naval =
-    (profile.starport === "A" || profile.starport === "B") &&
-    valueFor(`${seed}:naval`, 0) < 0.35;
-  const scout = "ABCD".includes(profile.starport) && valueFor(`${seed}:scout`, 0) < 0.4;
-  if (naval && scout) return "A";
-  if (naval) return "N";
-  if (scout) return "S";
-  return "";
 }
 
 /**

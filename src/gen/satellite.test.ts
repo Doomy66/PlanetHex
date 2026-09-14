@@ -108,7 +108,7 @@ describe("the other worlds", () => {
   });
 
   it("gives every gas giant moons that are worlds of their own", () => {
-    // SystemSpec 4.5.1: a moon has its own seed, its own profile and its own
+    // SystemSpec 4.6.1: a moon has its own seed, its own profile and its own
     // surface, so one with people on it opens like anywhere else.
     const seeds = new Set<string>();
     let moons = 0;
@@ -124,7 +124,7 @@ describe("the other worlds", () => {
           const profile = parseUwp(moon.uwp);
           expect(profile, `${seed} moon ${moon.seed}`).not.toBeNull();
           // A moon the size of an Earth would be a world that had been
-          // mislabelled. SystemSpec 4.5.2.
+          // mislabelled. SystemSpec 4.6.2.
           expect(profile!.size, moon.uwp).toBeLessThanOrEqual(5);
         }
       }

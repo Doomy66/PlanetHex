@@ -592,6 +592,11 @@ body[data-view="planet"] .landing { display: none; }
    too, only the first of them pushes. */
 .home + .help-open { margin-left: 6px; }
 
+/* A base is a mark beside the world it is at rather than a body of its own. */
+.map-base { stroke: #0d0f13; stroke-width: 1; }
+.map-naval { fill: #e6ebf2; }
+.map-scout { fill: #9fb0c4; }
+
 /* The trail across the levels. AppSpec 6.2 -------------------------------- */
 
 .crumbs { display: flex; align-items: baseline; gap: 2px; flex-wrap: wrap; min-width: 0; }

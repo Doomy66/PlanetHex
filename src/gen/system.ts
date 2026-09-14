@@ -20,6 +20,7 @@ import { pbgFor, type Pbg } from "./trade";
 import { planetDetail } from "./detail";
 import { valueFor } from "./rng";
 import { starsFor, systemLuminosity, type Stars } from "./star";
+import { basesFor } from "./base";
 
 /**
  * The orbits, in AU. The solar system's own spacing, which is the pattern
@@ -71,7 +72,7 @@ function wantsTheZone(profile: Uwp | null): boolean {
 const SNOW_LINE = 2.7;
 
 /**
- * A moon of a gas giant. SystemSpec 4.5.1: a world like any other, with its own
+ * A moon of a gas giant. SystemSpec 4.6.1: a world like any other, with its own
  * seed and its own surface, so one with people on it opens like anywhere else.
  */
 export interface Moon {
@@ -83,7 +84,17 @@ export interface Moon {
 
 export type OrbitContent =
   | { readonly kind: "empty" }
-  | { readonly kind: "belt" }
+  /**
+   * A belt, and where people live in one, the world that belt is. SystemSpec
+   * 4.3: a profile whose size digit is zero is not a small world, it is an
+   * asteroid belt, so the orbit holds a belt and the belt holds the profile.
+   */
+  | {
+      readonly kind: "belt";
+      readonly main?: boolean;
+      readonly seed?: string;
+      readonly uwp?: string;
+    }
   | { readonly kind: "giant"; readonly moons: readonly Moon[] }
   | { readonly kind: "world"; readonly main: boolean; readonly seed: string; readonly uwp: string };
 
@@ -127,6 +138,14 @@ export interface StarSystem {
   readonly mainWorld: MainWorld;
   /** Population multiplier, belts and gas giants, read rather than rolled. */
   readonly pbg: Pbg;
+  /**
+   * The bases, as the Bases column writes them, and which orbit they are in.
+   * SystemSpec 4.7: a base is somewhere, and the somewhere is the main world -
+   * a naval base is a station in its orbit and a scout way station is a field on
+   * it. Derived from the main world's seed the same way the chart derives it, so
+   * the two agree without either being told.
+   */
+  readonly bases: { readonly letter: string; readonly orbitIndex: number };
   /**
    * How many of those belts and gas giants the orbits had room for.
    *
@@ -231,7 +250,14 @@ export function generateSystem(seed: string): StarSystem {
       ? nearestOrbit(zone, wanted)
       : nearestOrbit(laid, wanted);
   const content = new Map<number, OrbitContent>();
-  content.set(home.index, { kind: "world", main: true, seed: worldSeed, uwp });
+  // A main world whose size digit is zero is a belt, and the orbit it went into
+  // holds that belt rather than a world and a belt separately. SystemSpec 4.3.
+  content.set(
+    home.index,
+    parseUwp(uwp)?.size === 0
+      ? { kind: "belt", main: true, seed: worldSeed, uwp }
+      : { kind: "world", main: true, seed: worldSeed, uwp },
+  );
 
   // The counts are the chart's, under SystemSpec 1.6.3, and this level places
   // exactly that many rather than rolling its own opinion of how many there are.
@@ -284,6 +310,7 @@ export function generateSystem(seed: string): StarSystem {
     stars,
     orbits,
     pbg,
+    bases: { letter: basesFor(worldSeed, parseUwp(uwp)!), orbitIndex: home.index },
     placed: { belts: countOf(content, "belt"), gasGiants: countOf(content, "giant") },
     mainWorld: {
       seed: worldSeed,
@@ -333,6 +360,26 @@ export function worldsOf(system: StarSystem): readonly {
       return { orbitIndex: orbit.index, au: orbit.au, ...held };
     })
     .sort((a, b) => Number(b.main) - Number(a.main) || a.orbitIndex - b.orbitIndex);
+}
+
+/**
+ * The world an orbit holds, planet or belt, or null where it holds neither.
+ *
+ * A belt is usually nobody's, and then it has no profile and nothing to open.
+ * Where the belt is the main world it carries one, and everything that reads a
+ * profile off an orbit has to find it there too - otherwise the same body is a
+ * world to the chart above and a rock to the system. SystemSpec 4.3.2.
+ */
+export function worldIn(
+  content: OrbitContent,
+): { main: boolean; seed: string; uwp: string } | null {
+  if (content.kind === "world") {
+    return { main: content.main, seed: content.seed, uwp: content.uwp };
+  }
+  if (content.kind === "belt" && content.seed !== undefined && content.uwp !== undefined) {
+    return { main: content.main === true, seed: content.seed, uwp: content.uwp };
+  }
+  return null;
 }
 
 /** The moons of the gas giant in an orbit, or none where there is no giant. */
@@ -429,7 +476,8 @@ export function namesOf(system: StarSystem, given?: string): SystemNames {
     // The main world always has a name: it is the reason anybody came to the
     // system, and the system is called after it. SystemSpec 7.3.4.1.
     if (orbit.index === main) continue;
-    if (content.kind === "world" && wasNamed(system.seed, content.uwp, orbit.index, null)) {
+    const held = worldIn(content);
+    if (held !== null && wasNamed(system.seed, held.uwp, orbit.index, null)) {
       named.push({ orbit: orbit.index, moon: null });
     }
     if (content.kind !== "giant") continue;
@@ -490,7 +538,7 @@ function countOf(content: Map<number, OrbitContent>, kind: OrbitContent["kind"])
 }
 
 /**
- * The moons of the gas giant in one orbit. SystemSpec 4.5.
+ * The moons of the gas giant in one orbit. SystemSpec 4.6.
  *
  * Each is a world of its own rather than a tally, because a gas giant's moon is
  * one of the places people live: it has the gravity, it has the ices, and it is

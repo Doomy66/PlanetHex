@@ -128,14 +128,19 @@ export interface Pbg {
  *
  * A world with nobody on it has a multiplier of zero, since the multiplier
  * multiplies the population digit and a tenth of nobody is still nobody.
+ *
+ * A world whose size digit is zero is itself an asteroid belt, so the system it
+ * is in has at least one: the belt count cannot be zero where the main world is
+ * one of them. SystemSpec 4.3.1.
  */
 export function pbgFor(seed: string, uwp: string): Pbg {
   const parsed = parseUwp(uwp);
   const die = (index: number, sides: number) =>
     Math.floor(valueFor(`${seed}:pbg`, index) * sides);
+  const belts = die(1, 4);
   return {
     multiplier: parsed === null || parsed.population === 0 ? 0 : die(0, 9) + 1,
-    belts: die(1, 4),
+    belts: parsed?.size === 0 ? Math.max(1, belts) : belts,
     gasGiants: die(2, 6),
   };
 }

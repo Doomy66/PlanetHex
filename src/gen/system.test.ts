@@ -9,9 +9,11 @@ import {
   mainWorldSeed,
   ordinalOf,
   orbitsFor,
+  worldIn,
   worldName,
   worldSettings,
 } from "./system";
+import { basesFor } from "./base";
 import { planetDetail } from "./detail";
 import { luminosityOf, starsFor } from "./star";
 
@@ -62,12 +64,12 @@ describe("generateSystem", () => {
 
   it("puts the main world in one orbit and only one", () => {
     // Other worlds there may be, under section 6, but exactly one of them is the
-    // world the chart drew and the sector line describes. SystemSpec 1.5.
+    // world the chart drew and the sector line describes. SystemSpec 1.5. It is
+    // not always a planet: a size zero profile is a belt, and the orbit holds
+    // that belt rather than a world and a belt separately. 4.3.
     for (const seed of SEEDS) {
       const system = generateSystem(seed);
-      const main = system.orbits.filter(
-        (orbit) => orbit.content.kind === "world" && orbit.content.main,
-      );
+      const main = system.orbits.filter((orbit) => worldIn(orbit.content)?.main === true);
       expect(main.length, seed).toBe(1);
       expect(main[0]!.index).toBe(system.mainWorld.orbitIndex);
       expect(main[0]!.au).toBe(system.mainWorld.au);
@@ -207,6 +209,88 @@ describe("generateSystem", () => {
     for (const seed of SEEDS) {
       expect(generateSystem(seed).orbits.length, seed).toBeGreaterThan(0);
     }
+  });
+});
+
+describe("a main world that is a belt", () => {
+  // SystemSpec 4.3. A profile whose size digit is zero is not a world 0km
+  // across: it is an asteroid belt with people living in it, and the orbit it
+  // went into holds that belt rather than a world and a belt separately.
+  const belts = Array.from({ length: 400 }, (_, i) => generateSystem(`belt-${i}`)).filter(
+    (system) => parseUwp(system.mainWorld.uwp)!.size === 0,
+  );
+
+  it("finds some to test", () => {
+    expect(belts.length).toBeGreaterThan(0);
+  });
+
+  it("puts a belt in the orbit rather than a world", () => {
+    for (const system of belts) {
+      const orbit = system.orbits.find((held) => held.index === system.mainWorld.orbitIndex)!;
+      expect(orbit.content.kind, system.seed).toBe("belt");
+    }
+  });
+
+  it("keeps the profile on it, so it can still be opened", () => {
+    for (const system of belts) {
+      const orbit = system.orbits.find((held) => held.index === system.mainWorld.orbitIndex)!;
+      const held = worldIn(orbit.content);
+      expect(held, system.seed).not.toBeNull();
+      expect(held!.main).toBe(true);
+      expect(held!.uwp).toBe(system.mainWorld.uwp);
+      expect(held!.seed).toBe(system.mainWorld.seed);
+    }
+  });
+
+  it("counts it among the system's belts rather than beside them", () => {
+    // 4.3.1: the belt digit cannot be zero where the main world is one of them,
+    // and the belt people live in is not an extra one on top of the count.
+    for (const system of belts) {
+      expect(system.pbg.belts, system.seed).toBeGreaterThanOrEqual(1);
+      expect(system.placed.belts).toBeLessThanOrEqual(system.pbg.belts);
+    }
+  });
+
+  it("draws no separate world for it anywhere", () => {
+    for (const system of belts) {
+      const worlds = system.orbits.filter(
+        (orbit) => orbit.content.kind === "world" && orbit.content.main,
+      );
+      expect(worlds, system.seed).toHaveLength(0);
+    }
+  });
+});
+
+describe("the bases", () => {
+  // SystemSpec 4.6. The chart draws a mark for them; the system has to know
+  // where they are, and the two have to agree without being told.
+  const systems = SEEDS.map(generateSystem);
+
+  it("agrees with the chart about which system has what", () => {
+    for (const system of systems) {
+      const profile = parseUwp(system.mainWorld.uwp)!;
+      expect(system.bases.letter, system.seed).toBe(basesFor(system.mainWorld.seed, profile));
+    }
+  });
+
+  it("puts them at the main world", () => {
+    for (const system of systems) {
+      expect(system.bases.orbitIndex, system.seed).toBe(system.mainWorld.orbitIndex);
+    }
+  });
+
+  it("gives them only to ports that can carry them", () => {
+    // SubSectorSpec 3.5.1, read from here: naval at A and B, scout at A to D.
+    let found = 0;
+    for (const system of systems) {
+      const port = parseUwp(system.mainWorld.uwp)!.starport;
+      const letter = system.bases.letter;
+      if (letter === "") continue;
+      found++;
+      if (letter === "N" || letter === "A") expect("AB", system.seed).toContain(port);
+      if (letter === "S" || letter === "A") expect("ABCD", system.seed).toContain(port);
+    }
+    expect(found).toBeGreaterThan(0);
   });
 });
 

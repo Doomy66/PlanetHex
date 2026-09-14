@@ -265,7 +265,7 @@ export function createOrbitDiagram(): OrbitDiagram {
   }
 
   /**
-   * The moons of a gas giant, as a row of marks under it. SystemSpec 4.5.1 makes
+   * The moons of a gas giant, as a row of marks under it. SystemSpec 4.6.1 makes
    * every one of them a world, and a strip that showed none of them said a gas
    * giant was the end of that orbit rather than the start of it.
    *

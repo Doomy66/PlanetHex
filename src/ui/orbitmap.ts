@@ -194,6 +194,7 @@ export function createOrbitMap(): OrbitMap {
     }
 
     drawStars(system);
+    drawBases(system);
     // Back to front, so a world on the far side of its star goes behind it.
     const order = [...system.orbits].sort(
       (a, b) => Math.sin(angleOf(system, a)) - Math.sin(angleOf(system, b)),
@@ -242,6 +243,30 @@ export function createOrbitMap(): OrbitMap {
       );
     }
     planeLayer.append(group);
+  }
+
+  /**
+   * The bases, marked on the body they are at. SystemSpec 4.7.
+   *
+   * A naval base is a station in orbit of the main world and a scout way station
+   * is a field on it or a tender beside it. Neither is a body on the diagram, so
+   * both are marks beside the world rather than things in their own orbits.
+   */
+  function drawBases(system: StarSystem): void {
+    const { letter, orbitIndex } = system.bases;
+    if (letter === "") return;
+    const orbit = system.orbits.find((held) => held.index === orbitIndex);
+    if (orbit === undefined) return;
+    const at = pointOn(radiusOf(orbit, system.orbits), angleOf(system, orbit));
+    const marks = [
+      ...(letter === "N" || letter === "A" ? ["map-naval"] : []),
+      ...(letter === "S" || letter === "A" ? ["map-scout"] : []),
+    ];
+    for (const [n, mark] of marks.entries()) {
+      bodyLayer.append(
+        make("circle", { class: `map-base ${mark}`, cx: at.x + 14 + n * 9, cy: at.y - 14, r: 3.2 }),
+      );
+    }
   }
 
   function drawStars(system: StarSystem): void {

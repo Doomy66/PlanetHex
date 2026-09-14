@@ -108,6 +108,7 @@ import {
 import { SUBSECTOR_LETTERS } from "./location";
 import { liveGlobe, worldImage } from "./ui/worldimage";
 import { giantImage } from "./ui/giant";
+import { basesLabel } from "./gen/base";
 import {
   beltName,
   generateSystem,
@@ -116,6 +117,7 @@ import {
   namesOf,
   ordinalOf,
   worldName,
+  worldIn,
   worldSettings,
   worldsOf,
   type StarSystem,
@@ -2051,7 +2053,7 @@ function showOrbit(index: number | null): void {
 
   // A moon of the giant in this orbit, where the tree or the moon list picked
   // one out. It sits at its giant's distance and under its giant's star, so
-  // everything about where it is comes from the orbit. SystemSpec 4.5.1.
+  // everything about where it is comes from the orbit. SystemSpec 4.6.1.
   const moon =
     moonShown === null
       ? undefined
@@ -2074,18 +2076,28 @@ function showOrbit(index: number | null): void {
     return;
   }
 
-  if (content.kind === "world") {
-    const detail = planetDetail(content.seed, content.uwp, worldSettings(system, orbit.index));
-    row("Profile", content.uwp);
-    row("Seed", content.seed);
-    const codes = tradeCodes(content.uwp);
+  const inOrbit = worldIn(content);
+  if (inOrbit !== null) {
+    const detail = planetDetail(inOrbit.seed, inOrbit.uwp, worldSettings(system, orbit.index));
+    row("Profile", inOrbit.uwp);
+    row("Seed", inOrbit.seed);
+    const codes = tradeCodes(inOrbit.uwp);
     if (codes.length > 0) row("Trade", codes.map((code) => `${code.code} ${code.label}`).join(", "));
     row("Surface", `${(detail.meanTempK - 273.15).toFixed(0)}°C mean`);
-    el("sys-note").textContent = describeUwp(content.uwp, detail) ?? "";
+    // SystemSpec 4.7: the bases are in this system, and they are here, at the
+    // main world, rather than somewhere the chart never said.
+    if (inOrbit.main && system.bases.letter !== "") {
+      row("Bases", basesLabel(system.bases.letter));
+    }
+    const said = describeUwp(inOrbit.uwp, detail) ?? "";
+    // A belt says so first: the profile that follows is the belt's, and reading
+    // it as a planet's would have it be a world 0km across.
+    el("sys-note").textContent =
+      content.kind === "belt" ? `A planetoid belt, and the people are in it. ${said}` : said;
     // The world itself beside its profile, drawn the way the planet view draws
     // it rather than as a mark standing in for it. On a timer for the reason the
     // diagram's are: the panel should be readable before the picture arrives.
-    showWorldPicture(system, orbit.index);
+    if (content.kind === "world") showWorldPicture(system, orbit.index);
     open.hidden = false;
   } else if (content.kind === "giant") {
     const moons = content.moons.length === 1 ? "one moon" : `${content.moons.length} moons`;
@@ -2324,6 +2336,7 @@ function showTree(): void {
   fact("Worlds", String(worlds));
   fact("Belts", String(system.placed.belts));
   fact("Gas giants", String(system.placed.gasGiants));
+  if (system.bases.letter !== "") fact("Bases", basesLabel(system.bases.letter));
   fact("Seed", doc.seed);
 
   const peopleOnly = el<HTMLInputElement>("sys-inhabited").checked;
@@ -2398,7 +2411,8 @@ function positionName(open: StarSystem, orbitIndex: number): string {
 function anybodyHome(open: StarSystem, orbitIndex: number): boolean {
   const orbit = open.orbits.find((held) => held.index === orbitIndex);
   if (orbit === undefined) return false;
-  if (orbit.content.kind === "world" && livedOn(orbit.content.uwp)) return true;
+  const held = worldIn(orbit.content);
+  if (held !== null && livedOn(held.uwp)) return true;
   return moonsOf(open, orbitIndex).some((moon) => livedOn(moon.uwp));
 }
 
@@ -2417,7 +2431,7 @@ function treeButton(orbitIndex: number, moon: number | null): HTMLButtonElement 
   button.dataset["moon"] = moon === null ? "" : String(moon);
 
   const held = moon === null ? null : moonsOf(open, orbitIndex).find((m) => m.index === moon);
-  const uwp = held?.uwp ?? (orbit.content.kind === "world" ? orbit.content.uwp : null);
+  const uwp = held?.uwp ?? worldIn(orbit.content)?.uwp ?? null;
   const name = document.createElement("span");
   name.textContent =
     held !== null && held !== undefined
@@ -2460,7 +2474,7 @@ function markTree(): void {
   }
 }
 
-/** The moons of a gas giant, each one a world that opens. SystemSpec 4.5.1. */
+/** The moons of a gas giant, each one a world that opens. SystemSpec 4.6.1. */
 function showMoons(open: StarSystem, orbitIndex: number): void {
   const list = el("sys-moons");
   for (const moon of moonsOf(open, orbitIndex)) {
@@ -2550,10 +2564,11 @@ el("sys-open").addEventListener("click", () => {
     );
     return;
   }
-  if (orbit.content.kind !== "world") return;
+  const held = worldIn(orbit.content);
+  if (held === null) return;
   openWorld(
-    orbit.content.seed,
-    orbit.content.uwp,
+    held.seed,
+    held.uwp,
     bodyName(system, orbit.index),
     worldSettings(system, orbit.index),
     orbit.au,
@@ -2716,7 +2731,7 @@ function showHexPanel(at: string | null): void {
   };
   el("sub-what").textContent = `${world.name} — ${at}`;
   row("Profile", world.uwp);
-  row("Bases", basesNote(world));
+  row("Bases", basesLabel(world.bases));
   row("Zone", world.zone === "A" ? "amber" : world.zone === "R" ? "red" : "green");
   row("PBG", `${world.pbg.multiplier}${world.pbg.belts}${world.pbg.gasGiants}`);
   row("Stars", starsLabel(world.stars));
@@ -2764,13 +2779,6 @@ function showHexGlobe(world: ChartWorld): void {
     );
     box.hidden = false;
   }, 0);
-}
-
-function basesNote(world: ChartWorld): string {
-  if (world.bases === "A") return "naval and scout";
-  if (world.bases === "N") return "naval";
-  if (world.bases === "S") return "scout";
-  return "none";
 }
 
 chart.onSelect(selectHex);

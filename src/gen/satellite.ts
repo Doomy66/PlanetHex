@@ -68,7 +68,7 @@ export function moonSeed(systemSeed: string, orbitIndex: number, moon: number): 
 const MOON_SIZE_LIMIT = 5;
 
 /**
- * The profile of a moon of a gas giant. SystemSpec 4.5.1.
+ * The profile of a moon of a gas giant. SystemSpec 4.6.1.
  *
  * The same two halves as any other world of a system, under 6.3 and 6.4, with
  * its size held down: it is a moon, and a moon the size of an Earth would be a
