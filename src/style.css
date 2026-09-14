@@ -45,7 +45,8 @@ body {
 .left-collapsed .panel-head h1,
 .left-collapsed .panel-head .home,
 .left-collapsed .panel-head .help-open,
-.left-collapsed .panel-head .dirty { display: none; }
+.left-collapsed .panel-head .dirty,
+.left-collapsed .crumbs-row { display: none; }
 .left-collapsed .panel-head { justify-content: center; }
 
 .collapse {
@@ -591,6 +592,32 @@ body[data-view="planet"] .landing { display: none; }
    too, only the first of them pushes. */
 .home + .help-open { margin-left: 6px; }
 
+/* The trail across the levels. AppSpec 6.2 -------------------------------- */
+
+.crumbs { display: flex; align-items: baseline; gap: 2px; flex-wrap: wrap; min-width: 0; }
+.crumbs-row { padding: 2px 8px 6px; border-bottom: 1px solid var(--line); }
+.crumb {
+  background: none;
+  border: 0;
+  padding: 1px 4px;
+  border-radius: 3px;
+  font: inherit;
+  font-size: 0.85em;
+  color: var(--text);
+  cursor: pointer;
+  max-width: 12em;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.crumb:hover:not(:disabled) { background: #232a34; text-decoration: underline; }
+.crumb:disabled { cursor: default; }
+/* A level that is not open is still shown, so the bar says where you are in the
+   four whichever one you came in at. */
+.crumb-shut { color: var(--muted); opacity: 0.55; }
+.crumb[aria-current="true"] { font-weight: 600; color: var(--select); }
+.crumb-tick { color: var(--muted); font-size: 0.85em; }
+
 /* The subsector chart. SubSectorSpec section 4 --------------------------- */
 
 body[data-view="subsector"] .layout,
@@ -627,27 +654,49 @@ body[data-view="system"] .subsector { display: none; }
   overflow: auto;
 }
 .chart { width: auto; height: 100%; max-width: 100%; display: block; }
+.sub-chart { background: #0a0c10; }
 
-/* A chart hex: pointy-topped, in columns, odd ones riding half a hex higher. */
-.chart-cell { fill: #14171d; stroke: #2a313c; stroke-width: 1.5; }
+/* A chart hex, and what is drawn in it. The grid is thin and even and the same
+   everywhere: the published maps let the worlds carry all the weight. */
+.chart-cell {
+  fill: transparent;
+  stroke: #39414d;
+  stroke-width: 1;
+  vector-effect: non-scaling-stroke;
+}
 .chart-hex { cursor: pointer; }
-.chart-hex:hover .chart-cell { fill: #1b2027; }
+.chart-hex:hover .chart-cell { fill: #191e26; }
 .chart-hex:focus { outline: none; }
 .chart-hex:focus .chart-cell { fill: #1f252e; }
-.chart-full .chart-cell { fill: #171b22; }
 
-.chart-at { fill: #4d5560; font-size: 15px; text-anchor: middle; }
-.chart-world { fill: #9fb6cf; }
-/* A world nobody lives on is drawn hollow: there is something there and nobody
-   on it. */
-.chart-bare { fill: none; stroke: #6f7c8c; stroke-width: 2; }
-.chart-port { fill: var(--text); font-size: 20px; text-anchor: middle; font-weight: 500; }
-.chart-name { fill: var(--text); font-size: 17px; text-anchor: middle; }
-.chart-base { fill: var(--muted); font-size: 16px; text-anchor: middle; }
-.chart-giant { fill: #c8a06a; }
-.chart-zone { fill: none; stroke: #e0b341; stroke-width: 2.5; stroke-dasharray: 7 7; }
+.chart-at {
+  fill: #5a6470;
+  font-size: 11px;
+  text-anchor: middle;
+  font-variant-numeric: tabular-nums;
+}
+/* Blue where there is water and air to stand in, grey where there is neither,
+   hollow where nobody is there at all. */
+.chart-wet { fill: #4d92d9; }
+.chart-dry { fill: #b9c2cd; }
+.chart-bare { fill: none; stroke: #8b97a5; stroke-width: 1.6; }
+.chart-rock { fill: #9aa5b2; }
+
+.chart-name { fill: #e8edf4; font-size: 12px; text-anchor: middle; }
+.chart-loud { font-weight: 700; letter-spacing: 0.04em; }
+.chart-uwp {
+  fill: #8e9aa8;
+  font-size: 10.5px;
+  text-anchor: middle;
+  font-family: var(--mono, ui-monospace, "Cascadia Mono", Consolas, monospace);
+}
+.chart-base { fill: #cbd4df; font-size: 12px; text-anchor: middle; }
+.chart-giant { fill: #d7b273; }
+/* A travel zone is a ring around the world, not around the hex: the warning is
+   about the world, and the hex is only where it is. */
+.chart-zone { fill: none; stroke: #e0b341; stroke-width: 1.6; stroke-dasharray: 5 5; }
 .chart-red { stroke: #e24b4a; }
-.chart-select { fill: none; stroke: var(--select); stroke-width: 3.5; }
+.chart-select { fill: none; stroke: var(--select); stroke-width: 2.5; vector-effect: non-scaling-stroke; }
 
 /* The system view. SystemSpec section 8 ---------------------------------- */
 

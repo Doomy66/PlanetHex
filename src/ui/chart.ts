@@ -5,11 +5,18 @@ import type { ChartWorld, Subsector } from "../gen/subsector";
  * The subsector chart: eighty hexes, drawn the way Traveller draws them.
  * SubSectorSpec 2.1.2 and section 4.
  *
- * Columns of hexes, column 01 on the left, odd columns sitting
- * half a hex higher than even ones, row 01 at the top. This is the opposite
- * convention from the surface hexes of the planet spec section 2, and
- * deliberately not shared with them: a chart hex is one star system and a
- * surface hex is a piece of ground on one planet.
+ * Columns of hexes, column 01 on the left, odd columns sitting half a hex higher
+ * than even ones, row 01 at the top. This is the opposite convention from the
+ * surface hexes of the planet spec section 2, and deliberately not shared with
+ * them: a chart hex is one star system and a surface hex is a piece of ground on
+ * one planet.
+ *
+ * The contents of a hex are laid out the way every published subsector map lays
+ * them out, because a referee already knows how to read one of those: the hex
+ * number small at the top, the world as a circle in the middle, its name under
+ * the circle and its profile under the name, bases to the left, a gas giant to
+ * the upper right, and a travel zone as a ring around the world rather than
+ * around the hex. 4.2.
  */
 
 const SVG_NS = "http://www.w3.org/2000/svg";
@@ -23,10 +30,11 @@ const SVG_NS = "http://www.w3.org/2000/svg";
 const HEX_WIDE = 100;
 const HEX_HIGH = (HEX_WIDE * Math.sqrt(3)) / 2;
 const COLUMN_STEP = HEX_WIDE * 0.75;
-const PAD = HEX_WIDE * 0.7;
+const PAD = HEX_WIDE * 0.5;
 
-/** The dot a world is drawn as, by how many people are on it. 4.2.1. */
-const DOT = { least: 5, most: 17 } as const;
+/** The world itself, and the ring a travel zone puts round it. */
+const WORLD_R = 7.5;
+const ZONE_R = 26;
 
 function make<K extends keyof SVGElementTagNameMap>(
   tag: K,
@@ -56,10 +64,16 @@ function hexPoints(x: number, y: number): string {
   return out.join(" ");
 }
 
-/** How big a world's dot is. Population, not size: 4.2.1 says why. */
-function dotFor(population: number): number {
-  const at = Math.min(1, Math.max(0, population / 12));
-  return DOT.least + at * (DOT.most - DOT.least);
+/**
+ * What a world is drawn as. The published maps colour by what is on the surface,
+ * which is the one thing a glance at a chart should tell you: water is blue,
+ * a dry world is grey, and an asteroid belt is not a circle at all.
+ */
+function worldClass(world: ChartWorld): string {
+  const { hydrographics, atmosphere, population } = world.profile;
+  if (hydrographics > 0 && atmosphere >= 2 && atmosphere <= 9) return "chart-world chart-wet";
+  if (population > 0) return "chart-world chart-dry";
+  return "chart-world chart-bare";
 }
 
 export interface Chart {
@@ -85,9 +99,7 @@ export function createChart(): Chart {
     if (selected === null) return;
     const at = places.get(selected);
     if (at === undefined) return;
-    selectLayer.append(
-      make("polygon", { class: "chart-select", points: hexPoints(at.x, at.y) }),
-    );
+    selectLayer.append(make("polygon", { class: "chart-select", points: hexPoints(at.x, at.y) }));
   }
 
   function render(subsector: Subsector): void {
@@ -99,7 +111,7 @@ export function createChart(): Chart {
     // The chart is its own eight by ten, whichever of the sixteen it is: the
     // hexes carry sector-absolute numbers under 2.2.2, and the drawing does not.
     const first = subsector.worlds[0]?.hex;
-    const acrossFrom = first === undefined ? 1 : Math.floor((first.col - 1) / SUB_COLS) * SUB_COLS;
+    const acrossFrom = first === undefined ? 0 : Math.floor((first.col - 1) / SUB_COLS) * SUB_COLS;
     const downFrom = first === undefined ? 0 : Math.floor((first.row - 1) / SUB_ROWS) * SUB_ROWS;
 
     for (let row = 1; row <= SUB_ROWS; row++) {
@@ -128,44 +140,52 @@ export function createChart(): Chart {
 
     // Every hex says which it is, occupied or not: an empty hex still has to be
     // referrable. SubSectorSpec 4.2.
-    const digits = make("text", { class: "chart-at", x, y: y - HEX_HIGH * 0.33 });
+    const digits = make("text", { class: "chart-at", x, y: y - HEX_HIGH * 0.34 });
     digits.textContent = at;
     group.append(digits);
 
     if (world !== null) {
-      group.append(
-        make("circle", {
-          class: world.profile.population > 0 ? "chart-world" : "chart-world chart-bare",
-          cx: x,
-          cy: y,
-          r: dotFor(world.profile.population),
-        }),
-      );
-      const port = make("text", { class: "chart-port", x, y: y + HEX_HIGH * 0.06 });
-      port.textContent = world.profile.starport;
-      group.append(port);
-      const name = make("text", { class: "chart-name", x, y: y + HEX_HIGH * 0.33 });
-      name.textContent = world.name;
+      // The ring goes on first, under everything, so that the world sits in it.
+      if (world.zone !== "") {
+        group.append(
+          make("circle", {
+            class: world.zone === "R" ? "chart-zone chart-red" : "chart-zone",
+            cx: x,
+            cy: y,
+            r: ZONE_R,
+          }),
+        );
+      }
+
+      if (world.profile.size === 0) drawBelt(group, x, y);
+      else group.append(make("circle", { class: worldClass(world), cx: x, cy: y, r: WORLD_R }));
+
+      // A name in capitals is the published shorthand for a world with a
+      // billion people on it, which is the one population figure worth seeing
+      // from across the table.
+      const high = world.profile.population >= 9;
+      const name = make("text", { class: high ? "chart-name chart-loud" : "chart-name", x, y: y + HEX_HIGH * 0.22 });
+      name.textContent = high ? world.name.toUpperCase() : world.name;
       group.append(name);
 
-      // The marks a referee reads at a glance: a base beside the port, a gas
-      // giant where there is one to refuel at, and a warning where the world
-      // has earned one.
+      const uwp = make("text", { class: "chart-uwp", x, y: y + HEX_HIGH * 0.4 });
+      uwp.textContent = world.uwp;
+      group.append(uwp);
+
+      // The two marks a referee looks for before anything else: somewhere to
+      // report to, and somewhere to refuel.
       if (world.bases !== "") {
-        const bases = make("text", { class: "chart-base", x: x - HEX_WIDE * 0.3, y });
+        const bases = make("text", { class: "chart-base", x: x - HEX_WIDE * 0.26, y: y + 4 });
         bases.textContent = world.bases;
         group.append(bases);
       }
       if (world.pbg.gasGiants > 0) {
         group.append(
-          make("circle", { class: "chart-giant", cx: x + HEX_WIDE * 0.28, cy: y - 6, r: 4 }),
-        );
-      }
-      if (world.zone !== "") {
-        group.append(
-          make("polygon", {
-            class: world.zone === "R" ? "chart-zone chart-red" : "chart-zone",
-            points: hexPoints(x, y),
+          make("circle", {
+            class: "chart-giant",
+            cx: x + HEX_WIDE * 0.2,
+            cy: y - HEX_HIGH * 0.17,
+            r: 4.5,
           }),
         );
       }
@@ -180,6 +200,21 @@ export function createChart(): Chart {
       for (const handler of handlers) handler(at);
     });
     (world === null ? gridLayer : worldLayer).append(group);
+  }
+
+  /** An asteroid belt, which the maps draw as a scatter rather than a world. */
+  function drawBelt(group: SVGGElement, x: number, y: number): void {
+    const rocks = [
+      [-5, -3],
+      [4, -4],
+      [0, 0],
+      [-3, 4],
+      [6, 2],
+      [2, 6],
+    ];
+    for (const [dx, dy] of rocks) {
+      group.append(make("circle", { class: "chart-rock", cx: x + dx!, cy: y + dy!, r: 1.7 }));
+    }
   }
 
   return {

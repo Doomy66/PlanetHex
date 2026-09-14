@@ -36,8 +36,6 @@ const RING = { nearest: 0.15, furthest: 0.92 } as const;
  * the inner system open and still lets the outer orbits read as further away.
  */
 const SQUEEZE = 0.42;
-/** How far apart two paths must be before both get their distance written on. */
-const LABEL_GAP = 62;
 
 /** Where the view starts: leant over far enough to read as a plane seen across. */
 const HOME_VIEW = { tiltDeg: 58, spinDeg: 0, zoom: 1, panX: 0, panY: 0 };
@@ -179,16 +177,8 @@ export function createOrbitMap(): OrbitMap {
           "stroke-width": Math.max(26, outer - inner) + 18,
         }),
       );
-      const label = make("text", {
-        class: "map-zone-label",
-        x: CENTRE,
-        y: CENTRE - middle * lean - 14,
-      });
-      label.textContent = "habitable";
-      planeLayer.append(label);
     }
 
-    let lastLabel = -Infinity;
     for (const orbit of system.orbits) {
       const r = radiusOf(orbit, system.orbits);
       planeLayer.append(
@@ -201,17 +191,6 @@ export function createOrbitMap(): OrbitMap {
         }),
       );
       if (orbit.content.kind === "belt") drawBelt(system, orbit, r);
-      // Spaced by where the labels actually land, which is the leant distance:
-      // seen edge on, paths a long way apart in the plane are a few units apart
-      // on the page.
-      const under = r * lean;
-      if (under - lastLabel < LABEL_GAP) continue;
-      lastLabel = under;
-      // The distance sits under its own path, and only where there is room for
-      // it: four figures stacked on each other say less than one that is read.
-      const label = make("text", { class: "map-au", x: CENTRE, y: CENTRE + r * lean - 8 });
-      label.textContent = `${orbit.au} AU`;
-      planeLayer.append(label);
     }
 
     drawStars(system);

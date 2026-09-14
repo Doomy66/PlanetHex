@@ -83,6 +83,7 @@
          the right. -->
     <section id="subsector" class="subsector">
       <header class="system-head">
+        <span id="crumbs-sub" class="crumbs-mount"></span>
         <input id="sub-name" class="sys-name" type="text" autocomplete="off" aria-label="Subsector name" />
         <span id="sub-where" class="sys-stars"></span>
         <span id="sub-counts" class="sys-counts"></span>
@@ -146,6 +147,7 @@
          along the bottom. -->
     <section id="system" class="system">
       <header class="system-head">
+        <span id="crumbs-system" class="crumbs-mount"></span>
         <input id="sys-name" class="sys-name" type="text" autocomplete="off" aria-label="System name" />
         <span id="sys-stars" class="sys-stars"></span>
         <span id="sys-counts" class="sys-counts"></span>
@@ -213,6 +215,10 @@
           <button id="home" class="home" type="button" title="Back to the levels">Levels</button>
           <button id="help" class="help-open" type="button" title="Help and licence (F1 or ?)">?</button>
         </header>
+
+        <!-- The trail sits under the panel's own heading here rather than in it:
+             the left panel is narrow, and four levels need the width. -->
+        <div id="crumbs-planet" class="crumbs-row"></div>
 
         <div id="left-body" class="panel-body">
 

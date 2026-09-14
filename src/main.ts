@@ -98,6 +98,7 @@ import { currentAppView, landingSay, setAppView, wireLanding } from "./ui/landin
 import { auLabel, contentLabel, createOrbitDiagram } from "./ui/orbits";
 import { createOrbitMap } from "./ui/orbitmap";
 import { createChart } from "./ui/chart";
+import { createCrumbs, type Level, type Trail } from "./ui/crumbs";
 import {
   generateSubsector,
   type ChartWorld,
@@ -1787,6 +1788,11 @@ let planetParent: "landing" | "system" = "landing";
 
 function setPlanetParent(parent: "landing" | "system"): void {
   planetParent = parent;
+  openLevels.planet = true;
+  if (parent === "landing") {
+    openLevels.system = false;
+    openLevels.subsector = false;
+  }
   el("home").textContent = parent === "system" ? "System" : "Levels";
   el("home").title = parent === "system" ? "Back to the system" : "Back to the levels";
 }
@@ -1985,7 +1991,9 @@ function openSystem(next: SystemDoc): void {
     model.setPicture(orbit.index, png);
   }
   selectBody(orbitShown, null);
+  setSystemParent("landing");
   showHeader();
+  showCrumbs();
   showTree();
   drawWorldsSoon(system);
   const worlds = worldsOf(system).length;
@@ -2187,8 +2195,32 @@ model.onSelect((index) => selectBody(index, null));
 
 el("sys-roll").addEventListener("click", startNewSystem);
 
+/**
+ * Where the button at the head of the system goes back to. AppSpec 6.2, the same
+ * rule the planet panel follows above: a move down keeps the parent open, so a
+ * system reached through a chart goes back to that chart rather than out to the
+ * landing page, and the button says which.
+ */
+let systemParent: "landing" | "subsector" = "landing";
+
+function setSystemParent(parent: "landing" | "subsector"): void {
+  systemParent = parent;
+  openLevels.system = true;
+  openLevels.planet = false;
+  openLevels.subsector = parent === "subsector";
+  const button = el("sys-home");
+  button.textContent = parent === "subsector" ? "Chart" : "Levels";
+  button.title = parent === "subsector" ? "Back to the subsector chart" : "Back to the levels";
+}
+
 el("sys-home").addEventListener("click", () => {
   if (!confirmSystemDiscard("Leave this system")) return;
+  // The chart is still laid out and still selected on the hex this system came
+  // out of, so going back up is showing it again rather than rolling it again.
+  if (systemParent === "subsector" && subsector !== null) {
+    setAppView("subsector");
+    return;
+  }
   setAppView("landing");
   landingSay("");
 });
@@ -2563,9 +2595,13 @@ function drawSubsector(next: Subsector): void {
   if (el<HTMLInputElement>("sub-name").value === "") {
     el<HTMLInputElement>("sub-name").value = `Subsector ${next.letter}`;
   }
+  openLevels.subsector = true;
+  openLevels.system = false;
+  openLevels.planet = false;
   chart.render(next);
   showSubsectorAbout();
   showSubsectorList();
+  showCrumbs();
   // The busiest world, which is where a referee's eye goes and what the chart is
   // usually about.
   const first = [...next.worlds].sort(
@@ -2637,6 +2673,11 @@ function markSubsectorList(): void {
 
 /** Select a hex: the chart, the list and the panel all follow it. */
 function selectHex(at: string | null): void {
+  // Another hex is another system, so what was open under this chart is not.
+  if (at !== hexShown) {
+    openLevels.system = false;
+    openLevels.planet = false;
+  }
   hexShown = at;
   chart.setSelected(at);
   markSubsectorList();
@@ -2727,7 +2768,58 @@ el("sub-open").addEventListener("click", () => {
   systemFolder = null;
   openSystem(held);
   markSystemClean();
+  setSystemParent("subsector");
+  showCrumbs();
 });
+
+/* The trail across the levels. AppSpec 6.2 -------------------------------- */
+
+/**
+ * One bar in each level's header, all three drawn from the same state, so that
+ * whichever level is on screen says the same thing about where it sits.
+ *
+ * What is open is remembered rather than worked out from what happens to be in
+ * memory: a system left behind on the way back up to the chart is still open
+ * and can be gone back into, but choosing another hex closes it, because it is
+ * no longer the system that hex holds.
+ */
+const openLevels = { subsector: false, system: false, planet: false };
+
+const crumbBars = [
+  { at: "crumbs-planet", bar: createCrumbs() },
+  { at: "crumbs-system", bar: createCrumbs() },
+  { at: "crumbs-sub", bar: createCrumbs() },
+];
+for (const { at, bar } of crumbBars) {
+  el(at).append(bar.element);
+  bar.onGo(goToLevel);
+}
+
+function showCrumbs(): void {
+  const trail: Trail = {};
+  // The sector level is not built yet, so it is always the greyed first step.
+  if (openLevels.subsector) {
+    trail.subsector = el<HTMLInputElement>("sub-name").value.trim() || "Subsector";
+  }
+  if (openLevels.system) trail.system = doc?.name.trim() || "System";
+  if (openLevels.planet) trail.planet = state.planet.name.trim() || "Planet";
+  const view = currentAppView();
+  const here: Level | null =
+    view === "planet" || view === "system" || view === "subsector" ? view : null;
+  for (const { bar } of crumbBars) bar.render(trail, here);
+}
+
+/** Up the chain, with whatever is unsaved asked about on the way. AppSpec 6.2. */
+function goToLevel(level: Level): void {
+  const view = currentAppView();
+  if (level === view) return;
+  if (view === "planet" && !confirmDiscard("Leave this world")) return;
+  if (view === "system" && !confirmSystemDiscard("Leave this system")) return;
+  if (level === "subsector" && openLevels.subsector) setAppView("subsector");
+  else if (level === "system" && openLevels.system) setAppView("system");
+  else if (level === "planet" && openLevels.planet) setAppView("planet");
+  showCrumbs();
+}
 
 wireLanding({
   planetNew: startNewPlanet,
