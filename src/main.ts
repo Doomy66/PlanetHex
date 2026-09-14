@@ -27,7 +27,7 @@ import {
 } from "./gen/crater";
 import { isIced, type IceCaps } from "./gen/ice";
 import { DEFAULT_FIELD_OPTIONS, type HeightFieldOptions } from "./gen/field";
-import { blankPlanet, newPlanet, parseUwp, rollUwp, type Planet } from "./planet";
+import { blankPlanet, newPlanet, parseUwp, randomSeed, rollUwp, type Planet } from "./planet";
 import { starportSite } from "./gen/site";
 import {
   MAX_SETTLEMENTS,
@@ -94,6 +94,10 @@ import { nextFrame, renderMaps } from "./io/images";
 import { EXPORT_FORMATS, manifest, type ExportContext } from "./io/export";
 import { shaderFor, surfaceOn } from "./surface";
 import { currentAppView, landingSay, setAppView, wireLanding } from "./ui/landing";
+import { auLabel, contentLabel, createOrbitDiagram } from "./ui/orbits";
+import { generateSystem, worldName, worldSettings, worldsOf, type StarSystem } from "./gen/system";
+import { starsLabel } from "./gen/star";
+import { formatPbg, tradeCodes } from "./gen/trade";
 
 const el = <T extends HTMLElement>(id: string): T => {
   const node = document.getElementById(id);
@@ -1359,6 +1363,7 @@ el("toggle-left").addEventListener("click", () => {
 /* Buttons ---------------------------------------------------------------- */
 
 function startNewPlanet(): void {
+  setPlanetParent("landing");
   Object.assign(state.planet, newPlanet());
   state.folder = null;
   state.selected = null;
@@ -1673,6 +1678,7 @@ async function loadPlanet(): Promise<void> {
     map.resetView();
     globe.resetView();
     markClean();
+    setPlanetParent("landing");
     setAppView("planet");
     say(`Loaded ${name}.${saveRoute()}`);
   } catch (error) {
@@ -1740,17 +1746,204 @@ function saveRoute(): string {
   return isSupported() ? "" : " This browser saves as a zip download.";
 }
 
-// Back to the levels. AppSpec 2.4, and 7.2: what is open is closed, and what is
-// unsaved is asked about first.
+/**
+ * Where the button at the head of the planet panel goes back to. AppSpec 6.2: a
+ * move down keeps the parent open, so a world reached through a system goes back
+ * to that system rather than out to the landing page, and the button says so.
+ */
+let planetParent: "landing" | "system" = "landing";
+
+function setPlanetParent(parent: "landing" | "system"): void {
+  planetParent = parent;
+  el("home").textContent = parent === "system" ? "System" : "Levels";
+  el("home").title = parent === "system" ? "Back to the system" : "Back to the levels";
+}
+
+// AppSpec 2.4 and 7.2: what is open is closed, and what is unsaved is asked
+// about first.
 el("home").addEventListener("click", () => {
-  if (!confirmDiscard("Leave this planet")) return;
+  if (!confirmDiscard(planetParent === "system" ? "Leave this world" : "Leave this planet")) return;
+  if (planetParent === "system" && system !== null) {
+    setAppView("system");
+    return;
+  }
   setAppView("landing");
   landingSay("");
+});
+
+
+/* The system view. SystemSpec section 8 ---------------------------------- */
+
+// Read only: the diagram draws a system and the panel says what an orbit holds.
+// Editing and saving are SystemSpec 9, and the Load row on the landing page
+// stays dark until there is a format to load.
+
+const orbits = createOrbitDiagram();
+el("sys-diagram").append(orbits.element);
+
+/** The open system, and which of its orbits the panel is about. */
+let system: StarSystem | null = null;
+let orbitShown: number | null = null;
+
+/**
+ * What a system is called. SystemSpec 7.1 has it named for its main world, which
+ * the subsector chart names - and there is no chart yet, so the name is drawn
+ * here from the same machinery, which SubSectorSpec 3.4 will move out of
+ * settle.ts when the chart arrives.
+ */
+function systemName(seed: string): string {
+  return settlementNames(`${seed}:system`, 1)[0] ?? seed;
+}
+
+function sysSay(message: string, isError = false): void {
+  const status = el("sys-status");
+  status.textContent = message;
+  status.classList.toggle("error", isError);
+}
+
+function startNewSystem(): void {
+  showSystem(generateSystem(randomSeed()));
+}
+
+function showSystem(next: StarSystem): void {
+  system = next;
+  orbitShown = next.mainWorld.orbitIndex;
+  setAppView("system");
+  el("sys-stars").textContent = starsLabel(next.stars);
+  // SystemSpec 8.6, and 4.2.1 where the two counts disagree: the chart's figures
+  // are the chart's, and what would not fit is said rather than quietly dropped.
+  const short =
+    next.placed.belts === next.pbg.belts && next.placed.gasGiants === next.pbg.gasGiants
+      ? ""
+      : ` (room for ${next.placed.belts} and ${next.placed.gasGiants})`;
+  el("sys-counts").textContent =
+    `${systemName(next.seed)} · seed ${next.seed} · PBG ${formatPbg(next.pbg)}${short}`;
+  orbits.render(next);
+  orbits.setSelected(orbitShown);
+  showOrbit(orbitShown);
+  sysSay(`${next.orbits.length} orbits, ${worldsOf(next).length} worlds.`);
+}
+
+/** The panel for one orbit. SystemSpec 8.4. */
+function showOrbit(index: number | null): void {
+  const open = el<HTMLButtonElement>("sys-open");
+  const facts = el("sys-facts");
+  facts.replaceChildren();
+  el("sys-note").textContent = "";
+  open.hidden = true;
+  if (system === null || index === null) {
+    el("sys-what").textContent = "Select an orbit";
+    return;
+  }
+  const orbit = system.orbits.find((held) => held.index === index);
+  if (orbit === undefined) return;
+
+  const row = (term: string, value: string) => {
+    const dt = document.createElement("dt");
+    dt.textContent = term;
+    const dd = document.createElement("dd");
+    dd.textContent = value;
+    facts.append(dt, dd);
+  };
+
+  const content = orbit.content;
+  const what = contentLabel(orbit);
+  el("sys-what").textContent = `Orbit ${orbit.index} — ${what}`;
+  row("Distance", auLabel(orbit.au));
+  row("Sunlight", sunlightNote(orbit.sunEquivalentAu));
+  row("Year", yearNote(orbit.au, system.stars.primary.luminosity));
+  if (orbit.habitable) row("Zone", "habitable");
+
+  if (content.kind === "world") {
+    const detail = planetDetail(content.seed, content.uwp, worldSettings(system, orbit.index));
+    row("Profile", content.uwp);
+    row("Seed", content.seed);
+    const codes = tradeCodes(content.uwp);
+    if (codes.length > 0) row("Trade", codes.map((code) => `${code.code} ${code.label}`).join(", "));
+    row("Surface", `${(detail.meanTempK - 273.15).toFixed(0)}°C mean`);
+    el("sys-note").textContent = describeUwp(content.uwp, detail) ?? "";
+    open.hidden = false;
+    open.textContent = `Open ${worldName(systemName(system.seed), orbit.index)}`;
+  } else if (content.kind === "giant") {
+    const moons = content.moons === 1 ? "one moon" : `${content.moons} moons`;
+    el("sys-note").textContent = `A gas giant with ${moons}. Nothing to land on, and fuel for anybody who can skim it.`;
+  } else if (content.kind === "belt") {
+    el("sys-note").textContent = "A planetoid belt: where a world would have formed and did not.";
+  } else {
+    el("sys-note").textContent = "Nothing here. Empty orbits are normal.";
+  }
+}
+
+/**
+ * How much light falls on an orbit, against what falls on Earth. The stored
+ * figure is a sunlight-equivalent distance, and light goes as the inverse square
+ * of it, so this is the reading a referee can use: twice the distance is a
+ * quarter of the light.
+ */
+function sunlightNote(sunEquivalentAu: number): string {
+  const times = 1 / (sunEquivalentAu * sunEquivalentAu);
+  const figure = times >= 10 ? Math.round(times) : times >= 1 ? times.toFixed(1) : times.toFixed(3).replace(/0+$/, "");
+  return `${figure}× Earth's`;
+}
+
+function yearNote(au: number, luminosity: number): string {
+  const years = orbitalPeriodHours(au, luminosity) / (24 * 365.25);
+  return years < 1 ? `${(years * 12).toFixed(1)} months` : `${years.toFixed(1)} years`;
+}
+
+orbits.onSelect((index) => {
+  orbitShown = index;
+  orbits.setSelected(index);
+  showOrbit(index);
+});
+
+el("sys-roll").addEventListener("click", startNewSystem);
+
+el("sys-home").addEventListener("click", () => {
+  setAppView("landing");
+  landingSay("");
+});
+
+/**
+ * A world out of a system, opened as a planet. SystemSpec 6.2 and the app spec
+ * 6.1: the same planet view, reached by moving down a level.
+ *
+ * The settings the system wrote travel with it, under SystemSpec 6.6.3, so the
+ * world that opens is the world the system made rather than one that happens to
+ * share its seed.
+ */
+el("sys-open").addEventListener("click", () => {
+  if (system === null || orbitShown === null) return;
+  const orbit = system.orbits.find((held) => held.index === orbitShown);
+  if (orbit === undefined || orbit.content.kind !== "world") return;
+  const settings = worldSettings(system, orbit.index);
+  setPlanetParent("system");
+  Object.assign(state.planet, newPlanet(orbit.content.seed), {
+    name: worldName(systemName(system.seed), orbit.index),
+    uwp: orbit.content.uwp,
+    orbitAu: settings.orbitAu,
+    luminosity: settings.luminosity,
+  });
+  state.folder = null;
+  state.selected = null;
+  state.hovered = null;
+  state.selectedRef = null;
+  setAppView("planet");
+  showPlanet();
+  regenerate();
+  placeStarport();
+  placeCities();
+  markSettled();
+  map.resetView();
+  globe.resetView();
+  markClean();
+  say(`${state.planet.name}, ${orbit.au} AU out.${saveRoute()}`);
 });
 
 wireLanding({
   planetNew: startNewPlanet,
   planetLoad: loadPlanet,
+  systemNew: startNewSystem,
 });
 
 /* Start ------------------------------------------------------------------ */

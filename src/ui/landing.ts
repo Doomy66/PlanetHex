@@ -13,15 +13,16 @@
  * built, and index.html says why they are on screen anyway.
  */
 
-/** Which of the two the window is showing. One attribute, read by the CSS. */
-export type AppView = "landing" | "planet";
+/** Which of the levels the window is showing. One attribute, read by the CSS. */
+export type AppView = "landing" | "planet" | "system";
 
 export function setAppView(view: AppView): void {
   document.body.dataset.view = view;
 }
 
 export function currentAppView(): AppView {
-  return document.body.dataset.view === "planet" ? "planet" : "landing";
+  const view = document.body.dataset.view;
+  return view === "planet" || view === "system" ? view : "landing";
 }
 
 /**
@@ -41,6 +42,8 @@ export interface LandingHandlers {
   planetNew(): void;
   /** Pick a planet file and open it. AppSpec 3.2. */
   planetLoad(): void | Promise<void>;
+  /** Roll a new system and open it. AppSpec 3.1, SystemSpec section 8. */
+  systemNew(): void;
 }
 
 export function wireLanding(handlers: LandingHandlers): void {
@@ -54,4 +57,5 @@ export function wireLanding(handlers: LandingHandlers): void {
   };
   click("landing-planet-new", handlers.planetNew);
   click("landing-planet-load", handlers.planetLoad);
+  click("landing-system-new", handlers.systemNew);
 }

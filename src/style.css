@@ -591,6 +591,90 @@ body[data-view="planet"] .landing { display: none; }
    too, only the first of them pushes. */
 .home + .help-open { margin-left: 6px; }
 
+/* The system view. SystemSpec section 8 --------------------------------- */
+
+body[data-view="system"] .layout,
+body[data-view="system"] .landing { display: none; }
+body[data-view="landing"] .system,
+body[data-view="planet"] .system { display: none; }
+
+.system {
+  height: 100vh;
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  gap: 10px;
+  padding: 12px 16px 16px;
+  overflow: auto;
+}
+
+.system-head { display: flex; align-items: baseline; gap: 12px; }
+.system-head h1 { margin: 0; }
+.sys-stars { color: var(--accent); }
+.sys-counts { color: var(--muted); }
+.system-actions { margin-left: auto; display: flex; gap: 6px; align-items: center; }
+
+.sys-diagram {
+  min-height: 0;
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  background: var(--panel);
+  padding: 6px;
+  display: flex;
+  align-items: center;
+  overflow-x: auto;
+}
+/* Height follows the drawing's own proportions rather than filling the box,
+   since a schematic stretched to whatever height is going spare is a schematic
+   with a lot of nothing in it. */
+.orbits { width: 100%; min-width: 520px; height: auto; max-height: 100%; display: block; }
+
+/* Schematic, so the axis is a line and the orbits are slots on it rather than
+   circles at their real distances. SystemSpec 8.2. */
+.orbit-axis { stroke: var(--line); stroke-width: 2; }
+.orbit-tick { stroke: var(--line); stroke-width: 1.5; }
+.orbit-star { stroke: rgba(0, 0, 0, 0.35); stroke-width: 1; }
+.orbit-companion { opacity: 0.95; }
+
+.orbit-zone { fill: rgba(93, 202, 165, 0.09); }
+.orbit-zone-label {
+  fill: #5dcaa5;
+  font-size: 11px;
+  text-anchor: middle;
+  letter-spacing: 0.08em;
+}
+
+.orbit-hit { fill: transparent; }
+.orbit { cursor: pointer; }
+.orbit:hover .orbit-hit { fill: rgba(255, 255, 255, 0.04); }
+.orbit:focus { outline: none; }
+.orbit:focus .orbit-hit { fill: rgba(255, 255, 255, 0.07); }
+
+.orbit-world { fill: #9fb6cf; }
+/* The world the chart drew, in the gold the application marks a choice in
+   everywhere else. SystemSpec 8.5. */
+.orbit-main { fill: var(--accent); }
+.orbit-giant { fill: #c8a06a; }
+.orbit-ring { fill: none; stroke: #c8a06a; stroke-width: 1.5; opacity: 0.7; }
+.orbit-belt { fill: var(--muted); }
+.orbit-select { fill: none; stroke: var(--select); stroke-width: 1.5; }
+
+.orbit-au { fill: var(--muted); font-size: 11px; text-anchor: middle; }
+.orbit-label { fill: var(--muted); font-size: 10px; text-anchor: middle; opacity: 0.75; }
+
+.sys-below { display: flex; flex-direction: column; gap: 4px; }
+.sys-detail {
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  background: var(--panel);
+  padding: 10px 12px;
+}
+.sys-detail h2 { margin: 0 0 8px; color: var(--text); text-transform: none; letter-spacing: 0; font-size: 14px; }
+.sys-facts { display: grid; grid-template-columns: auto 1fr; gap: 2px 14px; margin: 0; }
+.sys-facts dt { color: var(--muted); }
+.sys-facts dd { margin: 0; }
+.sys-note { color: var(--muted); margin: 8px 0 0; }
+.sys-open { margin-top: 10px; }
+
 /* Help, Spec 4.8 --------------------------------------------------------- */
 
 /* Sits at the far end of the header, away from the collapse button, so the one

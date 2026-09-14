@@ -47,7 +47,7 @@
               <p>A star or two, its orbits, and the worlds in them.</p>
             </div>
             <div class="actions">
-              <button type="button" disabled>New</button>
+              <button id="landing-system-new" type="button">New</button>
               <button type="button" disabled>Load</button>
             </div>
           </li>
@@ -74,7 +74,34 @@
         </ul>
 
         <p id="landing-status" class="status" role="status"></p>
-        <p class="landing-note">Only the planet is built. The rest are specified.</p>
+        <p class="landing-note">Planets and systems are built. A system cannot be saved yet.</p>
+      </div>
+    </section>
+
+    <!-- The system view. SystemSpec section 8: the star or stars at one end, the
+         orbits laid out from it, and a panel for whatever orbit is selected.
+         Read only, at this stage: nothing here edits a system. -->
+    <section id="system" class="system">
+      <header class="system-head">
+        <h1>System</h1>
+        <span id="sys-stars" class="sys-stars"></span>
+        <span id="sys-counts" class="sys-counts"></span>
+        <span class="system-actions">
+          <button id="sys-roll" type="button" title="Another system">Roll</button>
+          <button id="sys-home" class="home" type="button" title="Back to the levels">Levels</button>
+        </span>
+      </header>
+
+      <div id="sys-diagram" class="sys-diagram"></div>
+
+      <div class="sys-below">
+        <div class="sys-detail">
+          <h2 id="sys-what">Select an orbit</h2>
+          <dl id="sys-facts" class="sys-facts"></dl>
+          <p id="sys-note" class="sys-note"></p>
+          <button id="sys-open" class="sys-open" type="button" hidden>Open as a planet</button>
+        </div>
+        <p id="sys-status" class="status" role="status"></p>
       </div>
     </section>
 

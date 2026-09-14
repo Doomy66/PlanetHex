@@ -1,0 +1,268 @@
+import type { Orbit, StarSystem } from "../gen/system";
+import type { SpectralClass, Star } from "../gen/star";
+
+/**
+ * The orbit diagram. SystemSpec section 8.
+ *
+ * The star at one end and the orbits laid out from it, each slot holding what it
+ * holds. Schematic rather than to scale, under 8.2: the outer orbits are hundreds
+ * of times the inner ones, and a picture honest about that is a picture of empty
+ * space with a dot in the corner. The distances are stated on the diagram and in
+ * the panel, which is where a number belongs.
+ */
+
+const SVG_NS = "http://www.w3.org/2000/svg";
+
+/** The drawing is laid out in these units and scaled to whatever it is given. */
+const HEIGHT = 150;
+const STAR_X = 56;
+const FIRST_ORBIT_X = 130;
+const ORBIT_GAP = 82;
+const AXIS_Y = 74;
+const RIGHT_PAD = 60;
+
+/** How big a star is drawn, by its size class, in the units above. */
+const STAR_RADIUS = { giant: 34, ordinary: 20, dwarf: 9 } as const;
+
+/**
+ * What each class is drawn in. A star's colour is its temperature, which is the
+ * one thing about a star everybody already knows how to read: blue is hot, red
+ * is cold, and the Sun is in between.
+ */
+const STAR_COLOUR: Readonly<Record<SpectralClass, string>> = {
+  O: "#9db4ff",
+  B: "#bcd0ff",
+  A: "#e2e9ff",
+  F: "#fbf6e8",
+  G: "#ffe9a8",
+  K: "#ffc073",
+  M: "#ff8a5c",
+};
+
+function radiusOf(star: Star): number {
+  if (star.size === "D") return STAR_RADIUS.dwarf;
+  if (star.size === "V" || star.size === "VI") return STAR_RADIUS.ordinary;
+  return STAR_RADIUS.giant;
+}
+
+function make<K extends keyof SVGElementTagNameMap>(
+  tag: K,
+  attrs: Record<string, string | number> = {},
+): SVGElementTagNameMap[K] {
+  const node = document.createElementNS(SVG_NS, tag);
+  for (const [key, value] of Object.entries(attrs)) node.setAttribute(key, String(value));
+  return node;
+}
+
+/** A distance as the diagram states it. SystemSpec 3.4.1: one or two figures. */
+export function auLabel(au: number): string {
+  if (au >= 10) return `${Math.round(au)} AU`;
+  if (au >= 1) return `${au.toFixed(1).replace(/\.0$/, "")} AU`;
+  return `${au.toFixed(2).replace(/0$/, "")} AU`;
+}
+
+/** What an orbit holds, in a word, for the diagram and the panel alike. */
+export function contentLabel(orbit: Orbit): string {
+  switch (orbit.content.kind) {
+    case "world":
+      return orbit.content.main ? "Main world" : "World";
+    case "giant":
+      return "Gas giant";
+    case "belt":
+      return "Belt";
+    default:
+      return "Empty";
+  }
+}
+
+export interface OrbitDiagram {
+  readonly element: SVGSVGElement;
+  render(system: StarSystem): void;
+  setSelected(orbitIndex: number | null): void;
+  onSelect(handler: (orbitIndex: number) => void): void;
+}
+
+export function createOrbitDiagram(): OrbitDiagram {
+  const svg = make("svg", { class: "orbits" });
+  const zoneLayer = make("g");
+  const axisLayer = make("g");
+  const bodyLayer = make("g");
+  const selectLayer = make("g");
+  svg.append(zoneLayer, axisLayer, bodyLayer, selectLayer);
+
+  const handlers: ((orbitIndex: number) => void)[] = [];
+  let placed: { index: number; x: number }[] = [];
+  let selected: number | null = null;
+
+  function xOf(index: number): number {
+    const at = placed.findIndex((slot) => slot.index === index);
+    return at < 0 ? FIRST_ORBIT_X : placed[at]!.x;
+  }
+
+  function drawSelection(): void {
+    selectLayer.replaceChildren();
+    if (selected === null) return;
+    selectLayer.append(
+      make("circle", {
+        class: "orbit-select",
+        cx: xOf(selected),
+        cy: AXIS_Y,
+        r: 28,
+      }),
+    );
+  }
+
+  function render(system: StarSystem): void {
+    zoneLayer.replaceChildren();
+    axisLayer.replaceChildren();
+    bodyLayer.replaceChildren();
+
+    placed = system.orbits.map((orbit, at) => ({
+      index: orbit.index,
+      x: FIRST_ORBIT_X + at * ORBIT_GAP,
+    }));
+    const width = (placed.at(-1)?.x ?? FIRST_ORBIT_X) + RIGHT_PAD;
+    svg.setAttribute("viewBox", `0 0 ${width} ${HEIGHT}`);
+
+    // The habitable zone, drawn behind everything, because it is why most of the
+    // systems that matter matter. SystemSpec 8.3.
+    const habitable = system.orbits.filter((orbit) => orbit.habitable);
+    if (habitable.length > 0) {
+      const from = xOf(habitable[0]!.index) - ORBIT_GAP / 2;
+      const to = xOf(habitable.at(-1)!.index) + ORBIT_GAP / 2;
+      zoneLayer.append(
+        make("rect", { class: "orbit-zone", x: from, y: 10, width: to - from, height: HEIGHT - 20 }),
+      );
+      const label = make("text", { class: "orbit-zone-label", x: (from + to) / 2, y: 22 });
+      label.textContent = "habitable";
+      zoneLayer.append(label);
+    }
+
+    axisLayer.append(
+      make("line", {
+        class: "orbit-axis",
+        x1: STAR_X,
+        y1: AXIS_Y,
+        x2: width - RIGHT_PAD / 2,
+        y2: AXIS_Y,
+      }),
+    );
+
+    drawStars(system);
+    for (const orbit of system.orbits) drawOrbit(orbit, xOf(orbit.index));
+    drawSelection();
+  }
+
+  function drawStars(system: StarSystem): void {
+    const { primary, companion, companionOrbit } = system.stars;
+    axisLayer.append(
+      make("circle", {
+        class: "orbit-star",
+        cx: STAR_X,
+        cy: AXIS_Y,
+        r: radiusOf(primary),
+        fill: STAR_COLOUR[primary.spectral],
+      }),
+    );
+    if (companion === null) return;
+    // Inside every orbit or outside all of them, which is the only arrangement
+    // SystemSpec 2.4 allows and the reason this diagram has one axis.
+    const close = companionOrbit === "close";
+    axisLayer.append(
+      make("circle", {
+        class: "orbit-star orbit-companion",
+        cx: close ? STAR_X + radiusOf(primary) + 14 : (placed.at(-1)?.x ?? STAR_X) + 34,
+        cy: close ? AXIS_Y - radiusOf(primary) - 10 : AXIS_Y,
+        r: radiusOf(companion),
+        fill: STAR_COLOUR[companion.spectral],
+      }),
+    );
+  }
+
+  function drawOrbit(orbit: Orbit, x: number): void {
+    const group = make("g", { class: `orbit orbit-${orbit.content.kind}`, tabindex: 0 });
+    group.setAttribute("role", "button");
+    const held = contentLabel(orbit);
+    const title = make("title");
+    title.textContent = `Orbit ${orbit.index}, ${auLabel(orbit.au)}: ${held}`;
+    group.append(title);
+
+    // The whole slot takes the click, not the dot in it: an empty orbit is worth
+    // selecting, and a belt is not a shape anybody can hit.
+    group.append(
+      make("rect", {
+        class: "orbit-hit",
+        x: x - ORBIT_GAP / 2,
+        y: 10,
+        width: ORBIT_GAP,
+        height: HEIGHT - 20,
+      }),
+    );
+    group.append(make("line", { class: "orbit-tick", x1: x, y1: AXIS_Y - 7, x2: x, y2: AXIS_Y + 7 }));
+    group.append(...bodyOf(orbit, x));
+
+    const au = make("text", { class: "orbit-au", x, y: HEIGHT - 26 });
+    au.textContent = auLabel(orbit.au);
+    const what = make("text", { class: "orbit-label", x, y: HEIGHT - 10 });
+    what.textContent = orbit.content.kind === "empty" ? "" : held.toLowerCase();
+    group.append(au, what);
+
+    group.addEventListener("click", () => {
+      for (const handler of handlers) handler(orbit.index);
+    });
+    group.addEventListener("keydown", (event) => {
+      if (event.key !== "Enter" && event.key !== " ") return;
+      event.preventDefault();
+      for (const handler of handlers) handler(orbit.index);
+    });
+    bodyLayer.append(group);
+  }
+
+  /** What sits in the orbit, drawn. Sizes say kind, not scale. */
+  function bodyOf(orbit: Orbit, x: number): SVGElement[] {
+    const content = orbit.content;
+    switch (content.kind) {
+      case "world":
+        return [
+          make("circle", {
+            class: content.main ? "orbit-world orbit-main" : "orbit-world",
+            cx: x,
+            cy: AXIS_Y,
+            r: content.main ? 11 : 7,
+          }),
+        ];
+      case "giant":
+        return [
+          make("circle", { class: "orbit-giant", cx: x, cy: AXIS_Y, r: 15 }),
+          make("ellipse", { class: "orbit-ring", cx: x, cy: AXIS_Y, rx: 24, ry: 6 }),
+        ];
+      case "belt":
+        // A scatter rather than a body, because that is what a belt is. The dots
+        // are placed off the orbit's own number so a belt looks the same every
+        // time it is drawn.
+        return Array.from({ length: 9 }, (_, i) => {
+          const spread = ((i * 37 + orbit.index * 11) % 41) / 40 - 0.5;
+          return make("circle", {
+            class: "orbit-belt",
+            cx: x + spread * 34,
+            cy: AXIS_Y + (((i * 23 + orbit.index * 7) % 17) / 16 - 0.5) * 20,
+            r: 1.8,
+          });
+        });
+      default:
+        return [];
+    }
+  }
+
+  return {
+    element: svg,
+    render,
+    setSelected(orbitIndex) {
+      selected = orbitIndex;
+      drawSelection();
+    },
+    onSelect(handler) {
+      handlers.push(handler);
+    },
+  };
+}
