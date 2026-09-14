@@ -177,7 +177,9 @@ This document is the companion to [PlanetSpec.md](PlanetSpec.md) and is numbered
 
 4.3.1 The panel also carries the world itself, turning, as the planet spec 4.4 draws it. This is the one world being looked at rather than one of eighty being glanced at, so it is worth a real surface.
 
-4.3.1.1 Drawn where its own system puts it, so the world in the panel is the world the system view shows rather than a near miss: a surface is its climate and a climate is an orbit. Laying out one system to find that orbit is cheap. A belt has no globe.
+4.3.1.1 Drawn where its own system puts it, so the world in the panel is the world the system view shows rather than a near miss: a surface is its climate and a climate is an orbit. Laying out one system to find that orbit is cheap. A belt has no globe: there is no sphere there to photograph.
+
+4.3.1.2 The same orbit is what the panel's distance and its prose are written from, for the same reason. A chart saying a world sits 5.77 AU out while its own system says 1.2 would be two answers about one world, and the profile alone cannot tell which — it does not know what star the world is under.
 
 4.4 The panel is where a world is edited, and where it is opened as a planet under section 7.
 

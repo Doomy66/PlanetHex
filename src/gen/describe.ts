@@ -106,25 +106,39 @@ export function describeUwp(uwp: string, detail: PlanetDetail): string | null {
       ? ""
       : ` and ${detail.hydrographicsPct.toFixed(0)}% surface water`;
 
-  const sentences = [
-    `A world ${join(physical)}, with ${air}${pressure}${water}, ` +
-      `tilted ${detail.axialTiltDeg.toFixed(0)}° on its axis${
-        isRetrograde(detail.axialTiltDeg) ? " and turning backwards" : ""
-      }.`,
-    // The world settings of 6.15. Read in the order they were worked out in, which
-    // is also the order they make sense in: where it is, how warm that leaves it,
-    // and how long its day runs.
-    `It sits ${detail.orbitAu.toFixed(2)} AU out at a mean ${(detail.meanTempK - 273.15).toFixed(0)}°C, ` +
-      `with ${dayLength(detail)}.`,
-  ];
+  // A size digit of zero is an asteroid belt, not a world a few tens of
+  // kilometres across, so it is not described as one: SystemSpec 4.3. The
+  // diameter, the gravity, the tilt and the length of the day are all questions
+  // about a body, and a belt is not one. What is left that still means something
+  // is where it is and how cold it is out there.
+  const belt = p.size === 0;
+
+  const sentences = belt
+    ? [
+        "A planetoid belt: rock and ice strung round the orbit where a world " +
+          "would have formed and did not.",
+        `It lies ${detail.orbitAu.toFixed(2)} AU out at a mean ${(detail.meanTempK - 273.15).toFixed(0)}°C.`,
+      ]
+    : [
+        `A world ${join(physical)}, with ${air}${pressure}${water}, ` +
+          `tilted ${detail.axialTiltDeg.toFixed(0)}° on its axis${
+            isRetrograde(detail.axialTiltDeg) ? " and turning backwards" : ""
+          }.`,
+        // The world settings of 6.15. Read in the order they were worked out in,
+        // which is also the order they make sense in: where it is, how warm that
+        // leaves it, and how long its day runs.
+        `It sits ${detail.orbitAu.toFixed(2)} AU out at a mean ${(detail.meanTempK - 273.15).toFixed(0)}°C, ` +
+          `with ${dayLength(detail)}.`,
+      ];
 
   if (detail.population !== null && detail.population < 1) {
-    sentences.push("Nobody lives there.");
+    sentences.push(belt ? "Nobody works it." : "Nobody lives there.");
   } else {
     const people = detail.population === null ? "an unrecorded population" : count(detail.population);
     const rule = at(GOVERNMENT, p.government) ?? "an unrecorded government";
     sentences.push(
-      `It holds ${people} under ${rule}, at law level ${digit(p.law)}, ` +
+      `It ${belt ? "is worked by" : "holds"} ${people} under ${rule}, ` +
+        `at law level ${digit(p.law)}, ` +
         `with ${at(LAW, p.law) ?? "restrictions off the scale"}.`,
     );
   }

@@ -2089,11 +2089,9 @@ function showOrbit(index: number | null): void {
     if (inOrbit.main && system.bases.letter !== "") {
       row("Bases", basesLabel(system.bases.letter));
     }
-    const said = describeUwp(inOrbit.uwp, detail) ?? "";
-    // A belt says so first: the profile that follows is the belt's, and reading
-    // it as a planet's would have it be a world 0km across.
-    el("sys-note").textContent =
-      content.kind === "belt" ? `A planetoid belt, and the people are in it. ${said}` : said;
+    // The description says it is a belt where it is one, since a belt profile
+    // reads as a belt wherever it is read. SystemSpec 4.3.
+    el("sys-note").textContent = describeUwp(inOrbit.uwp, detail) ?? "";
     // The world itself beside its profile, drawn the way the planet view draws
     // it rather than as a mark standing in for it. On a timer for the reason the
     // diagram's are: the panel should be readable before the picture arrives.
@@ -2739,10 +2737,27 @@ function showHexPanel(at: string | null): void {
     row("Trade", world.trade.map((code) => `${code.code} ${code.label}`).join(", "));
   }
   row("Seed", world.seed);
-  const detail = planetDetail(world.seed, world.uwp);
+  // Where the world actually is, which is its own system's answer rather than
+  // the one a profile alone would guess at. SubSectorSpec 4.3.1.1: a chart that
+  // said 5.77 AU while the system said 1.2 would be two answers about one world.
+  const settings = mainWorldSettings(world);
+  row("Distance", `${settings.orbitAu.toFixed(2)} AU`);
+  const detail = planetDetail(world.seed, world.uwp, settings);
   el("sub-note").textContent = describeUwp(world.uwp, detail) ?? "";
   open.hidden = false;
-  showHexGlobe(world);
+  showHexGlobe(world, settings);
+}
+
+/**
+ * Where a hex's main world sits and what lights it, by laying out its system.
+ *
+ * Cheap: a system is orbits and counts, not surfaces. The chart avoids doing it
+ * for eighty hexes at once under SystemSpec 11.4, but the one hex being looked
+ * at is worth the truth.
+ */
+function mainWorldSettings(world: ChartWorld): { orbitAu: number; luminosity: number } {
+  const held = generateSystem(world.systemSeed);
+  return worldSettings(held, held.mainWorld.orbitIndex);
 }
 
 /**
@@ -2759,24 +2774,20 @@ function showHexPanel(at: string | null): void {
  * not, which is why this waits a tick and checks the hex is still the one
  * selected before drawing.
  */
-function showHexGlobe(world: ChartWorld): void {
+function showHexGlobe(
+  world: ChartWorld,
+  settings: { orbitAu: number; luminosity: number },
+): void {
   const box = el("sub-globe");
   const wanted = world.at;
+  if (world.profile.size === 0) {
+    // A belt has no globe. There is no sphere here to photograph. SystemSpec 4.3.3.
+    box.hidden = true;
+    return;
+  }
   setTimeout(() => {
     if (hexShown !== wanted || subsector === null) return;
-    if (world.profile.size === 0) {
-      // A belt has no globe. Nothing here is a world to photograph.
-      box.hidden = true;
-      return;
-    }
-    const held = generateSystem(world.systemSeed);
-    box.replaceChildren(
-      liveGlobe({
-        seed: world.seed,
-        uwp: world.uwp,
-        ...worldSettings(held, held.mainWorld.orbitIndex),
-      }),
-    );
+    box.replaceChildren(liveGlobe({ seed: world.seed, uwp: world.uwp, ...settings }));
     box.hidden = false;
   }, 0);
 }
