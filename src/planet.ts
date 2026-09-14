@@ -26,6 +26,17 @@ export interface Planet {
    */
   tiltDeg: number | null;
   orbitAu: number | null;
+  /**
+   * The output of the star this world orbits, relative to the Sun, or null for a
+   * world whose star nobody has named. PlanetSpec 6.15.13.
+   *
+   * Here rather than in the system it came from, because a save has to hold
+   * everything its surface is built from: a world lifted out of a system and
+   * opened on its own has to come up the same world, and its climate cannot be
+   * worked out without knowing what is shining on it. Null means the Sun, which
+   * is what every world generated before systems existed was assumed to have.
+   */
+  luminosity: number | null;
   rotationHours: number | null;
   /** How many impacts the surface carries, or null for what the seed rolled. Spec 6.15.12. */
   craters: number | null;
@@ -58,6 +69,7 @@ export function blankPlanet(): Planet {
     narrative: "",
     tiltDeg: null,
     orbitAu: null,
+    luminosity: null,
     rotationHours: null,
     craters: null,
     seed: "",
@@ -76,6 +88,7 @@ export function newPlanet(seed = randomSeed()): Planet {
     narrative: "",
     tiltDeg: null,
     orbitAu: null,
+    luminosity: null,
     rotationHours: null,
     craters: null,
     seed,
@@ -267,6 +280,7 @@ export function parsePlanet(text: string): Planet {
 function readSettings(r: Record<string, unknown>): {
   tiltDeg: number | null;
   orbitAu: number | null;
+  luminosity: number | null;
   rotationHours: number | null;
   craters: number | null;
 } {
@@ -277,6 +291,9 @@ function readSettings(r: Record<string, unknown>): {
   return {
     tiltDeg: setting("tiltDeg"),
     orbitAu: setting("orbitAu"),
+    // A save written before stars existed says nothing about one, and a world
+    // around no star is a world around the Sun. PlanetSpec 6.15.13.1.
+    luminosity: setting("luminosity"),
     rotationHours: setting("rotationHours"),
     craters: setting("craters"),
   };

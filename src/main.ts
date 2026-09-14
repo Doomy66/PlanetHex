@@ -58,6 +58,7 @@ import {
   isTidallyLocked,
   orbitalPeriodHours,
   orbitForTemperature,
+  orbitLimitsFor,
   type ClimateOverrides,
 } from "./gen/climate";
 import { describeUwp } from "./gen/describe";
@@ -357,6 +358,7 @@ function overrides(): ClimateOverrides {
   return {
     obliquityDeg: state.planet.tiltDeg,
     orbitAu: state.planet.orbitAu,
+    luminosity: state.planet.luminosity,
     rotationHours: state.planet.rotationHours,
   };
 }
@@ -416,12 +418,14 @@ function showWorld(detail: PlanetDetail): void {
   const days = detail.rotationHours / 24;
   el("rotation-note").textContent = [
     days >= 2 ? `${days.toFixed(1)} days long` : "",
-    isTidallyLocked(detail.rotationHours, detail.orbitAu) ? "locked to its year" : "",
+    isTidallyLocked(detail.rotationHours, detail.orbitAu, detail.climate.luminosity)
+      ? "locked to its year"
+      : "",
     isRetrograde(detail.axialTiltDeg) ? "turning backwards" : "",
   ]
     .filter(Boolean)
     .join(", ");
-  const year = orbitalPeriodHours(detail.orbitAu) / (24 * 365.25);
+  const year = orbitalPeriodHours(detail.orbitAu, detail.climate.luminosity) / (24 * 365.25);
   el("orbit-note").textContent = `year of ${year < 1 ? `${(year * 12).toFixed(1)} months` : `${year.toFixed(1)} years`}`;
 }
 
@@ -620,7 +624,11 @@ fields.orbit.addEventListener("change", () => {
   setWorld(
     fields.orbit,
     (v) => {
-      state.planet.orbitAu = v === null ? null : Math.min(50, Math.max(0.05, v));
+      // The range a world can be put in moves out with the star it is put
+      // around: fifty AU from a supergiant is inside the fire.
+      const limits = orbitLimitsFor(currentDetail().climate.luminosity);
+      state.planet.orbitAu =
+        v === null ? null : Math.min(limits.far, Math.max(limits.near, v));
     },
     (d) => `${d.orbitAu.toFixed(2)} AU out, mean ${(d.meanTempK - 273.15).toFixed(0)}°C.`,
   );
@@ -639,7 +647,12 @@ fields.temp.addEventListener("change", () => {
         return;
       }
       const { climate } = currentDetail();
-      state.planet.orbitAu = orbitForTemperature(v + 273.15, climate.albedo, climate.greenhouseK);
+      state.planet.orbitAu = orbitForTemperature(
+        v + 273.15,
+        climate.albedo,
+        climate.greenhouseK,
+        climate.luminosity,
+      );
     },
     (d) => `Mean ${(d.meanTempK - 273.15).toFixed(0)}°C, which puts it ${d.orbitAu.toFixed(2)} AU out.`,
   );

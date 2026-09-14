@@ -61,6 +61,51 @@ describe("greenhouse", () => {
   });
 });
 
+describe("luminosity", () => {
+  it("leaves a world around the Sun exactly where it was", () => {
+    // PlanetSpec 6.15.13.1: a save written before stars existed says nothing
+    // about one, and a world around no star is a world around the Sun. Every
+    // figure in this file has to come out unchanged for it.
+    const albedo = albedoFor(71, 1);
+    const greenhouse = greenhouseFor(1, 6);
+    expect(temperatureAt(1, albedo, greenhouse, 1)).toBe(temperatureAt(1, albedo, greenhouse));
+    expect(orbitForTemperature(288, albedo, greenhouse, 1)).toBe(
+      orbitForTemperature(288, albedo, greenhouse),
+    );
+    expect(bareOrbitAu("Regina", 1)).toBe(bareOrbitAu("Regina"));
+    expect(orbitalPeriodHours(1, 1)).toBe(orbitalPeriodHours(1));
+    expect(despinFor(0.4, 1)).toBe(despinFor(0.4));
+  });
+
+  it("warms a world as much from further out the brighter the star", () => {
+    // Four times the light reaches twice as far. A world at 2 AU from a star of
+    // four Suns gets what a world at 1 AU gets from one.
+    expect(temperatureAt(2, 0, 0, 4)).toBeCloseTo(temperatureAt(1, 0, 0, 1), 6);
+    expect(temperatureAt(0.1, 0, 0, 0.01)).toBeCloseTo(temperatureAt(1, 0, 0, 1), 6);
+  });
+
+  it("moves the orbit for a temperature out with the star", () => {
+    const want = temperatureAt(1, 0, 0, 1);
+    expect(orbitForTemperature(want, 0, 0, 100)).toBeCloseTo(10, 6);
+    expect(orbitForTemperature(want, 0, 0, 0.01)).toBeCloseTo(0.1, 6);
+  });
+
+  it("locks the worlds a dim star keeps close", () => {
+    // Warm around a red dwarf means very close in, and that close the tides have
+    // had their way. The reach moves with the star's mass, not its light.
+    const dwarf = 0.02;
+    const warmAu = orbitForTemperature(temperatureAt(1, 0, 0, 1), 0, 0, dwarf);
+    expect(warmAu).toBeLessThan(0.2);
+    expect(despinFor(warmAu, dwarf)).toBeGreaterThan(0.5);
+    expect(despinFor(1, 1)).toBeLessThan(0.05);
+  });
+
+  it("runs a year faster around a lighter star", () => {
+    expect(orbitalPeriodHours(1, 0.02)).toBeGreaterThan(orbitalPeriodHours(1, 1));
+    expect(orbitalPeriodHours(1, 1000)).toBeLessThan(orbitalPeriodHours(1, 1));
+  });
+});
+
 describe("temperature and orbit", () => {
   it("puts Earth within a couple of degrees of its own mean", () => {
     const t = temperatureAt(1, albedoFor(71, 1), greenhouseFor(1, 6));

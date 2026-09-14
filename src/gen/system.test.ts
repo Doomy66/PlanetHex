@@ -1,7 +1,8 @@
 import { describe, expect, it } from "vitest";
 import { rollUwp } from "../planet";
 import { pbgFor } from "./trade";
-import { generateSystem, mainWorldSeed, orbitsFor } from "./system";
+import { generateSystem, mainWorldSeed, orbitsFor, worldSettings } from "./system";
+import { planetDetail } from "./detail";
 import { luminosityOf, starsFor } from "./star";
 
 const SEEDS = Array.from({ length: 500 }, (_, i) => `system-${i}`);
@@ -81,6 +82,57 @@ describe("generateSystem", () => {
       }
     }
     expect(outside).toBeGreaterThan(inside * 3);
+  });
+
+  it("hands a world everything its surface is built from", () => {
+    // The world has to be openable on its own, with no system anywhere near it.
+    // PlanetSpec 6.15.13: what a system knows that a planet cannot work out for
+    // itself is the star, so the star goes in the save beside the orbit.
+    for (const seed of SEEDS) {
+      const system = generateSystem(seed);
+      const settings = worldSettings(system);
+      expect(settings.orbitAu, seed).toBe(system.mainWorld.au);
+      expect(settings.luminosity, seed).toBe(system.stars.primary.luminosity);
+
+      // Opened from nothing but those settings, the world comes up in the orbit
+      // the system put it in, at the temperature that orbit implies.
+      const alone = planetDetail(system.mainWorld.seed, system.mainWorld.uwp, settings);
+      expect(alone.orbitAu, seed).toBeCloseTo(system.mainWorld.au, 6);
+      expect(alone.climate.luminosity, seed).toBe(settings.luminosity);
+      expect(Number.isFinite(alone.meanTempK), seed).toBe(true);
+    }
+  });
+
+  it("puts a world in the habitable zone at a temperature water survives", () => {
+    // The point of carrying the star: the same tenth of an AU is a furnace
+    // around one star and a cinder around another, and only the pair of figures
+    // says which. A world in a marked habitable orbit has to come out temperate
+    // whatever kind of star it is.
+    let checked = 0;
+    for (const seed of SEEDS) {
+      const system = generateSystem(seed);
+      const home = system.orbits[
+        system.orbits.findIndex((orbit) => orbit.index === system.mainWorld.orbitIndex)
+      ]!;
+      if (!home.habitable) continue;
+      checked++;
+      const alone = planetDetail(
+        system.mainWorld.seed,
+        system.mainWorld.uwp,
+        worldSettings(system),
+      );
+      // The sunlight, not the world's own air: a habitable orbit says how much
+      // light falls there, and a world with a runaway greenhouse is still an
+      // oven in one. So the greenhouse is taken back off before the check.
+      const sunlit = alone.meanTempK - alone.climate.greenhouseK;
+      // A wide band, because the habitable zone is wide: its outer edge is where
+      // water stays liquid under a thick enough atmosphere rather than where
+      // bare sunlight alone would keep it so, and a bright cloudy world reflects
+      // a third of what falls on it.
+      expect(sunlit, `${seed} at ${home.au} AU`).toBeGreaterThan(190);
+      expect(sunlit, `${seed} at ${home.au} AU`).toBeLessThan(330);
+    }
+    expect(checked).toBeGreaterThan(20);
   });
 
   it("gives every system at least one orbit", () => {

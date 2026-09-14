@@ -108,13 +108,15 @@ This document sits under [SubSectorSpec.md](SubSectorSpec.md) and over [PlanetSp
 
 5.2.2 The orbit it lands in is then written into the world's orbit setting, under 1.6.2. A world in a system knows where it is, rather than falling back on where a world of its description usually is.
 
-5.2.2.1 What is written is the sunlight-equivalent distance, not the distance in the system. The planet spec's climate is written against the Sun throughout - a world at 1 AU gets Earth's light - and it knows nothing of stars. So a world in the habitable zone of a dim red star, a tenth of an AU out, carries an orbit of about 1: the distance from the Sun that would give it the same light.
+5.2.2.1 The star's output is written with it, into the world's own star setting at the planet spec 6.15.13. The distance alone would not be enough: a tenth of an AU is a furnace around one star and a cinder around another, and a world that carried only the distance would be a different world the moment it was opened away from its system.
 
-5.2.2.2 Two readings of one distance, and the display shows the true one. A referee needs to know the world is a tenth of an AU out, because that is how far the trip is and how fast the year goes by; the surface generator needs to know how much light falls on it. Writing the true distance into a model that assumes the Sun would make every world of every red dwarf a cinder, and teaching the planet spec about luminosity would be a second place where a world's temperature is decided.
+5.2.2.2 So a save holds everything its surface is built from, and a world lifted out of a system opens as the world that system made. That is what the planet spec 6.15.13.2 is for, and it is the reason this level writes two figures rather than one clever one.
+
+5.2.2.3 The alternative was to write a sunlight-equivalent distance - what the world's orbit would be if its star were the Sun - and leave the planet knowing nothing of stars. It was rejected: a referee reading a world's orbit would find a figure that was not where the world is, the system diagram and the world panel would disagree about a number both of them call the orbit, and the world's year would be worked out from a distance it does not have. A world carrying its own star is longer to write and true everywhere.
 
 5.2.3 That reaches the surface. The planet spec 6.15 has orbit feed climate, and climate feed ice, life, and ground cover, so a world placed further out than its profile expected is colder than the same seed opened alone. This is intended, and 6.6 argues it out for every world rather than twice.
 
-5.2.4 A world close enough to its primary is tide-locked, and its rotation setting is written too. Nothing else is set from the system: tilt, craters, and the rest stay the planet's own.
+5.2.4 Tide-locking needs nothing written. With the star and the orbit both in the save, the planet spec works out for itself how far tides have reached, and a world in the habitable zone of a red dwarf comes up locked because that is what the pair of figures says. Nothing else is set from the system either: tilt, craters, and the rest stay the planet's own.
 
 5.3 Which world of a system is the main world is not a question this level asks. It is the world the chart names, and the chart named it before the system existed.
 

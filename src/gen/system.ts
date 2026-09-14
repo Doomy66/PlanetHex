@@ -62,10 +62,11 @@ export interface Orbit {
   readonly index: number;
   /** Where it is, in AU. */
   readonly au: number;
-  /**
+/**
    * The distance from the Sun that would give a world in this orbit the same
-   * light. Everything about climate is written against the Sun in climate.ts,
-   * so this is the figure a world takes away with it. See 5.2.2 below.
+   * light. Not what a world takes away with it - that is the true distance in
+   * `au`, with the star's output beside it - but what the habitable zone and the
+   * snow line are worked out on, since both are questions about light.
    */
   readonly sunEquivalentAu: number;
   /** Whether liquid water is possible here. */
@@ -78,9 +79,14 @@ export interface MainWorld {
   readonly uwp: string;
   /** Which orbit it ended up in, which is an index into the system's orbits. */
   readonly orbitIndex: number;
+  /** Where it is, in AU, and what goes into its orbit setting. SystemSpec 5.2.2. */
   readonly au: number;
-  /** What goes into the planet's own orbit setting. SystemSpec 5.2.2. */
-  readonly sunEquivalentAu: number;
+  /**
+   * The output of the star it orbits, which goes into its luminosity setting.
+   * Without it the orbit above means nothing: the same distance is a furnace
+   * around one star and a cinder around another.
+   */
+  readonly luminosity: number;
 }
 
 export interface StarSystem {
@@ -130,25 +136,25 @@ export function orbitsFor(luminosity: number): readonly { index: number; au: num
 }
 
 /**
- * The sunlight-equivalent orbit the profile points to. SystemSpec 5.2.1.
+ * The orbit the profile points to, around this star. SystemSpec 5.2.1.
  *
- * The planet spec 6.15 already derives an orbital distance from a profile, and
- * this asks it rather than working out a second opinion about where a world of
- * that description belongs. One derivation, read in two places.
+ * The planet spec 6.15 already derives an orbital distance from a profile and a
+ * star, and this asks it rather than working out a second opinion about where a
+ * world of that description belongs. One derivation, read in two places.
  */
-function wantedSunEquivalentAu(seed: string, uwp: string): number {
-  return planetDetail(seed, uwp).orbitAu;
+function wantedAu(seed: string, uwp: string, luminosity: number): number {
+  return planetDetail(seed, uwp, { luminosity }).orbitAu;
 }
 
 /** The orbit nearest a wanted distance, measured the way orbits are spaced. */
-function nearestOrbit<T extends { sunEquivalentAu: number }>(orbits: readonly T[], wanted: number): T {
+function nearestOrbit<T extends { au: number }>(orbits: readonly T[], wanted: number): T {
   let best = orbits[0]!;
   let bestGap = Infinity;
   for (const orbit of orbits) {
     // Compared as a ratio rather than a difference: the gap from 0.7 to 1.0 is
     // the same step as the gap from 20 to 30, and a difference would put every
     // world in the outermost orbit it could reach.
-    const gap = Math.abs(Math.log(orbit.sunEquivalentAu / wanted));
+    const gap = Math.abs(Math.log(orbit.au / wanted));
     if (gap < bestGap) {
       best = orbit;
       bestGap = gap;
@@ -179,7 +185,8 @@ export function generateSystem(seed: string): StarSystem {
   const uwp = rollUwp(worldSeed);
   const pbg = pbgFor(worldSeed, uwp);
 
-  const home = nearestOrbit(laid, wantedSunEquivalentAu(worldSeed, uwp));
+  const luminosity = stars.primary.luminosity;
+  const home = nearestOrbit(laid, wantedAu(worldSeed, uwp, luminosity));
   const content = new Map<number, OrbitContent>();
   content.set(home.index, { kind: "world", main: true, seed: worldSeed, uwp });
 
@@ -219,9 +226,21 @@ export function generateSystem(seed: string): StarSystem {
       uwp,
       orbitIndex: home.index,
       au: home.au,
-      sunEquivalentAu: home.sunEquivalentAu,
+      luminosity,
     },
   };
+}
+
+/**
+ * What a system writes into a world it hands over. SystemSpec 1.6.2 and 5.2.2.
+ *
+ * These are the nullable settings of the planet spec 6.15, where null means the
+ * rolled value stands and a value means somebody has overruled it. They travel
+ * with the world in its own save, so a world lifted out of its system and opened
+ * on its own is still the world that system made. SystemSpec 6.6.3.
+ */
+export function worldSettings(system: StarSystem): { orbitAu: number; luminosity: number } {
+  return { orbitAu: system.mainWorld.au, luminosity: system.mainWorld.luminosity };
 }
 
 function countOf(content: Map<number, OrbitContent>, kind: OrbitContent["kind"]): number {

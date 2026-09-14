@@ -631,6 +631,7 @@ This document is the specification for one planet. [SubSectorSpec.md](SubSectorS
 | UWP | The Universal World Profile, see 6.7. |
 | Narrative text | Free prose about the world, written by the user. Plain text, no length limit. |
 | Points of interest | The hex attachments of 6.5, each with its kind, name, narrative, and the point of 2.4.8 it sits on. |
+| Star | The output of the star the world orbits, relative to the Sun, see 6.15.13. Absent means the Sun. |
 | Seed | Required. Without it the surface cannot be rebuilt on load. |
 | Detail | The detail level of 2.2.1, stored as its row count. |
 
@@ -879,6 +880,14 @@ This document is the specification for one planet. [SubSectorSpec.md](SubSectorS
 6.15.12.2 An empty field returns the world to what the seed rolled, under 6.15.3. A typed zero is a different thing: a referee saying this world's record has been wiped, whatever its air and water work out to. The two are held apart the way the other settings hold them apart, so the field shows what the seed rolls alongside whatever has been typed over it.
 
 6.15.12.3 The field is capped. Past twenty thousand the layer costs a fifth of a redraw at the finest level for a surface that saturated thousands of impacts earlier, so the ceiling sits where the pictures stop improving rather than where the arithmetic stops working. Under it the field shows how much ground is inside a rim, since a count alone does not say what a world looks like: a thousand small craters and a thousand large ones are different surfaces.
+
+6.15.13 **The star.** A world's orbit is a distance, and a distance means nothing on its own: the same tenth of an AU is a furnace around one star and a cinder around another. So a planet carries the output of the star it orbits, relative to the Sun, and every figure 6.15 derives from its orbit is worked out on the pair.
+
+6.15.13.1 Absent means the Sun. Every world generated before this existed was worked out against the Sun, so a save that says nothing about a star is read as saying that, and comes back the world it always was. Nothing in an old file changes, and nothing in an old file has to be rewritten.
+
+6.15.13.2 It is here rather than in the system a world came from because a save has to hold everything its surface is built from. A world lifted out of its system and opened on its own must come up the same world, and its climate cannot be worked out without knowing what is shining on it. [SystemSpec.md](SystemSpec.md) 5.2.2 is what writes it; this clause is why it has somewhere to write it to.
+
+6.15.13.3 It is not offered as a field to type in. A star is the system's business, and a world that has one got it from there; a world that has not is around the Sun. What the user can still move is the orbit, and the range that field allows moves with the star, since fifty AU from a supergiant is inside the fire.
 
 ### 6.16 Trade classifications
 

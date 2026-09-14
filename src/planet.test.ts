@@ -161,4 +161,18 @@ describe("the world settings a save carries", () => {
     const { craters: _dropped, ...older } = newPlanet("Older");
     expect(parsePlanet(JSON.stringify(older)).craters).toBeNull();
   });
+
+  it("carries the star a system put the world around", () => {
+    // PlanetSpec 6.15.13.2: a save holds everything its surface is built from,
+    // so a world lifted out of its system opens as the world that system made.
+    expect(save({ luminosity: 0.02 }).luminosity).toBe(0.02);
+    expect(save({ orbitAu: 0.14, luminosity: 0.02 }).orbitAu).toBe(0.14);
+  });
+
+  it("reads a save written before stars as a world around the Sun", () => {
+    // PlanetSpec 6.15.13.1. Nothing in an old file changes, and nothing in an
+    // old file has to be rewritten.
+    const { luminosity: _dropped, ...older } = newPlanet("Older");
+    expect(parsePlanet(JSON.stringify(older)).luminosity).toBeNull();
+  });
 });
