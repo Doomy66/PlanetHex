@@ -194,7 +194,9 @@ This document sits under [SubSectorSpec.md](SubSectorSpec.md) and over [PlanetSp
 
 7.3.4 Not everywhere people live is named. A place is named by the people who stayed there, and a few dozen working a rock have often never bothered: it was Corrise-8b when they landed and nobody has called it anything else since. So the likelihood follows the population - a world with millions on it has been called something for centuries, an outpost of forty has a contract number - and the designation of 7.2 is what a place without a name of its own is called.
 
-7.3.4.1 This is why 7.2 is the naming and 7.3 is the exception rather than the other way round. Every body in a system has a designation and always did; a name is a thing that happened to some of them afterwards.
+7.3.4.1 A main world is the exception to the exception: it always has a name. It is the reason anybody came to the system, the system is called after it, and the chart above named it before the system was ever laid out. What a chart hands down is taken, since a world must not be called two things depending on which level is looking at it.
+
+7.3.4.2 This is why 7.2 is the naming and 7.3 is the exception rather than the other way round. Every body in a system has a designation and always did; a name is a thing that happened to some of them afterwards.
 
 7.4 A gas giant is a planet and is counted as one. A belt is not, and takes a numbering of its own: the system name, Belt, and which belt it is, so Sol Belt-1 is the one between Mars and Jupiter.
 

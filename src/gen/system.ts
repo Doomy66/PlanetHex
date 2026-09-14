@@ -416,7 +416,7 @@ export function moonKey(orbitIndex: number, moon: number): string {
   return `${orbitIndex}:${moon}`;
 }
 
-export function namesOf(system: StarSystem): SystemNames {
+export function namesOf(system: StarSystem, given?: string): SystemNames {
   const worlds = new Map<number, string>();
   const moons = new Map<string, string>();
 
@@ -424,12 +424,13 @@ export function namesOf(system: StarSystem): SystemNames {
   // the place a name of its own.
   const main = system.mainWorld.orbitIndex;
   const named: { orbit: number; moon: number | null }[] = [];
-  let mainNamed = false;
   for (const orbit of system.orbits) {
     const content = orbit.content;
+    // The main world always has a name: it is the reason anybody came to the
+    // system, and the system is called after it. SystemSpec 7.3.4.1.
+    if (orbit.index === main) continue;
     if (content.kind === "world" && wasNamed(system.seed, content.uwp, orbit.index, null)) {
-      if (orbit.index === main) mainNamed = true;
-      else named.push({ orbit: orbit.index, moon: null });
+      named.push({ orbit: orbit.index, moon: null });
     }
     if (content.kind !== "giant") continue;
     for (const moon of content.moons) {
@@ -440,11 +441,12 @@ export function namesOf(system: StarSystem): SystemNames {
   }
 
   // One more name than there are named places: the first is the system's, and
-  // the main world takes it where the main world is one of them. A system is
-  // called something whatever its main world is called.
+  // the main world's. A chart above can hand that one down, since the chart is
+  // what named the world in the first place - SubSectorSpec 3.4 - and a world
+  // must not be called two things depending on which level is looking at it.
   const drawn = settlementNames(`${system.seed}:names`, named.length + 1);
-  const name = drawn[0] ?? system.seed;
-  if (mainNamed) worlds.set(main, name);
+  const name = given !== undefined && given.trim() !== "" ? given.trim() : (drawn[0] ?? system.seed);
+  worlds.set(main, name);
   named.forEach((place, at) => {
     const held = drawn[at + 1] ?? `${name}-${at + 1}`;
     if (place.moon === null) worlds.set(place.orbit, held);

@@ -253,7 +253,10 @@ describe("what a body is called", () => {
       expect(names.system, seed).not.toBe("");
       for (const orbit of system.orbits) {
         const content = orbit.content;
-        if (content.kind === "world" && parseUwp(content.uwp)!.population === 0) {
+        // The main world is the exception: it always has a name, because the
+        // system is called after it. SystemSpec 7.3.4.1.
+        const isMain = orbit.index === system.mainWorld.orbitIndex;
+        if (content.kind === "world" && !isMain && parseUwp(content.uwp)!.population === 0) {
           expect(names.worlds.has(orbit.index), `${seed} orbit ${orbit.index}`).toBe(false);
         }
         if (content.kind !== "giant") continue;
@@ -308,9 +311,8 @@ describe("what a body is called", () => {
       const names = namesOf(system);
       expect(names.system).not.toBe("");
       const main = names.worlds.get(system.mainWorld.orbitIndex);
-      if (main === undefined) continue;
-      named++;
       expect(main, seed).toBe(names.system);
+      named++;
     }
     expect(named).toBeGreaterThan(50);
   });

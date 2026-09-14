@@ -591,6 +591,64 @@ body[data-view="planet"] .landing { display: none; }
    too, only the first of them pushes. */
 .home + .help-open { margin-left: 6px; }
 
+/* The subsector chart. SubSectorSpec section 4 --------------------------- */
+
+body[data-view="subsector"] .layout,
+body[data-view="subsector"] .landing,
+body[data-view="subsector"] .system { display: none; }
+body[data-view="landing"] .subsector,
+body[data-view="planet"] .subsector,
+body[data-view="system"] .subsector { display: none; }
+
+.subsector {
+  height: 100vh;
+  display: grid;
+  grid-template-columns: 260px minmax(0, 1fr) 330px;
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  grid-template-areas:
+    "head head head"
+    "tree model side"
+    "strip strip strip";
+  gap: 10px;
+  padding: 10px 14px 12px;
+  overflow: hidden;
+}
+
+.sub-chart {
+  grid-area: model;
+  min-height: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #0d0f13;
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  padding: 6px;
+  overflow: auto;
+}
+.chart { width: auto; height: 100%; max-width: 100%; display: block; }
+
+/* A chart hex: pointy-topped, in columns, odd ones riding half a hex higher. */
+.chart-cell { fill: #14171d; stroke: #2a313c; stroke-width: 1.5; }
+.chart-hex { cursor: pointer; }
+.chart-hex:hover .chart-cell { fill: #1b2027; }
+.chart-hex:focus { outline: none; }
+.chart-hex:focus .chart-cell { fill: #1f252e; }
+.chart-full .chart-cell { fill: #171b22; }
+
+.chart-at { fill: #4d5560; font-size: 15px; text-anchor: middle; }
+.chart-world { fill: #9fb6cf; }
+/* A world nobody lives on is drawn hollow: there is something there and nobody
+   on it. */
+.chart-bare { fill: none; stroke: #6f7c8c; stroke-width: 2; }
+.chart-port { fill: var(--text); font-size: 20px; text-anchor: middle; font-weight: 500; }
+.chart-name { fill: var(--text); font-size: 17px; text-anchor: middle; }
+.chart-base { fill: var(--muted); font-size: 16px; text-anchor: middle; }
+.chart-giant { fill: #c8a06a; }
+.chart-zone { fill: none; stroke: #e0b341; stroke-width: 2.5; stroke-dasharray: 7 7; }
+.chart-red { stroke: #e24b4a; }
+.chart-select { fill: none; stroke: var(--select); stroke-width: 3.5; }
+
 /* The system view. SystemSpec section 8 ---------------------------------- */
 
 body[data-view="system"] .layout,

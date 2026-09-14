@@ -97,6 +97,14 @@ import { shaderFor, surfaceOn } from "./surface";
 import { currentAppView, landingSay, setAppView, wireLanding } from "./ui/landing";
 import { auLabel, contentLabel, createOrbitDiagram } from "./ui/orbits";
 import { createOrbitMap } from "./ui/orbitmap";
+import { createChart } from "./ui/chart";
+import {
+  generateSubsector,
+  type ChartWorld,
+  type Density,
+  type Subsector,
+} from "./gen/subsector";
+import { SUBSECTOR_LETTERS } from "./location";
 import { liveGlobe, worldImage } from "./ui/worldimage";
 import { giantImage } from "./ui/giant";
 import {
@@ -1948,7 +1956,9 @@ function startNewSystem(): void {
   if (!confirmSystemDiscard("Roll another system")) return;
   const seed = randomSeed();
   systemFolder = null;
-  openSystem(newSystemDoc(seed, namesOf(systemOf(newSystemDoc(seed, ""))).system));
+  const fresh = newSystemDoc(seed, "");
+  fresh.name = namesOf(systemOf(fresh)).system;
+  openSystem(fresh);
   markSystemClean();
 }
 
@@ -1956,7 +1966,9 @@ function startNewSystem(): void {
 function openSystem(next: SystemDoc): void {
   doc = next;
   system = systemOf(next);
-  names = namesOf(system);
+  // The document's name wins where it has one: a system opened from a chart is
+  // called what the chart called it. SystemSpec 7.3.3.
+  names = namesOf(system, next.name);
   orbitShown = system.mainWorld.orbitIndex;
   setAppView("system");
   el<HTMLInputElement>("sys-name").value = next.name;
@@ -2513,11 +2525,216 @@ el("sys-open").addEventListener("click", () => {
   );
 });
 
+
+/* The subsector chart. SubSectorSpec section 4 --------------------------- */
+
+// Read only at this stage: the chart draws, the panel says what is in a hex,
+// and a hex opens as a system. Overrides and saving are SubSectorSpec 5.
+
+const chart = createChart();
+el("sub-chart").append(chart.element);
+
+let subsector: Subsector | null = null;
+let hexShown: string | null = null;
+
+for (const letter of SUBSECTOR_LETTERS) {
+  const option = document.createElement("option");
+  option.value = letter;
+  option.textContent = letter;
+  el("sub-letter").append(option);
+}
+
+function subSay(message: string): void {
+  el("sub-status").textContent = message;
+}
+
+function startNewSubsector(): void {
+  const letter = el<HTMLSelectElement>("sub-letter").value || "A";
+  const density = (el<HTMLSelectElement>("sub-density").value || "standard") as Density;
+  drawSubsector(generateSubsector(randomSeed(), letter, density));
+}
+
+/** Draw a subsector, and open it on the world a referee would look at first. */
+function drawSubsector(next: Subsector): void {
+  subsector = next;
+  setAppView("subsector");
+  el<HTMLSelectElement>("sub-letter").value = next.letter;
+  el<HTMLSelectElement>("sub-density").value = next.density;
+  if (el<HTMLInputElement>("sub-name").value === "") {
+    el<HTMLInputElement>("sub-name").value = `Subsector ${next.letter}`;
+  }
+  chart.render(next);
+  showSubsectorAbout();
+  showSubsectorList();
+  // The busiest world, which is where a referee's eye goes and what the chart is
+  // usually about.
+  const first = [...next.worlds].sort(
+    (a, b) => b.profile.population - a.profile.population,
+  )[0];
+  selectHex(first?.at ?? null);
+  subSay(`${next.worlds.length} systems in eighty hexes.`);
+}
+
+function showSubsectorAbout(): void {
+  const about = el("sub-about");
+  about.replaceChildren();
+  if (subsector === null) return;
+  const fact = (term: string, value: string) => {
+    const dt = document.createElement("dt");
+    dt.textContent = term;
+    const dd = document.createElement("dd");
+    dd.textContent = value;
+    about.append(dt, dd);
+  };
+  const inhabited = subsector.worlds.filter((world) => world.profile.population > 0).length;
+  fact("Systems", `${subsector.worlds.length} of 80`);
+  fact("Inhabited", String(inhabited));
+  fact("Density", subsector.density);
+  fact("Seed", subsector.seed);
+  el("sub-where").textContent = `Subsector ${subsector.letter}`;
+  const sector = el<HTMLInputElement>("sub-sector").value.trim();
+  el("sub-counts").textContent = [sector, `seed ${subsector.seed}`].filter(Boolean).join(" · ");
+}
+
+/** Every world on the chart, down the left, in hex order. */
+function showSubsectorList(): void {
+  const list = el("sub-list");
+  list.replaceChildren();
+  if (subsector === null) return;
+  const peopleOnly = el<HTMLInputElement>("sub-inhabited").checked;
+  for (const world of subsector.worlds) {
+    if (peopleOnly && world.profile.population === 0 && world.at !== hexShown) continue;
+    const row = document.createElement("li");
+    const button = document.createElement("button");
+    button.type = "button";
+    button.dataset["at"] = world.at;
+    const name = document.createElement("span");
+    name.textContent = world.name;
+    const uwp = document.createElement("span");
+    uwp.className = world.profile.population > 0 ? "tree-uwp tree-people" : "tree-uwp";
+    uwp.textContent = world.uwp;
+    const at = document.createElement("span");
+    at.className = "tree-what";
+    at.textContent = world.at;
+    button.append(name, uwp, at);
+    button.addEventListener("click", () => selectHex(world.at));
+    row.append(button);
+    list.append(row);
+  }
+  markSubsectorList();
+}
+
+function markSubsectorList(): void {
+  for (const button of el("sub-list").querySelectorAll("button")) {
+    if (button.dataset["at"] === hexShown) {
+      button.setAttribute("aria-current", "true");
+      button.scrollIntoView({ block: "nearest" });
+    } else {
+      button.removeAttribute("aria-current");
+    }
+  }
+}
+
+/** Select a hex: the chart, the list and the panel all follow it. */
+function selectHex(at: string | null): void {
+  hexShown = at;
+  chart.setSelected(at);
+  markSubsectorList();
+  showHexPanel(at);
+}
+
+/** What is in a hex. SubSectorSpec 4.3. */
+function showHexPanel(at: string | null): void {
+  const facts = el("sub-facts");
+  const open = el<HTMLButtonElement>("sub-open");
+  facts.replaceChildren();
+  el("sub-note").textContent = "";
+  open.hidden = true;
+  if (subsector === null || at === null) {
+    el("sub-what").textContent = "Select a hex";
+    return;
+  }
+  const world = subsector.worlds.find((held) => held.at === at) ?? null;
+  if (world === null) {
+    el("sub-what").textContent = `${at} — empty`;
+    el("sub-note").textContent = "Nothing here. Most of a subsector is nothing.";
+    return;
+  }
+
+  const row = (term: string, value: string) => {
+    const dt = document.createElement("dt");
+    dt.textContent = term;
+    const dd = document.createElement("dd");
+    dd.textContent = value;
+    facts.append(dt, dd);
+  };
+  el("sub-what").textContent = `${world.name} — ${at}`;
+  row("Profile", world.uwp);
+  row("Bases", basesNote(world));
+  row("Zone", world.zone === "A" ? "amber" : world.zone === "R" ? "red" : "green");
+  row("PBG", `${world.pbg.multiplier}${world.pbg.belts}${world.pbg.gasGiants}`);
+  row("Stars", starsLabel(world.stars));
+  if (world.trade.length > 0) {
+    row("Trade", world.trade.map((code) => `${code.code} ${code.label}`).join(", "));
+  }
+  row("Seed", world.seed);
+  const detail = planetDetail(world.seed, world.uwp);
+  el("sub-note").textContent = describeUwp(world.uwp, detail) ?? "";
+  open.hidden = false;
+}
+
+function basesNote(world: ChartWorld): string {
+  if (world.bases === "A") return "naval and scout";
+  if (world.bases === "N") return "naval";
+  if (world.bases === "S") return "scout";
+  return "none";
+}
+
+chart.onSelect(selectHex);
+el("sub-inhabited").addEventListener("change", showSubsectorList);
+el("sub-roll").addEventListener("click", startNewSubsector);
+for (const id of ["sub-letter", "sub-density"]) {
+  el(id).addEventListener("change", () => {
+    if (subsector === null) return;
+    drawSubsector(
+      generateSubsector(
+        subsector.seed,
+        el<HTMLSelectElement>("sub-letter").value,
+        el<HTMLSelectElement>("sub-density").value as Density,
+      ),
+    );
+  });
+}
+el("sub-sector").addEventListener("input", showSubsectorAbout);
+
+el("sub-home").addEventListener("click", () => {
+  setAppView("landing");
+  landingSay("");
+});
+
+/**
+ * Down a level, from a hex to the system in it. SubSectorSpec section 7 and the
+ * app spec 6.1: the chart hands over the seed, and the system generates itself
+ * from that, so what opens is the system the chart drew.
+ */
+el("sub-open").addEventListener("click", () => {
+  if (subsector === null || hexShown === null) return;
+  const world = subsector.worlds.find((held) => held.at === hexShown);
+  if (world === undefined) return;
+  const held = newSystemDoc(world.systemSeed, world.name);
+  held.sector = el<HTMLInputElement>("sub-sector").value;
+  held.hex = world.at;
+  systemFolder = null;
+  openSystem(held);
+  markSystemClean();
+});
+
 wireLanding({
   planetNew: startNewPlanet,
   planetLoad: loadPlanet,
   systemNew: startNewSystem,
   systemLoad: loadSystem,
+  subsectorNew: startNewSubsector,
 });
 
 /* Start ------------------------------------------------------------------ */

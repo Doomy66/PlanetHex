@@ -14,7 +14,7 @@
  */
 
 /** Which of the levels the window is showing. One attribute, read by the CSS. */
-export type AppView = "landing" | "planet" | "system";
+export type AppView = "landing" | "planet" | "system" | "subsector";
 
 export function setAppView(view: AppView): void {
   document.body.dataset.view = view;
@@ -22,7 +22,7 @@ export function setAppView(view: AppView): void {
 
 export function currentAppView(): AppView {
   const view = document.body.dataset.view;
-  return view === "planet" || view === "system" ? view : "landing";
+  return view === "planet" || view === "system" || view === "subsector" ? view : "landing";
 }
 
 /**
@@ -46,6 +46,8 @@ export interface LandingHandlers {
   systemNew(): void;
   /** Pick the folder a system lives in and open it. AppSpec 3.3. */
   systemLoad(): void | Promise<void>;
+  /** Roll a new subsector and open its chart. SubSectorSpec section 4. */
+  subsectorNew(): void;
 }
 
 export function wireLanding(handlers: LandingHandlers): void {
@@ -61,4 +63,5 @@ export function wireLanding(handlers: LandingHandlers): void {
   click("landing-planet-load", handlers.planetLoad);
   click("landing-system-new", handlers.systemNew);
   click("landing-system-load", handlers.systemLoad);
+  click("landing-sub-new", handlers.subsectorNew);
 }

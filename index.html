@@ -57,7 +57,7 @@
               <p>Eighty hexes of star systems, drawn as a chart.</p>
             </div>
             <div class="actions">
-              <button type="button" disabled>New</button>
+              <button id="landing-sub-new" type="button">New</button>
               <button type="button" disabled>Load</button>
             </div>
           </li>
@@ -75,6 +75,61 @@
 
         <p id="landing-status" class="status" role="status"></p>
         <p class="landing-note">Planets and systems are built. Subsectors and sectors are specified.</p>
+      </div>
+    </section>
+
+    <!-- The subsector chart. SubSectorSpec section 4: the eighty hexes in the
+         middle, what is in them down the left, and whatever hex is selected on
+         the right. -->
+    <section id="subsector" class="subsector">
+      <header class="system-head">
+        <input id="sub-name" class="sys-name" type="text" autocomplete="off" aria-label="Subsector name" />
+        <span id="sub-where" class="sys-stars"></span>
+        <span id="sub-counts" class="sys-counts"></span>
+        <span class="system-actions">
+          <label class="sys-where">Sector<input id="sub-sector" type="text" autocomplete="off" /></label>
+          <label class="sys-where">Subsector
+            <select id="sub-letter"></select>
+          </label>
+          <label class="sys-where">Density
+            <select id="sub-density">
+              <option value="rift">Rift</option>
+              <option value="sparse">Sparse</option>
+              <option value="standard" selected>Standard</option>
+              <option value="dense">Dense</option>
+            </select>
+          </label>
+          <button id="sub-roll" type="button" title="Another subsector">Roll</button>
+          <button id="sub-home" class="home" type="button" title="Back to the levels">Levels</button>
+        </span>
+      </header>
+
+      <aside class="sys-tree-panel">
+        <h2>Subsector</h2>
+        <dl id="sub-about" class="sys-facts"></dl>
+        <h2>Worlds</h2>
+        <label class="sys-only">
+          <input id="sub-inhabited" type="checkbox" />
+          Inhabited only
+        </label>
+        <ul id="sub-list" class="sys-tree"></ul>
+      </aside>
+
+      <div class="sub-chart" id="sub-chart"></div>
+
+      <aside class="sys-side">
+        <div class="sys-detail">
+          <div class="sys-title">
+            <h2 id="sub-what">Select a hex</h2>
+            <button id="sub-open" class="sys-open" type="button" hidden>Open</button>
+          </div>
+          <dl id="sub-facts" class="sys-facts"></dl>
+          <p id="sub-note" class="sys-note"></p>
+        </div>
+      </aside>
+
+      <div class="sys-strip">
+        <p id="sub-status" class="status" role="status"></p>
       </div>
     </section>
 
