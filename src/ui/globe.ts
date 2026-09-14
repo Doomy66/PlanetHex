@@ -44,6 +44,8 @@ const HOME_CAMERA = [0, 0.8, 3] as const;
 /** How long after the user lets go before the planet resumes turning. */
 const RESUME_SPIN_MS = 2500;
 const SELECT_LIFT = 1.004;
+/** How much room a snapshot leaves around the world it frames. */
+const FRAME_MARGIN = 1.06;
 /** POI rings sit a shade further out than the selection, so the two never z-fight. */
 const POI_LIFT = 1.006;
 /**
@@ -115,6 +117,15 @@ export interface Globe {
   onSelect(handler: (at: Vec3) => void): void;
   /** Back to the starting viewpoint, so a new planet's size can be read. Spec 4.4.5.2. */
   resetView(): void;
+  /**
+   * The world as it stands, drawn once at a square size and handed back as a
+   * PNG. For the system view, where a world is a picture beside its profile
+   * rather than something to turn.
+   *
+   * Drawn on demand rather than grabbed off the animation loop, because the loop
+   * draws at the size of the element on screen and this wants its own.
+   */
+  snapshot(px: number): string;
 }
 
 /**
@@ -168,11 +179,24 @@ function poiColour(kind: PoiKind): THREE.Color {
   return cssColour(`--poi-${kind}`, POI_FALLBACK[kind]);
 }
 
-export function createGlobe(): Globe {
+export interface GlobeOptions {
+  /**
+   * Whether this globe is here to be photographed rather than looked at. A
+   * drawing buffer is thrown away as soon as it has been composited, so reading
+   * a picture back out of one needs it kept, and keeping it costs the panel
+   * nothing only because the panel does not ask for it.
+   */
+  readonly forSnapshots?: boolean;
+}
+
+export function createGlobe(options: GlobeOptions = {}): Globe {
   const element = document.createElement("div");
   element.className = "globe";
 
-  const renderer = new THREE.WebGLRenderer({ antialias: true });
+  const renderer = new THREE.WebGLRenderer({
+    antialias: true,
+    preserveDrawingBuffer: options.forSnapshots === true,
+  });
   renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
   element.append(renderer.domElement);
 
@@ -184,6 +208,9 @@ export function createGlobe(): Globe {
   const sun = new THREE.DirectionalLight(0xffffff, 1.1);
   sun.position.set(2, 2.5, 3);
   scene.add(sun);
+
+  /** The radius the world was last drawn at, which a snapshot frames on. */
+  let drawnRadius = globeRadius(null);
 
   const controls = new OrbitControls(camera, renderer.domElement);
   controls.enablePan = false;
@@ -265,6 +292,7 @@ export function createGlobe(): Globe {
     // leaves the camera where the user left it: the world changes size in view
     // rather than the view changing to hide that it did. Spec 4.4.5.
     const radius = globeRadius(diameterKm);
+    drawnRadius = radius;
     planet.scale.setScalar(radius);
     controls.minDistance = 1.25 * radius;
 
@@ -527,9 +555,37 @@ export function createGlobe(): Globe {
     controls.update();
   }
 
+  function snapshot(px: number): string {
+    const before = renderer.getSize(new THREE.Vector2());
+    const aspect = camera.aspect;
+    const where = camera.position.clone();
+    renderer.setSize(px, px, false);
+    camera.aspect = 1;
+    // Framed on the world rather than left at the panel viewpoint, which is set
+    // so that a small world looks small beside a large one. A portrait of one
+    // world has nothing to be small beside, and a disc lost in a black square
+    // says less than a disc that fills its frame.
+    const half = (camera.fov * Math.PI) / 360;
+    const distance = (drawnRadius / Math.sin(half)) * FRAME_MARGIN;
+    camera.position.set(0, 0.26 * distance, 0.97 * distance);
+    camera.lookAt(0, 0, 0);
+    camera.updateProjectionMatrix();
+    renderer.render(scene, camera);
+    const url = renderer.domElement.toDataURL("image/png");
+    // Put the renderer back the way the panel had it, since the same instance
+    // may be the one on screen.
+    renderer.setSize(before.x, before.y, false);
+    camera.aspect = aspect;
+    camera.position.copy(where);
+    camera.lookAt(0, 0, 0);
+    camera.updateProjectionMatrix();
+    return url;
+  }
+
   return {
     element,
     render,
+    snapshot,
     setSelected,
     setPois,
     setClouds(on) {

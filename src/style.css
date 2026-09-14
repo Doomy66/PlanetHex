@@ -680,6 +680,22 @@ body[data-view="planet"] .system { display: none; }
 .sys-written { display: block; margin: 10px 0 0; color: var(--muted); }
 .sys-written textarea { margin-top: 4px; }
 
+/* A world drawn on the diagram is the world, not a disc standing in for one. */
+.orbit-globe { image-rendering: auto; }
+.orbit-edge { fill: none; stroke: rgba(0, 0, 0, 0.5); stroke-width: 1; }
+.orbit-edge-main { stroke: var(--accent); stroke-width: 2; }
+
+/* The selected world, beside its profile. Floated so the facts wrap round it
+   rather than being pushed down the panel. */
+.sys-globe {
+  float: right;
+  width: 132px;
+  height: 132px;
+  margin: 0 0 8px 14px;
+  border-radius: 50%;
+  background: #0b0d10;
+}
+
 .sys-below { display: flex; flex-direction: column; gap: 4px; }
 .sys-detail {
   border: 1px solid var(--line);

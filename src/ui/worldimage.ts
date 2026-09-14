@@ -1,0 +1,102 @@
+/**
+ * A world as a picture: the globe of the planet spec 4.4, drawn small.
+ *
+ * The system view shows worlds it is not opening - a row of them on the diagram
+ * and one beside the profile in the panel - and a dot with a colour picked for
+ * it would be an icon rather than the world. These are the same surface the
+ * planet view draws, built the same way and photographed once.
+ *
+ * One hidden renderer does all of them, because a WebGL context is a scarce
+ * thing and a system can hold several worlds. The pictures are cached by what
+ * they were drawn from, so selecting around a system costs nothing after the
+ * first look.
+ */
+
+import { buildGrid } from "../grid/grid";
+import { planetDetail } from "../gen/detail";
+import { newPlanet } from "../planet";
+import { shaderFor, surfaceOn } from "../surface";
+import { createGlobe, type Globe } from "./globe";
+
+/**
+ * The detail level these are built at. Six rows is 362 hexes, which at the size
+ * a world is drawn here is more than the picture can show, and it is a fiftieth
+ * of the work the map's own level would be. Under the planet spec 3.2.4 it is
+ * the same world either way: a coarser level resolves less of it, not something
+ * else.
+ */
+const THUMBNAIL_ROWS = 12;
+
+export interface WorldPicture {
+  readonly seed: string;
+  readonly uwp: string;
+  readonly orbitAu: number;
+  readonly luminosity: number;
+}
+
+const cache = new Map<string, string>();
+let globe: Globe | null = null;
+let host: HTMLElement | null = null;
+
+/** The renderer, made on first use and kept: a GL context is not free. */
+function renderer(px: number): Globe {
+  if (globe === null) {
+    host = document.createElement("div");
+    // Off the page rather than hidden: a display of none gives an element no
+    // size, and a renderer with no size draws nothing to photograph.
+    host.style.cssText =
+      "position:absolute;left:-10000px;top:0;width:256px;height:256px;pointer-events:none";
+    globe = createGlobe({ forSnapshots: true });
+    host.append(globe.element);
+    document.body.append(host);
+  }
+  if (host !== null) {
+    host.style.width = `${px}px`;
+    host.style.height = `${px}px`;
+  }
+  return globe;
+}
+
+/**
+ * A PNG of one world, at the size asked for.
+ *
+ * Everything it needs is what a save holds: the seed builds the surface and the
+ * profile and the two settings shape it, which is the planet spec 6.15.13.2 in
+ * miniature. A world drawn here and the same world opened as a planet are the
+ * same world.
+ */
+export function worldImage(world: WorldPicture, px: number): string {
+  const key = `${world.seed}|${world.uwp}|${world.orbitAu}|${world.luminosity}|${px}`;
+  const held = cache.get(key);
+  if (held !== undefined) return held;
+
+  const planet = {
+    ...newPlanet(world.seed),
+    uwp: world.uwp,
+    orbitAu: world.orbitAu,
+    luminosity: world.luminosity,
+    size: THUMBNAIL_ROWS,
+  };
+  const detail = planetDetail(planet.seed, planet.uwp, {
+    orbitAu: planet.orbitAu,
+    luminosity: planet.luminosity,
+  });
+  const grid = buildGrid(THUMBNAIL_ROWS);
+  const surface = surfaceOn(planet, detail, grid);
+
+  const drawn = renderer(px);
+  drawn.render(
+    grid,
+    surface.heights,
+    surface.diameterKm,
+    surface.caps,
+    // The orbital view of the planet spec 5.7, which is the one a world opens in
+    // and the one that says what the ground is at a glance.
+    shaderFor(surface, "orbital"),
+    surface.clouds,
+    detail.axialTiltDeg,
+  );
+  const url = drawn.snapshot(px);
+  cache.set(key, url);
+  return url;
+}

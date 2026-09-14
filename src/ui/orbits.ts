@@ -78,6 +78,15 @@ export function contentLabel(orbit: Orbit): string {
 export interface OrbitDiagram {
   readonly element: SVGSVGElement;
   render(system: StarSystem): void;
+  /**
+   * Put the picture of a world into the orbit it is in, so the mark on the
+   * diagram is the world itself rather than a disc standing in for one.
+   *
+   * Given after the fact rather than at render, because drawing a world costs
+   * about as much as opening one: the diagram goes up at once with discs on it
+   * and the worlds arrive as they are drawn.
+   */
+  setPicture(orbitIndex: number, png: string): void;
   setSelected(orbitIndex: number | null): void;
   onSelect(handler: (orbitIndex: number) => void): void;
 }
@@ -91,8 +100,11 @@ export function createOrbitDiagram(): OrbitDiagram {
   svg.append(zoneLayer, axisLayer, bodyLayer, selectLayer);
 
   const handlers: ((orbitIndex: number) => void)[] = [];
+  const pictures = new Map<number, string>();
+  const groups = new Map<number, SVGGElement>();
   let placed: { index: number; x: number }[] = [];
   let selected: number | null = null;
+  let drawn: readonly Orbit[] = [];
 
   function xOf(index: number): number {
     const at = placed.findIndex((slot) => slot.index === index);
@@ -113,6 +125,9 @@ export function createOrbitDiagram(): OrbitDiagram {
   }
 
   function render(system: StarSystem): void {
+    pictures.clear();
+    groups.clear();
+    drawn = system.orbits;
     zoneLayer.replaceChildren();
     axisLayer.replaceChildren();
     bodyLayer.replaceChildren();
@@ -215,22 +230,52 @@ export function createOrbitDiagram(): OrbitDiagram {
       event.preventDefault();
       for (const handler of handlers) handler(orbit.index);
     });
-    bodyLayer.append(group);
+    const already = groups.get(orbit.index);
+    if (already === undefined) bodyLayer.append(group);
+    else already.replaceWith(group);
+    groups.set(orbit.index, group);
   }
 
   /** What sits in the orbit, drawn. Sizes say kind, not scale. */
   function bodyOf(orbit: Orbit, x: number): SVGElement[] {
     const content = orbit.content;
     switch (content.kind) {
-      case "world":
-        return [
-          make("circle", {
-            class: content.main ? "orbit-world orbit-main" : "orbit-world",
-            cx: x,
-            cy: AXIS_Y,
-            r: content.main ? 11 : 7,
-          }),
-        ];
+      case "world": {
+        const r = content.main ? 20 : 15;
+        const picture = pictures.get(orbit.index) ?? null;
+        if (picture === null) {
+          return [
+            make("circle", {
+              class: content.main ? "orbit-world orbit-main" : "orbit-world",
+              cx: x,
+              cy: AXIS_Y,
+              r,
+            }),
+          ];
+        }
+        // The world itself, clipped to its own edge. The ring around the main
+        // world is what marks it out now that both are pictures. SystemSpec 8.5.
+        const clip = `world-clip-${orbit.index}`;
+        const path = make("clipPath", { id: clip });
+        path.append(make("circle", { cx: x, cy: AXIS_Y, r }));
+        const image = make("image", {
+          class: "orbit-globe",
+          href: picture,
+          x: x - r,
+          y: AXIS_Y - r,
+          width: r * 2,
+          height: r * 2,
+          "clip-path": `url(#${clip})`,
+          preserveAspectRatio: "xMidYMid slice",
+        });
+        const edge = make("circle", {
+          class: content.main ? "orbit-edge orbit-edge-main" : "orbit-edge",
+          cx: x,
+          cy: AXIS_Y,
+          r,
+        });
+        return [path, image, edge];
+      }
       case "giant":
         return [
           make("circle", { class: "orbit-giant", cx: x, cy: AXIS_Y, r: 15 }),
@@ -257,6 +302,15 @@ export function createOrbitDiagram(): OrbitDiagram {
   return {
     element: svg,
     render,
+    setPicture(orbitIndex, png) {
+      const orbit = drawn.find((held) => held.index === orbitIndex);
+      if (orbit === undefined) return;
+      pictures.set(orbitIndex, png);
+      drawOrbit(orbit, xOf(orbitIndex));
+      // The selection ring is drawn over the bodies, and redrawing one puts it
+      // back underneath.
+      drawSelection();
+    },
     setSelected(orbitIndex) {
       selected = orbitIndex;
       drawSelection();

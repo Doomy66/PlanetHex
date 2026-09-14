@@ -96,6 +96,7 @@ import { EXPORT_FORMATS, manifest, type ExportContext } from "./io/export";
 import { shaderFor, surfaceOn } from "./surface";
 import { currentAppView, landingSay, setAppView, wireLanding } from "./ui/landing";
 import { auLabel, contentLabel, createOrbitDiagram } from "./ui/orbits";
+import { worldImage } from "./ui/worldimage";
 import { worldName, worldSettings, worldsOf, type StarSystem } from "./gen/system";
 import {
   newSystemDoc,
@@ -1792,6 +1793,67 @@ const orbits = createOrbitDiagram();
 el("sys-diagram").append(orbits.element);
 
 /**
+ * How big a world is drawn, once, for both the diagram and the panel.
+ *
+ * One size rather than two, because a world costs as much to draw as to open and
+ * drawing the same world twice at two sizes is paying that twice. This is the
+ * size the panel wants; the diagram scales it down, which is what a browser is
+ * good at.
+ */
+const GLOBE_PX = 256;
+
+/**
+ * The worlds still waiting to be drawn, and the frame that is drawing them.
+ *
+ * A world costs about as much to draw as to open: the height field of the planet
+ * spec 3.5 is built to the depth the finest level needs whatever size it is
+ * being shown at, since a shallower field would be a different world. So the
+ * diagram goes up at once with discs on it and the worlds arrive one a frame,
+ * which keeps a roll instant and lets the user click while they land.
+ */
+let pending: { system: StarSystem; orbits: number[] } | null = null;
+
+function drawWorldsSoon(open: StarSystem): void {
+  pending = { system: open, orbits: worldsOf(open).map((world) => world.orbitIndex) };
+  // A timer rather than a frame, because a frame never comes to a window nobody
+  // is looking at, and a system opened behind another window should be drawn by
+  // the time it is looked at.
+  setTimeout(drawNextWorld, 0);
+}
+
+function drawNextWorld(): void {
+  if (pending === null) return;
+  const next = pending.orbits.shift();
+  // A roll or a load while these are in flight moves on to the new system, and
+  // the pictures for the old one are dropped rather than drawn into nothing.
+  if (next === undefined || pending.system !== system) {
+    pending = null;
+    return;
+  }
+  const png = pictureOf(pending.system, next);
+  if (png !== null) orbits.setPicture(next, png);
+  setTimeout(drawNextWorld, 0);
+}
+
+/**
+ * The picture of whatever world is in an orbit, or null where there is no world
+ * in it. The settings the system wrote go in with the seed, so the world in the
+ * picture is the world that opens. SystemSpec 6.6.3.
+ */
+function pictureOf(open: StarSystem, orbitIndex: number): string | null {
+  const orbit = open.orbits.find((held) => held.index === orbitIndex);
+  if (orbit === undefined || orbit.content.kind !== "world") return null;
+  return worldImage(
+    {
+      seed: orbit.content.seed,
+      uwp: orbit.content.uwp,
+      ...worldSettings(open, orbitIndex),
+    },
+    GLOBE_PX,
+  );
+}
+
+/**
  * The open system: the document that would be saved, the system it describes,
  * and which orbit the panel is about.
  *
@@ -1873,7 +1935,9 @@ function openSystem(next: SystemDoc): void {
   orbits.setSelected(orbitShown);
   showHeader();
   showOrbit(orbitShown);
-  sysSay(`${system.orbits.length} orbits, ${worldsOf(system).length} worlds.`);
+  drawWorldsSoon(system);
+  const worlds = worldsOf(system).length;
+  sysSay(`${system.orbits.length} orbits, ${worlds === 1 ? "one world" : `${worlds} worlds`}.`);
 }
 
 /** What a save would lose, asked before anything discards it. SystemSpec 9.6. */
@@ -1887,6 +1951,8 @@ function showOrbit(index: number | null): void {
   const open = el<HTMLButtonElement>("sys-open");
   const facts = el("sys-facts");
   const written = el<HTMLTextAreaElement>("sys-written");
+  const globe = el<HTMLImageElement>("sys-globe");
+  globe.hidden = true;
   facts.replaceChildren();
   el("sys-note").textContent = "";
   open.hidden = true;
@@ -1923,6 +1989,11 @@ function showOrbit(index: number | null): void {
     if (codes.length > 0) row("Trade", codes.map((code) => `${code.code} ${code.label}`).join(", "));
     row("Surface", `${(detail.meanTempK - 273.15).toFixed(0)}°C mean`);
     el("sys-note").textContent = describeUwp(content.uwp, detail) ?? "";
+    // The world itself beside its profile, drawn the way the planet view draws
+    // it rather than as a mark standing in for it. On a timer for the reason the
+    // diagram's are: the panel should be readable before the picture arrives.
+    globe.alt = `${worldName(systemName(system.seed), orbit.index)} from orbit`;
+    showWorldPicture(system, orbit.index);
     open.hidden = false;
     open.textContent = `Open ${worldName(systemName(system.seed), orbit.index)}`;
   } else if (content.kind === "giant") {
@@ -1945,6 +2016,22 @@ function sunlightNote(sunEquivalentAu: number): string {
   const times = 1 / (sunEquivalentAu * sunEquivalentAu);
   const figure = times >= 10 ? Math.round(times) : times >= 1 ? times.toFixed(1) : times.toFixed(3).replace(/0+$/, "");
   return `${figure}× Earth's`;
+}
+
+/**
+ * Put the selected world's picture in the panel, now if it has been drawn before
+ * and shortly if it has not. The check on the way back is what stops a picture
+ * landing in a panel that has moved on to another orbit.
+ */
+function showWorldPicture(open: StarSystem, orbitIndex: number): void {
+  const globe = el<HTMLImageElement>("sys-globe");
+  setTimeout(() => {
+    if (system !== open || orbitShown !== orbitIndex) return;
+    const picture = pictureOf(open, orbitIndex);
+    if (picture === null) return;
+    globe.src = picture;
+    globe.hidden = false;
+  }, 0);
 }
 
 function yearNote(au: number, luminosity: number): string {
