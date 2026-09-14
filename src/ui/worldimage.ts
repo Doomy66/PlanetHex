@@ -13,6 +13,7 @@
  */
 
 import { buildGrid } from "../grid/grid";
+import { SPHERE_SIZE } from "../grid/coord";
 import { planetDetail } from "../gen/detail";
 import { newPlanet } from "../planet";
 import { shaderFor, surfaceOn } from "../surface";
@@ -26,6 +27,18 @@ import { createGlobe, type Globe } from "./globe";
  * else.
  */
 const THUMBNAIL_ROWS = 12;
+
+/**
+ * The level the globe in the panel is built at. That panel is the one place a
+ * world is looked at rather than glanced at, so it gets a real coastline rather
+ * than the thumbnails' outline.
+ *
+ * Half the planet view's own globe of SPHERE_SIZE, and a quarter of the work.
+ * The planet view pays that once when a world is opened; here a world is picked
+ * out of a list and put back, and a second and a half a click is the difference
+ * between looking around a system and waiting on one.
+ */
+const LIVE_ROWS = SPHERE_SIZE / 2;
 
 export interface WorldPicture {
   readonly seed: string;
@@ -67,7 +80,7 @@ function renderer(px: number): Globe {
  */
 export function liveGlobe(world: WorldPicture): HTMLElement {
   if (live === null) live = createGlobe();
-  const { grid, surface, detail } = surfaceFor(world);
+  const { grid, surface, detail } = surfaceFor(world, LIVE_ROWS);
   live.render(
     grid,
     surface.heights,
@@ -82,19 +95,19 @@ export function liveGlobe(world: WorldPicture): HTMLElement {
 }
 
 /** Everything a picture of a world is built from, which is what a save holds. */
-function surfaceFor(world: WorldPicture) {
+function surfaceFor(world: WorldPicture, rows = THUMBNAIL_ROWS) {
   const planet = {
     ...newPlanet(world.seed),
     uwp: world.uwp,
     orbitAu: world.orbitAu,
     luminosity: world.luminosity,
-    size: THUMBNAIL_ROWS,
+    size: rows,
   };
   const detail = planetDetail(planet.seed, planet.uwp, {
     orbitAu: planet.orbitAu,
     luminosity: planet.luminosity,
   });
-  const grid = buildGrid(THUMBNAIL_ROWS);
+  const grid = buildGrid(rows);
   return { grid, detail, surface: surfaceOn(planet, detail, grid) };
 }
 

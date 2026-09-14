@@ -3,7 +3,7 @@ import { valueFor } from "../gen/rng";
 import type { SpectralClass } from "../gen/star";
 
 /**
- * The system seen from above: the star at the middle, the orbits as the paths
+ * The system seen from outside: the star at the middle, the orbits as the paths
  * they are, and everything the system holds standing somewhere on its own.
  *
  * The companion to the strip of ui/orbits.ts rather than a replacement for it.
@@ -11,10 +11,16 @@ import type { SpectralClass } from "../gen/star";
  * reads; this says what the system looks like, which is what makes it a place
  * rather than a table.
  *
+ * It turns. Dragging leans the plane over and swings it round, the wheel comes
+ * in and out, shift and a drag moves it about, and a double click puts it back.
+ * A system seen flat on is a diagram; seen at an angle it is a system, because
+ * the lean is what says the paths are circles being looked across rather than
+ * rings on a page.
+ *
  * Not to scale, and it cannot be: the outer orbit is two hundred times the inner
  * one and a drawing honest about that is a dot in an empty circle. The radii go
  * as a low power of the distance, so the inner orbits stay apart and the outer
- * ones stay on the page, and every distance is written on its own path.
+ * ones stay on the page, and every path with room for it says how far out it is.
  */
 
 const SVG_NS = "http://www.w3.org/2000/svg";
@@ -23,7 +29,7 @@ const SVG_NS = "http://www.w3.org/2000/svg";
 const SIZE = 1000;
 const CENTRE = SIZE / 2;
 /** The innermost and outermost path, as a fraction of the half-width. */
-const RING = { nearest: 0.14, furthest: 0.93 } as const;
+const RING = { nearest: 0.15, furthest: 0.92 } as const;
 /**
  * How hard the distances are squeezed. One would be true scale and unreadable;
  * a third is close to drawing each orbit a fixed step further out. This leaves
@@ -32,6 +38,13 @@ const RING = { nearest: 0.14, furthest: 0.93 } as const;
 const SQUEEZE = 0.42;
 /** How far apart two paths must be before both get their distance written on. */
 const LABEL_GAP = 62;
+
+/** Where the view starts: leant over far enough to read as a plane seen across. */
+const HOME_VIEW = { tiltDeg: 58, spinDeg: 0, zoom: 1, panX: 0, panY: 0 };
+const TILT_LIMITS = { flattest: 0, steepest: 86 } as const;
+const ZOOM_LIMITS = { out: 0.55, in: 6 } as const;
+/** A pointer that moved further than this was a drag, not a click. */
+const DRAG_SLOP = 4;
 
 const STAR_COLOUR: Readonly<Record<SpectralClass, string>> = {
   O: "#9db4ff",
@@ -52,6 +65,8 @@ function make<K extends keyof SVGElementTagNameMap>(
   return node;
 }
 
+const radians = (degrees: number): number => (degrees * Math.PI) / 180;
+
 export interface OrbitMap {
   readonly element: SVGSVGElement;
   render(system: StarSystem): void;
@@ -59,37 +74,61 @@ export interface OrbitMap {
   setPicture(orbitIndex: number, png: string): void;
   setSelected(orbitIndex: number | null): void;
   onSelect(handler: (orbitIndex: number) => void): void;
+  /** Back to the viewpoint a system opens at. */
+  resetView(): void;
 }
 
 export function createOrbitMap(): OrbitMap {
-  const svg = make("svg", { class: "orbitmap", viewBox: `0 0 ${SIZE} ${SIZE}` });
-  const pathLayer = make("g");
-  const zoneLayer = make("g");
+  const svg = make("svg", { class: "orbitmap", tabindex: 0 });
+  const planeLayer = make("g");
   const bodyLayer = make("g");
   const selectLayer = make("g");
-  svg.append(zoneLayer, pathLayer, bodyLayer, selectLayer);
+  svg.append(planeLayer, bodyLayer, selectLayer);
 
   const handlers: ((orbitIndex: number) => void)[] = [];
   const pictures = new Map<number, string>();
-  const groups = new Map<number, SVGGElement>();
-  let drawn: readonly Orbit[] = [];
-  /** The system on the paths, held so a picture arriving later can be placed. */
   let shown: StarSystem | null = null;
   let places = new Map<number, { x: number; y: number; r: number }>();
   let selected: number | null = null;
+  let view = { ...HOME_VIEW };
+
+  function showView(): void {
+    const width = SIZE / view.zoom;
+    svg.setAttribute(
+      "viewBox",
+      `${CENTRE - width / 2 + view.panX} ${CENTRE - width / 2 + view.panY} ${width} ${width}`,
+    );
+  }
 
   /** Where an orbit's path sits, as a radius in drawing units. */
   function radiusOf(orbit: Orbit, all: readonly Orbit[]): number {
     const near = all[0]!.au;
     const far = all.at(-1)!.au;
     const span = Math.pow(far, SQUEEZE) - Math.pow(near, SQUEEZE);
-    const at = span === 0 ? 0 : (Math.pow(orbit.au, SQUEEZE) - Math.pow(near, SQUEEZE)) / span;
+    // One orbit has nothing to be spaced against, so it goes in the middle of
+    // the room rather than hard against the inside of it.
+    if (span === 0) return CENTRE * ((RING.nearest + RING.furthest) / 2);
+    const at = (Math.pow(orbit.au, SQUEEZE) - Math.pow(near, SQUEEZE)) / span;
     return CENTRE * (RING.nearest + at * (RING.furthest - RING.nearest));
   }
 
   /** Where a body stands on its path. Fixed by the seed, so it never jumps. */
   function angleOf(system: StarSystem, orbit: Orbit): number {
-    return valueFor(`${system.seed}:where`, orbit.index) * Math.PI * 2;
+    return valueFor(`${system.seed}:where`, orbit.index) * Math.PI * 2 + radians(view.spinDeg);
+  }
+
+  /** The lean of the plane: 1 seen flat on, 0 seen edge on. */
+  function leanOf(): number {
+    return Math.cos(radians(view.tiltDeg));
+  }
+
+  /** A point on a path, leant over. Depth is which side of the star it is on. */
+  function pointOn(radius: number, angle: number): { x: number; y: number; depth: number } {
+    return {
+      x: CENTRE + Math.cos(angle) * radius,
+      y: CENTRE + Math.sin(angle) * radius * leanOf(),
+      depth: Math.sin(angle),
+    };
   }
 
   function drawSelection(): void {
@@ -97,61 +136,124 @@ export function createOrbitMap(): OrbitMap {
     if (selected === null) return;
     const at = places.get(selected);
     if (at === undefined) return;
-    selectLayer.append(
-      make("circle", { class: "map-select", cx: at.x, cy: at.y, r: at.r + 14 }),
-    );
+    selectLayer.append(make("circle", { class: "map-select", cx: at.x, cy: at.y, r: at.r + 14 }));
   }
 
   function render(system: StarSystem): void {
     pictures.clear();
-    groups.clear();
-    places = new Map();
-    drawn = system.orbits;
     shown = system;
-    pathLayer.replaceChildren();
-    zoneLayer.replaceChildren();
-    bodyLayer.replaceChildren();
+    draw();
+  }
 
-    // The habitable zone as the ring it is, between the paths either side of it.
+  /** Everything, from wherever it is being looked at. */
+  function draw(): void {
+    const system = shown;
+    planeLayer.replaceChildren();
+    bodyLayer.replaceChildren();
+    places = new Map();
+    showView();
+    if (system === null) return;
+    const lean = leanOf();
+
+    // The habitable zone, as the band of the plane it is.
     const habitable = system.orbits.filter((orbit) => orbit.habitable);
     if (habitable.length > 0) {
       const inner = radiusOf(habitable[0]!, system.orbits);
       const outer = radiusOf(habitable.at(-1)!, system.orbits);
-      const width = Math.max(26, outer - inner);
-      zoneLayer.append(
-        make("circle", {
+      const middle = (inner + outer) / 2;
+      planeLayer.append(
+        make("ellipse", {
           class: "map-zone",
           cx: CENTRE,
           cy: CENTRE,
-          r: (inner + outer) / 2,
-          "stroke-width": width + 18,
+          rx: middle,
+          ry: Math.max(1, middle * lean),
+          "stroke-width": Math.max(26, outer - inner) + 18,
         }),
       );
-      const label = make("text", { class: "map-zone-label", x: CENTRE, y: CENTRE - (inner + outer) / 2 - 12 });
+      const label = make("text", {
+        class: "map-zone-label",
+        x: CENTRE,
+        y: CENTRE - middle * lean - 14,
+      });
       label.textContent = "habitable";
-      zoneLayer.append(label);
+      planeLayer.append(label);
     }
 
-    // The distance sits under its own path, and only where there is room for it:
-    // the inner paths crowd together under the squeeze of SQUEEZE, and four
-    // figures stacked on top of each other say less than one that can be read.
     let lastLabel = -Infinity;
     for (const orbit of system.orbits) {
       const r = radiusOf(orbit, system.orbits);
-      pathLayer.append(make("circle", { class: "map-path", cx: CENTRE, cy: CENTRE, r }));
+      planeLayer.append(
+        make("ellipse", {
+          class: "map-path",
+          cx: CENTRE,
+          cy: CENTRE,
+          rx: r,
+          ry: Math.max(0.5, r * lean),
+        }),
+      );
+      if (orbit.content.kind === "belt") drawBelt(system, orbit, r);
       if (r - lastLabel < LABEL_GAP) continue;
       lastLabel = r;
-      const label = make("text", { class: "map-au", x: CENTRE, y: CENTRE + r - 8 });
+      // The distance sits under its own path, and only where there is room for
+      // it: four figures stacked on each other say less than one that is read.
+      const label = make("text", { class: "map-au", x: CENTRE, y: CENTRE + r * lean - 8 });
       label.textContent = `${orbit.au} AU`;
-      pathLayer.append(label);
+      planeLayer.append(label);
     }
 
-    drawStar(system);
-    for (const orbit of system.orbits) drawBody(system, orbit);
+    drawStars(system);
+    // Back to front, so a world on the far side of its star goes behind it.
+    const order = [...system.orbits].sort(
+      (a, b) => Math.sin(angleOf(system, a)) - Math.sin(angleOf(system, b)),
+    );
+    for (const orbit of order) drawBody(system, orbit);
     drawSelection();
   }
 
-  function drawStar(system: StarSystem): void {
+  /**
+   * A belt, drawn as the belt it is: a few hundred rocks right round the path,
+   * bunched towards the middle of the band, dimmer on the far side, with a gap
+   * or two where a resonance has swept one clean.
+   *
+   * A ring of evenly spaced dots reads as a dotted line, which is what it was.
+   */
+  function drawBelt(system: StarSystem, orbit: Orbit, radius: number): void {
+    const key = `${system.seed}:belt:${orbit.index}`;
+    const gaps = [0, 1]
+      .filter((i) => valueFor(`${key}:gap-there`, i) < 0.55)
+      .map((i) => ({
+        at: valueFor(`${key}:gap`, i) * Math.PI * 2,
+        wide: 0.1 + valueFor(`${key}:gap-wide`, i) * 0.14,
+      }));
+
+    const group = make("g", { class: "map-belt" });
+    for (let i = 0; i < 320; i++) {
+      const angle = valueFor(`${key}:angle`, i) * Math.PI * 2 + radians(view.spinDeg);
+      const swept = gaps.some((gap) => {
+        const away = Math.abs(((angle - gap.at + Math.PI * 3) % (Math.PI * 2)) - Math.PI);
+        return away > Math.PI * (1 - gap.wide);
+      });
+      if (swept) continue;
+      // Across the band: two draws averaged, so the rocks bunch towards the
+      // middle of it rather than spreading evenly out to both edges.
+      const across = (valueFor(`${key}:across`, i) + valueFor(`${key}:across2`, i)) / 2 - 0.5;
+      const at = pointOn(radius * (1 + across * 0.13), angle);
+      group.append(
+        make("circle", {
+          class: "map-rock",
+          cx: at.x,
+          cy: at.y,
+          r: 1.4 + valueFor(`${key}:size`, i) * 3.4,
+          opacity:
+            (0.35 + valueFor(`${key}:dim`, i) * 0.5) * (at.depth < 0 ? 0.7 : 1),
+        }),
+      );
+    }
+    planeLayer.append(group);
+  }
+
+  function drawStars(system: StarSystem): void {
     const { primary, companion, companionOrbit } = system.stars;
     bodyLayer.append(
       make("circle", {
@@ -166,11 +268,14 @@ export function createOrbitMap(): OrbitMap {
     // A close companion rides beside the primary; a far one sits outside every
     // path. SystemSpec 2.4 allows nothing in between.
     const close = companionOrbit === "close";
+    const at = close
+      ? { x: CENTRE + 42, y: CENTRE }
+      : pointOn(CENTRE * RING.furthest * 1.06, radians(view.spinDeg) + Math.PI * 1.5);
     bodyLayer.append(
       make("circle", {
         class: "map-star",
-        cx: close ? CENTRE + 40 : CENTRE,
-        cy: close ? CENTRE : CENTRE - CENTRE * RING.furthest - 26,
+        cx: at.x,
+        cy: at.y,
         r: close ? 16 : 20,
         fill: STAR_COLOUR[companion.spectral],
       }),
@@ -179,10 +284,7 @@ export function createOrbitMap(): OrbitMap {
 
   function drawBody(system: StarSystem, orbit: Orbit): void {
     const content = orbit.content;
-    const radius = radiusOf(orbit, system.orbits);
-    const angle = angleOf(system, orbit);
-    const x = CENTRE + Math.cos(angle) * radius;
-    const y = CENTRE + Math.sin(angle) * radius;
+    const { x, y } = pointOn(radiusOf(orbit, system.orbits), angleOf(system, orbit));
     const r = sizeOf(orbit);
     places.set(orbit.index, { x, y, r });
 
@@ -191,23 +293,9 @@ export function createOrbitMap(): OrbitMap {
     const title = make("title");
     title.textContent = `Orbit ${orbit.index}, ${orbit.au} AU`;
     group.append(title);
-    group.append(make("circle", { class: "map-hit", cx: x, cy: y, r: Math.max(r + 12, 24) }));
+    group.append(make("circle", { class: "map-hit", cx: x, cy: y, r: Math.max(r + 12, 26) }));
 
-    if (content.kind === "belt") {
-      // A belt is drawn as the belt: a scattering all the way round its path.
-      for (let i = 0; i < 90; i++) {
-        const at = (i / 90) * Math.PI * 2;
-        const wobble = 1 + (valueFor(`${system.seed}:belt:${orbit.index}`, i) - 0.5) * 0.06;
-        group.append(
-          make("circle", {
-            class: "map-rock",
-            cx: CENTRE + Math.cos(at) * radius * wobble,
-            cy: CENTRE + Math.sin(at) * radius * wobble,
-            r: 2.6,
-          }),
-        );
-      }
-    } else if (content.kind !== "empty") {
+    if (content.kind === "world" || content.kind === "giant") {
       const picture = pictures.get(orbit.index) ?? null;
       if (picture === null) {
         group.append(
@@ -234,8 +322,7 @@ export function createOrbitMap(): OrbitMap {
             preserveAspectRatio: "xMidYMid slice",
           }),
           make("circle", {
-            class:
-              content.kind === "world" && content.main ? "map-edge map-edge-main" : "map-edge",
+            class: content.kind === "world" && content.main ? "map-edge map-edge-main" : "map-edge",
             cx: x,
             cy: y,
             r,
@@ -243,13 +330,30 @@ export function createOrbitMap(): OrbitMap {
         );
       }
       if (content.kind === "giant") {
+        // The ring lies in the plane the system does, so it leans with it rather
+        // than staying flat to the reader.
         group.append(
-          make("ellipse", { class: "map-ring", cx: x, cy: y, rx: r * 1.7, ry: r * 0.42 }),
+          make("ellipse", {
+            class: "map-ring",
+            cx: x,
+            cy: y,
+            rx: r * 1.75,
+            ry: Math.max(1.5, r * 1.75 * leanOf()),
+          }),
         );
       }
+    } else if (content.kind === "empty") {
+      group.append(make("circle", { class: "map-nothing", cx: x, cy: y, r: 4 }));
     }
 
     group.addEventListener("click", () => {
+      // The click at the end of a drag is the drag finishing, not a choice of
+      // what happened to be under the pointer when it stopped. One click is
+      // swallowed, not every click until the next press.
+      if (dragged) {
+        dragged = false;
+        return;
+      }
       for (const handler of handlers) handler(orbit.index);
     });
     group.addEventListener("keydown", (event) => {
@@ -257,11 +361,7 @@ export function createOrbitMap(): OrbitMap {
       event.preventDefault();
       for (const handler of handlers) handler(orbit.index);
     });
-
-    const already = groups.get(orbit.index);
-    if (already === undefined) bodyLayer.append(group);
-    else already.replaceWith(group);
-    groups.set(orbit.index, group);
+    bodyLayer.append(group);
   }
 
   /** How big a body is drawn. Kind, not scale: a giant beside a world. */
@@ -276,15 +376,81 @@ export function createOrbitMap(): OrbitMap {
     }
   }
 
+  /* Turning it round ------------------------------------------------------ */
+
+  let dragging: { x: number; y: number; moved: number; pan: boolean } | null = null;
+  /** Whether the click now arriving is the end of a drag. */
+  let dragged = false;
+
+  svg.addEventListener("pointerdown", (event) => {
+    if (event.button !== 0) return;
+    dragged = false;
+    dragging = { x: event.clientX, y: event.clientY, moved: 0, pan: event.shiftKey };
+    svg.setPointerCapture(event.pointerId);
+  });
+
+  svg.addEventListener("pointermove", (event) => {
+    if (dragging === null) return;
+    const dx = event.clientX - dragging.x;
+    const dy = event.clientY - dragging.y;
+    dragging.moved += Math.abs(dx) + Math.abs(dy);
+    dragging.x = event.clientX;
+    dragging.y = event.clientY;
+    if (dragging.pan) {
+      // In drawing units, so a drag moves the same amount of system however far
+      // in the view is and whatever the panel is sized at.
+      const units = SIZE / view.zoom / Math.max(1, svg.clientWidth);
+      view.panX -= dx * units;
+      view.panY -= dy * units;
+    } else {
+      view.spinDeg += dx * 0.4;
+      view.tiltDeg = Math.min(
+        TILT_LIMITS.steepest,
+        Math.max(TILT_LIMITS.flattest, view.tiltDeg + dy * 0.3),
+      );
+    }
+    draw();
+  });
+
+  const letGo = (event: PointerEvent): void => {
+    if (dragging === null) return;
+    if (svg.hasPointerCapture(event.pointerId)) svg.releasePointerCapture(event.pointerId);
+    // Held until after the click that ends the drag, so that click can be told
+    // apart from a click on whatever the pointer happens to be over. Cleared by
+    // the next press rather than by the click, since a drag that ends on nothing
+    // produces no click at all.
+    dragged = dragging.moved > DRAG_SLOP;
+    dragging = null;
+  };
+  svg.addEventListener("pointerup", letGo);
+  svg.addEventListener("pointercancel", letGo);
+
+  svg.addEventListener(
+    "wheel",
+    (event) => {
+      event.preventDefault();
+      view.zoom = Math.min(
+        ZOOM_LIMITS.in,
+        Math.max(ZOOM_LIMITS.out, view.zoom * Math.pow(0.999, event.deltaY)),
+      );
+      draw();
+    },
+    { passive: false },
+  );
+
+  function resetView(): void {
+    view = { ...HOME_VIEW };
+    draw();
+  }
+
+  svg.addEventListener("dblclick", resetView);
+
   return {
     element: svg,
     render,
     setPicture(orbitIndex, png) {
-      const orbit = drawn.find((held) => held.index === orbitIndex);
-      if (orbit === undefined) return;
       pictures.set(orbitIndex, png);
-      if (shown !== null) drawBody(shown, orbit);
-      drawSelection();
+      draw();
     },
     setSelected(orbitIndex) {
       selected = orbitIndex;
@@ -293,5 +459,6 @@ export function createOrbitMap(): OrbitMap {
     onSelect(handler) {
       handlers.push(handler);
     },
+    resetView,
   };
 }

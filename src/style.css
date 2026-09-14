@@ -683,7 +683,18 @@ body[data-view="planet"] .system { display: none; }
   border-radius: 4px;
   padding: 6px;
 }
-.orbitmap { width: auto; height: 100%; max-width: 100%; display: block; }
+/* The model is turned by dragging and zoomed by the wheel, so the browser must
+   not take either gesture for a scroll. */
+.orbitmap {
+  width: auto;
+  height: 100%;
+  max-width: 100%;
+  display: block;
+  cursor: grab;
+  touch-action: none;
+}
+.orbitmap:active { cursor: grabbing; }
+.orbitmap:focus { outline: none; }
 
 .map-path { fill: none; stroke: #2a313c; stroke-width: 1.2; }
 /* Sized in the drawing's own units, which are about a third of a pixel once it
@@ -699,7 +710,10 @@ body[data-view="planet"] .system { display: none; }
 .map-body:focus .map-hit { fill: rgba(255, 255, 255, 0.08); }
 .map-world { fill: #9fb6cf; }
 .map-giant { fill: #c8a06a; }
-.map-rock { fill: #4e5764; }
+.map-rock { fill: #7d8796; }
+/* An orbit with nothing in it is still a place on the diagram: a mark small
+   enough to read as empty and big enough to click. */
+.map-nothing { fill: #39414d; }
 .map-edge { fill: none; stroke: rgba(0, 0, 0, 0.5); stroke-width: 1; }
 .map-edge-main { stroke: var(--accent); stroke-width: 2.5; }
 .map-ring { fill: none; stroke: #c8a06a; stroke-width: 2; opacity: 0.65; }
