@@ -161,17 +161,23 @@ This document is the companion to [PlanetSpec.md](PlanetSpec.md) and is numbered
 
 4.2 Each occupied hex carries what a Traveller subsector map carries, laid out where those maps lay it out: the hex number small at the top, the starport class above the world, the world in the middle, its name below, the bases as their own marks to the left, a gas giant to the right, and the lanes of 3.9 drawn between hexes underneath the lot. The four digits sit in every hex, occupied or not, because an empty hex still has to be referrable.
 
-4.2.1 The published maps are black on white and say everything with position and shape. This one keeps the positions and adds colour, which is the one liberty it takes: colour says what kind of world it is without a legend and without another line of text in a hex that has no room for one.
+4.2.1 The published maps are black on white and say everything with position and shape. This one keeps the positions and adds colour, which is the one liberty it takes: colour says what kind of world it is without another line of text in a hex that has no room for one.
 
-4.2.2 A world is drawn as its own globe — the planet spec 4.4 surface, small — rather than as a dot. A dot with a colour chosen for it says what somebody decided a world of that profile looks like; the globe says what this world looks like, and it is the same surface the planet view draws if the world is opened.
+4.2.2 A world is a dot, coloured by what is on its surface and sized by how many people are on it. Water and air is blue, dry with air is tan, an airless rock is grey, and a world nobody lives on is drawn hollow. An asteroid belt is a scatter of rocks rather than a dot, the way the maps have always drawn one.
 
-4.2.2.1 A world is drawn where its own system puts it, so the globe on the chart is the globe the system view shows for the same world rather than a near miss. This costs the chart a system layout per hex, which is cheap, and a surface per hex, which is not.
+4.2.2.1 Sized by population rather than by the size digit, because population is what a referee is looking for when they scan a chart. Physical size is a digit away in the profile and nobody navigates by it.
 
-4.2.2.2 So the globes arrive one at a time over a chart that is already readable without them. Eighty of them drawn before anything appeared would be a chart nobody could roll. A name, a port and a place are on screen immediately; the picture catches up.
+4.2.2.2 A world's own globe was tried here and taken out again. At the size a hex allows it is a dark disc — less legible than the dot it replaced, since a dot can be a colour chosen to be told apart and a photograph of a world cannot. It also cost a surface per hex, which arrived over about ten seconds of a chart filling itself in. A picture of one world at a time belongs in 4.3.1, where there is room to look at it.
 
-4.2.2.3 An asteroid belt has no globe, and is drawn as a scatter of rocks the way the maps have always drawn one.
+4.2.3 Colour that means something needs a key, so the chart has one beside it: every colour, every mark, the two weights of lane, and what the size of a dot says. It folds away, because a key is read once and then known.
+
+4.2.3.1 A key rather than a legend drawn into the chart itself. The chart is scaled to fit its panel and exported as a picture under 6.2, and a legend inside it would be scaled with it and would have to be placed somewhere no hex was.
 
 4.3 Selecting a hex fills a panel with the system: the profile digit by digit as the planet spec 6.7 shows it, the trade classifications, the PBG figures, the stars, the bases, the zone, and the world's seed.
+
+4.3.1 The panel also carries the world itself, turning, as the planet spec 4.4 draws it. This is the one world being looked at rather than one of eighty being glanced at, so it is worth a real surface.
+
+4.3.1.1 Drawn where its own system puts it, so the world in the panel is the world the system view shows rather than a near miss: a surface is its climate and a climate is an orbit. Laying out one system to find that orbit is cheap. A belt has no globe.
 
 4.4 The panel is where a world is edited, and where it is opened as a planet under section 7.
 

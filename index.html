@@ -114,11 +114,32 @@
           Inhabited only
         </label>
         <ul id="sub-list" class="sys-tree"></ul>
+
+        <!-- Foldable, because a key is read once and then known. -->
+        <details class="chart-legend" open>
+          <summary>Key</summary>
+        <ul id="sub-key" class="chart-key">
+          <li><svg viewBox="0 0 16 16" aria-hidden="true"><circle class="chart-wet" cx="8" cy="8" r="6" /></svg>Water and air</li>
+          <li><svg viewBox="0 0 16 16" aria-hidden="true"><circle class="chart-dusty" cx="8" cy="8" r="6" /></svg>Dry, with air</li>
+          <li><svg viewBox="0 0 16 16" aria-hidden="true"><circle class="chart-airless" cx="8" cy="8" r="6" /></svg>Airless</li>
+          <li><svg viewBox="0 0 16 16" aria-hidden="true"><circle class="chart-empty" cx="8" cy="8" r="5.5" /></svg>Nobody there</li>
+          <li><svg viewBox="0 0 16 16" aria-hidden="true"><circle class="chart-rock" cx="4" cy="5" r="1.4" /><circle class="chart-rock" cx="9" cy="4" r="1.4" /><circle class="chart-rock" cx="6" cy="9" r="1.4" /><circle class="chart-rock" cx="11" cy="10" r="1.4" /></svg>Asteroid belt</li>
+          <li><svg viewBox="0 0 16 16" aria-hidden="true"><circle class="chart-wet" cx="8" cy="8" r="3" /><circle class="chart-wet" cx="8" cy="8" r="6" opacity="0.25" /></svg>Dot size is population</li>
+          <li><svg viewBox="0 0 16 16" aria-hidden="true"><polygon class="chart-naval" points="8,2 9.6,6.4 14,6.4 10.5,9.2 11.8,13.6 8,11 4.2,13.6 5.5,9.2 2,6.4 6.4,6.4" /></svg>Naval base</li>
+          <li><svg viewBox="0 0 16 16" aria-hidden="true"><polygon class="chart-scout" points="8,3 14,12.5 2,12.5" /></svg>Scout base</li>
+          <li><svg viewBox="0 0 16 16" aria-hidden="true"><circle class="chart-giant" cx="8" cy="8" r="3.2" /><ellipse class="chart-giant-ring" cx="8" cy="8" rx="6.4" ry="2" /></svg>Gas giant to skim</li>
+          <li><svg viewBox="0 0 16 16" aria-hidden="true"><circle class="chart-zone" cx="8" cy="8" r="6" /></svg>Amber zone</li>
+          <li><svg viewBox="0 0 16 16" aria-hidden="true"><line class="chart-main" x1="1" y1="8" x2="15" y2="8" /></svg>Main lane</li>
+          <li><svg viewBox="0 0 16 16" aria-hidden="true"><line class="chart-route" x1="1" y1="8" x2="15" y2="8" /></svg>Feeder lane</li>
+        </ul>
+        </details>
       </aside>
 
       <div class="sub-chart" id="sub-chart"></div>
 
       <aside class="sys-side">
+        <!-- The world itself, turning, where there is room to look at it. -->
+        <div id="sub-globe" class="sys-globe" hidden></div>
         <div class="sys-detail">
           <div class="sys-title">
             <h2 id="sub-what">Select a hex</h2>

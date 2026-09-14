@@ -2566,10 +2566,6 @@ el("sys-open").addEventListener("click", () => {
 // Read only at this stage: the chart draws, the panel says what is in a hex,
 // and a hex opens as a system. Overrides and saving are SubSectorSpec 5.
 
-/** How big a chart globe is drawn. Twice its size on the page, so it stays
- * crisp on a chart that scales itself to whatever panel it is in. */
-const CHART_GLOBE_PX = 64;
-
 const chart = createChart();
 el("sub-chart").append(chart.element);
 
@@ -2606,7 +2602,6 @@ function drawSubsector(next: Subsector): void {
   openLevels.system = false;
   openLevels.planet = false;
   chart.render(next);
-  drawChartWorldsSoon(next);
   showSubsectorAbout();
   showSubsectorList();
   showCrumbs();
@@ -2619,54 +2614,6 @@ function drawSubsector(next: Subsector): void {
   subSay(`${next.worlds.length} systems in eighty hexes.`);
 }
 
-
-/**
- * The globes on the chart. SubSectorSpec 4.2.2.
- *
- * A dot with a colour chosen for it says what somebody decided a world of that
- * profile looks like; the globe says what this world looks like, and it is the
- * same surface the planet view would draw if the world were opened. Worth the
- * work, but not worth it all at once: forty of them one after another is a
- * second and a half with nothing on screen, so they arrive one at a time over a
- * chart that is already readable without them.
- *
- * A world is drawn where its own system puts it, not at some standard distance,
- * because a world's climate is where it orbits - so the globe here is the globe
- * the system view shows for the same world rather than a near miss.
- */
-let chartPending: { subsector: Subsector; worlds: ChartWorld[] } | null = null;
-
-function drawChartWorldsSoon(next: Subsector): void {
-  chartPending = {
-    subsector: next,
-    worlds: next.worlds.filter((world) => world.profile.size > 0),
-  };
-  setTimeout(drawNextChartWorld, 0);
-}
-
-function drawNextChartWorld(): void {
-  if (chartPending === null) return;
-  const world = chartPending.worlds.shift();
-  // A roll while these are in flight moves on to the new chart rather than
-  // drawing pictures into the old one.
-  if (world === undefined || chartPending.subsector !== subsector) {
-    chartPending = null;
-    return;
-  }
-  const held = generateSystem(world.systemSeed);
-  chart.setPicture(
-    world.at,
-    worldImage(
-      {
-        seed: world.seed,
-        uwp: world.uwp,
-        ...worldSettings(held, held.mainWorld.orbitIndex),
-      },
-      CHART_GLOBE_PX,
-    ),
-  );
-  setTimeout(drawNextChartWorld, 0);
-}
 
 function showSubsectorAbout(): void {
   const about = el("sub-about");
@@ -2748,6 +2695,7 @@ function showHexPanel(at: string | null): void {
   facts.replaceChildren();
   el("sub-note").textContent = "";
   open.hidden = true;
+  el("sub-globe").hidden = true;
   if (subsector === null || at === null) {
     el("sub-what").textContent = "Select a hex";
     return;
@@ -2779,6 +2727,43 @@ function showHexPanel(at: string | null): void {
   const detail = planetDetail(world.seed, world.uwp);
   el("sub-note").textContent = describeUwp(world.uwp, detail) ?? "";
   open.hidden = false;
+  showHexGlobe(world);
+}
+
+/**
+ * The selected world, turning, at the top of the panel. SubSectorSpec 4.3.1.
+ *
+ * The chart draws dots, because eighty globes is a chart that cannot be rolled
+ * and a dot with a key beside it says more at that size anyway. One world at a
+ * time is worth a real picture, and the panel is where a world is looked at
+ * rather than glanced at.
+ *
+ * Drawn where its own system puts it, so this is the same world the system view
+ * shows rather than a near miss: a surface is its climate, and a climate is an
+ * orbit. Laying the system out for one hex is cheap; it is the surface that is
+ * not, which is why this waits a tick and checks the hex is still the one
+ * selected before drawing.
+ */
+function showHexGlobe(world: ChartWorld): void {
+  const box = el("sub-globe");
+  const wanted = world.at;
+  setTimeout(() => {
+    if (hexShown !== wanted || subsector === null) return;
+    if (world.profile.size === 0) {
+      // A belt has no globe. Nothing here is a world to photograph.
+      box.hidden = true;
+      return;
+    }
+    const held = generateSystem(world.systemSeed);
+    box.replaceChildren(
+      liveGlobe({
+        seed: world.seed,
+        uwp: world.uwp,
+        ...worldSettings(held, held.mainWorld.orbitIndex),
+      }),
+    );
+    box.hidden = false;
+  }, 0);
 }
 
 function basesNote(world: ChartWorld): string {

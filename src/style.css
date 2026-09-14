@@ -656,6 +656,34 @@ body[data-view="system"] .subsector { display: none; }
 .chart { width: auto; height: 100%; max-width: 100%; display: block; }
 .sub-chart { background: #0a0c10; }
 
+/* The key is pinned to the foot of the panel and the world list scrolls above
+   it: a key that scrolls off the bottom of a long list is a key nobody reads. */
+.subsector .sys-tree-panel { display: flex; flex-direction: column; overflow: hidden; }
+.subsector #sub-list { flex: 1 1 auto; min-height: 3em; overflow: auto; }
+.chart-legend { flex: none; margin-top: 10px; }
+.chart-legend summary {
+  cursor: pointer;
+  font-weight: 600;
+  font-size: 0.78rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin-bottom: 6px;
+}
+
+.chart-key {
+  flex: none;
+  border-top: 1px solid var(--line);
+  padding-top: 8px;
+  margin: 0;
+  display: grid;
+  gap: 3px;
+  font-size: 0.82rem;
+  color: var(--muted);
+}
+.chart-key li { display: flex; align-items: center; gap: 7px; }
+.chart-key svg { width: 16px; height: 16px; flex: none; overflow: visible; }
+
 /* A chart hex, and what is drawn in it. The grid is thin and even and the same
    everywhere: the published charts let the worlds carry all the weight. */
 .chart-cell {

@@ -33,9 +33,19 @@ const HEX_HIGH = (HEX_WIDE * Math.sqrt(3)) / 2;
 const COLUMN_STEP = HEX_WIDE * 0.75;
 const PAD = HEX_WIDE * 0.45;
 
-/** The world itself, and the ring a travel zone puts round it. */
-const WORLD_R = 11;
+/**
+ * The world itself, and the ring a travel zone puts round it. A world is drawn
+ * as a dot, sized by population and coloured by what is on its surface, with the
+ * key beside the chart saying which is which. 4.2.2.
+ */
+const DOT = { least: 6, most: 12 } as const;
 const ZONE_R = 20;
+
+/** How big a world's dot is. Population, not size: 4.2.1 says why. */
+function dotFor(population: number): number {
+  const at = Math.min(1, Math.max(0, population / 12));
+  return DOT.least + at * (DOT.most - DOT.least);
+}
 
 function make<K extends keyof SVGElementTagNameMap>(
   tag: K,
@@ -55,14 +65,28 @@ function centreOf(col: number, row: number): { x: number; y: number } {
   return { x, y: PAD + (row - 1) * HEX_HIGH + HEX_HIGH / 2 + drop };
 }
 
-/** The six corners of a flat-topped hex about a centre. */
+/**
+ * The six corners of a flat-topped hex about a centre.
+ *
+ * Written out rather than swept round in sixty degree steps, because a circle
+ * sampled every sixty degrees and then squashed to the hex's height is not a
+ * hexagon: the four slanted corners land short of the full height, and the chart
+ * tiles with a gap down every seam. A flat-topped hex has its corners at the
+ * ends of the horizontal axis and at a quarter of the width either side of the
+ * middle, top and bottom.
+ */
 function hexPoints(x: number, y: number): string {
-  const out: string[] = [];
-  for (let i = 0; i < 6; i++) {
-    const angle = (Math.PI / 180) * (60 * i);
-    out.push(`${x + (HEX_WIDE / 2) * Math.cos(angle)},${y + (HEX_HIGH / 2) * Math.sin(angle)}`);
-  }
-  return out.join(" ");
+  const wide = HEX_WIDE / 2;
+  const quarter = HEX_WIDE / 4;
+  const high = HEX_HIGH / 2;
+  return [
+    `${x + wide},${y}`,
+    `${x + quarter},${y + high}`,
+    `${x - quarter},${y + high}`,
+    `${x - wide},${y}`,
+    `${x - quarter},${y - high}`,
+    `${x + quarter},${y - high}`,
+  ].join(" ");
 }
 
 /**
@@ -81,23 +105,12 @@ function worldClass(world: ChartWorld): string {
 export interface Chart {
   readonly element: SVGSVGElement;
   render(subsector: Subsector): void;
-  /** The world's own globe, once it has been drawn. 4.2.2. */
-  setPicture(at: string, png: string): void;
   setSelected(at: string | null): void;
   onSelect(handler: (at: string) => void): void;
 }
 
 export function createChart(): Chart {
   const svg = make("svg", { class: "chart" });
-
-  // One clip for every globe on the chart: in bounding box units a circle at the
-  // middle of a square is the same circle whatever hex it is over.
-  const defs = make("defs");
-  const clip = make("clipPath", { id: "chart-globe", clipPathUnits: "objectBoundingBox" });
-  clip.append(make("circle", { cx: 0.5, cy: 0.5, r: 0.5 }));
-  defs.append(clip);
-  svg.append(defs);
-
   const gridLayer = make("g");
   const routeLayer = make("g");
   const worldLayer = make("g");
@@ -108,7 +121,6 @@ export function createChart(): Chart {
 
   const handlers: ((at: string) => void)[] = [];
   const places = new Map<string, { x: number; y: number }>();
-  const pictures = new Map<string, SVGImageElement>();
   let selected: string | null = null;
 
   function drawSelection(): void {
@@ -124,7 +136,6 @@ export function createChart(): Chart {
     routeLayer.replaceChildren();
     worldLayer.replaceChildren();
     places.clear();
-    pictures.clear();
 
     const worlds = new Map(subsector.worlds.map((world) => [world.at, world]));
     // The chart is its own eight by ten, whichever of the sixteen it is: the
@@ -198,21 +209,14 @@ export function createChart(): Chart {
 
       if (world.profile.size === 0) drawBelt(group, x, y);
       else {
-        // The coloured disc first, and the world's own globe over it when one
-        // has been drawn: a chart that waited for forty globes before showing
-        // anything would be a chart nobody could roll.
-        group.append(make("circle", { class: worldClass(world), cx: x, cy: y, r: WORLD_R }));
-        const picture = make("image", {
-          class: "chart-globe",
-          x: x - WORLD_R,
-          y: y - WORLD_R,
-          width: WORLD_R * 2,
-          height: WORLD_R * 2,
-          "clip-path": "url(#chart-globe)",
-          preserveAspectRatio: "xMidYMid slice",
-        });
-        group.append(picture);
-        pictures.set(at, picture);
+        group.append(
+          make("circle", {
+            class: worldClass(world),
+            cx: x,
+            cy: y,
+            r: dotFor(world.profile.population),
+          }),
+        );
       }
 
       // A name in capitals is the published shorthand for a world with a
@@ -293,9 +297,6 @@ export function createChart(): Chart {
   return {
     element: svg,
     render,
-    setPicture(at, png) {
-      pictures.get(at)?.setAttribute("href", png);
-    },
     setSelected(at) {
       selected = at;
       drawSelection();
