@@ -173,6 +173,18 @@ describe("what a planet's files are named", () => {
     expect(stemFor({ ...newPlanet(), name: "Earth", designation: "Sol/3: ?" })).toBe("Sol3");
   });
 
+  it("closes up the spaces in a designation", () => {
+    // AppSpec 4.2.1.1.1: a designation is a token, so a belt reads as "Regina
+    // Belt-1" and files as Regina-Belt-1.
+    expect(stemFor({ ...newPlanet(), name: "Kadrin", designation: "Regina Belt-1" })).toBe(
+      "Regina-Belt-1",
+    );
+  });
+
+  it("leaves the spaces in a name, which is prose", () => {
+    expect(stemFor({ ...newPlanet(), name: "New Hope", designation: null })).toBe("New Hope");
+  });
+
   it("carries the designation through a save and back", () => {
     const planet = { ...newPlanet(), name: "Earth", designation: "Sol-3" };
     const back = parsePlanet(JSON.stringify(planet));

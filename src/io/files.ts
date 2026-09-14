@@ -102,8 +102,17 @@ export interface SaveFile {
  * still a planet, and this application began with nothing else.
  */
 export function stemFor(planet: Planet): string {
-  const designation = planet.designation ?? "";
-  return sanitise(designation.trim() !== "" ? designation : planet.name);
+  const designation = (planet.designation ?? "").trim();
+  if (designation === "") return sanitise(planet.name);
+  // A designation is a token rather than prose, so its spaces close up: the
+  // first belt of Regina is "Regina Belt-1" to read and Regina-Belt-1 on disk.
+  // A world's own name is left as it is written - a planet called New Hope is
+  // New Hope.json, because that one is prose and prose has spaces in it.
+  const token = sanitise(designation)
+    .replace(/\s+/g, "-")
+    .replace(/-+/g, "-")
+    .replace(/^-|-$/g, "");
+  return token === "" ? sanitise(planet.name) : token;
 }
 
 /** The planet's own JSON, which every save writes whatever else it does. */

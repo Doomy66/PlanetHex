@@ -79,6 +79,8 @@ This document is the shell. [PlanetSpec.md](PlanetSpec.md) specifies a planet, [
 
 4.2.1 The stem is the system's name and the world's orbit, under the system spec 7.2: the third world of Sol is `Sol-3.json`, with `Sol-3` on every image and export beside it.
 
+4.2.1.1.1 A designation is a token and its spaces close up: the first belt of Regina reads as "Regina Belt-1" and is `Regina-Belt-1.json` on disk. A world's own name is left as written, since a name is prose — a planet called New Hope is `New Hope.json`.
+
 4.2.1.2 A world carries its own designation in its document. It cannot be worked out at save time, because a world opened from a file has no system to ask: the file is the whole of what is known about it, which is the same reason 1.3.1 has a saved world carry its star and its orbit. A world handed down from a system is given its designation as it is opened, and keeps it from then on.
 
 4.2.1.1 The stem is where the world is, not what it is called. A world named Earth is still `Sol-3` on disk, because a folder of files is read by somebody looking for the third orbit of a system whose folder they are already standing in. The name is in the document, on the map, and on the sheet; the filename's job is to say which world this is among the eight in the folder.
@@ -95,7 +97,9 @@ This document is the shell. [PlanetSpec.md](PlanetSpec.md) specifies a planet, [
 
 4.3 **A system folder** is the lowest folder there is. It holds the system's JSON, the files of 4.2 for each world the user has worked up and saved, and the system's own exports.
 
-4.4 **A subsector folder** holds the subsector's JSON, the exports of the subsector spec section 6 that were asked for, and a `Systems` folder holding a system folder for each system the user has worked up and saved, named for the world and its hex.
+4.4 **A subsector folder** holds the subsector's JSON, the exports of the subsector spec section 6 that were asked for, and a system folder for each system the user has worked up and saved, named for the world and its hex.
+
+4.4.1 The children sit in the folder itself rather than in a `Systems` folder inside it, which is what 4.5 does one level up and what 4.3 does one level down. A level holds its own document, its own exports, and its saved children beside them, at every level. A folder that sorted its children into a subfolder at one level and not the others would be a rule a reader has to learn instead of a shape they can see.
 
 4.5 **A sector folder** holds the sector's JSON and a folder for each subsector that has been saved, named for its letter and its name. Each of those is an ordinary subsector folder under 4.4.
 
