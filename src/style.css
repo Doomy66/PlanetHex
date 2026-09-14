@@ -761,6 +761,13 @@ body[data-view="planet"] .system { display: none; }
 .orbit-edge { fill: none; stroke: rgba(0, 0, 0, 0.5); stroke-width: 1; }
 .orbit-edge-main { stroke: var(--accent); stroke-width: 2; }
 
+/* The moons of a gas giant, marked under it on the strip. SystemSpec 4.5.1. */
+.orbit-moon { fill: #7d8796; cursor: pointer; }
+.orbit-moon:hover { fill: var(--text); }
+.orbit-moon-people { fill: var(--accent); }
+.orbit-moon-select { fill: none; stroke: var(--select); stroke-width: 1.2; }
+.orbit-moon-more { fill: var(--muted); font-size: 9px; text-anchor: middle; }
+
 .orbit-au { fill: var(--muted); font-size: 11px; text-anchor: middle; }
 .orbit-label { fill: var(--muted); font-size: 10px; text-anchor: middle; opacity: 0.75; }
 

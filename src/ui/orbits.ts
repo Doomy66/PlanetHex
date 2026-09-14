@@ -1,4 +1,4 @@
-import type { Orbit, StarSystem } from "../gen/system";
+import type { Moon, Orbit, StarSystem } from "../gen/system";
 import type { SpectralClass, Star } from "../gen/star";
 
 /**
@@ -75,6 +75,11 @@ export function contentLabel(orbit: Orbit): string {
   }
 }
 
+/** How many moons are drawn under a gas giant before the rest are a figure. */
+const MOONS_SHOWN = 8;
+const MOON_GAP = 9;
+const MOON_Y = AXIS_Y + 31;
+
 export interface OrbitDiagram {
   readonly element: SVGSVGElement;
   render(system: StarSystem): void;
@@ -87,8 +92,11 @@ export interface OrbitDiagram {
    * and the worlds arrive as they are drawn.
    */
   setPicture(orbitIndex: number, png: string): void;
-  setSelected(orbitIndex: number | null): void;
+  /** Mark a body: an orbit, and a moon of it where one is what is selected. */
+  setSelected(orbitIndex: number | null, moon?: number | null): void;
   onSelect(handler: (orbitIndex: number) => void): void;
+  /** A moon picked off the strip, under the gas giant it belongs to. */
+  onSelectMoon(handler: (orbitIndex: number, moon: number) => void): void;
 }
 
 export function createOrbitDiagram(): OrbitDiagram {
@@ -100,10 +108,12 @@ export function createOrbitDiagram(): OrbitDiagram {
   svg.append(zoneLayer, axisLayer, bodyLayer, selectLayer);
 
   const handlers: ((orbitIndex: number) => void)[] = [];
+  const moonHandlers: ((orbitIndex: number, moon: number) => void)[] = [];
   const pictures = new Map<number, string>();
   const groups = new Map<number, SVGGElement>();
   let placed: { index: number; x: number }[] = [];
   let selected: number | null = null;
+  let selectedMoon: number | null = null;
   let drawn: readonly Orbit[] = [];
 
   function xOf(index: number): number {
@@ -122,6 +132,21 @@ export function createOrbitDiagram(): OrbitDiagram {
         r: 28,
       }),
     );
+    // A moon selected anywhere is marked here too, so the three views agree
+    // about which body is being looked at rather than only which orbit.
+    if (selectedMoon === null) return;
+    const orbit = drawn.find((held) => held.index === selected);
+    if (orbit === undefined || orbit.content.kind !== "giant") return;
+    const at = moonPlaces(orbit.content.moons, xOf(selected)).get(selectedMoon);
+    if (at === undefined) return;
+    selectLayer.append(make("circle", { class: "orbit-moon-select", cx: at, cy: MOON_Y, r: 5 }));
+  }
+
+  /** Where each moon's mark sits under its giant, laid out from the middle. */
+  function moonPlaces(moons: readonly Moon[], x: number): Map<number, number> {
+    const shown = moons.slice(0, MOONS_SHOWN);
+    const from = x - ((shown.length - 1) * MOON_GAP) / 2;
+    return new Map(shown.map((moon, at) => [moon.index, from + at * MOON_GAP]));
   }
 
   function render(system: StarSystem): void {
@@ -197,6 +222,7 @@ export function createOrbitDiagram(): OrbitDiagram {
   function drawOrbit(orbit: Orbit, x: number): void {
     const group = make("g", { class: `orbit orbit-${orbit.content.kind}`, tabindex: 0 });
     group.setAttribute("role", "button");
+    group.dataset["orbit"] = String(orbit.index);
     const held = contentLabel(orbit);
     const title = make("title");
     title.textContent = `Orbit ${orbit.index}, ${auLabel(orbit.au)}: ${held}`;
@@ -216,6 +242,8 @@ export function createOrbitDiagram(): OrbitDiagram {
     group.append(make("line", { class: "orbit-tick", x1: x, y1: AXIS_Y - 7, x2: x, y2: AXIS_Y + 7 }));
     group.append(...bodyOf(orbit, x));
 
+    if (orbit.content.kind === "giant") drawMoons(group, orbit.content.moons, x);
+
     const au = make("text", { class: "orbit-au", x, y: HEIGHT - 26 });
     au.textContent = auLabel(orbit.au);
     const what = make("text", { class: "orbit-label", x, y: HEIGHT - 10 });
@@ -234,6 +262,55 @@ export function createOrbitDiagram(): OrbitDiagram {
     if (already === undefined) bodyLayer.append(group);
     else already.replaceWith(group);
     groups.set(orbit.index, group);
+  }
+
+  /**
+   * The moons of a gas giant, as a row of marks under it. SystemSpec 4.5.1 makes
+   * every one of them a world, and a strip that showed none of them said a gas
+   * giant was the end of that orbit rather than the start of it.
+   *
+   * Each mark is its own moon and picks it out; past eight the rest are a
+   * figure, since nine dots and twelve dots look the same and the tree has the
+   * list.
+   */
+  function drawMoons(group: SVGGElement, moons: readonly Moon[], x: number): void {
+    const places = moonPlaces(moons, x);
+    for (const moon of moons.slice(0, MOONS_SHOWN)) {
+      const at = places.get(moon.index)!;
+      const mark = make("circle", {
+        class: hasPeople(moon) ? "orbit-moon orbit-moon-people" : "orbit-moon",
+        cx: at,
+        cy: MOON_Y,
+        r: 2.6,
+      });
+      const title = make("title");
+      title.textContent = `Moon ${moon.index}: ${moon.uwp}`;
+      mark.append(title);
+      mark.addEventListener("click", (event) => {
+        event.stopPropagation();
+        for (const handler of moonHandlers) handler(orbitOfGroup(group), moon.index);
+      });
+      group.append(mark);
+    }
+    if (moons.length <= MOONS_SHOWN) return;
+    const more = make("text", {
+      class: "orbit-moon-more",
+      x: x + ((MOONS_SHOWN - 1) * MOON_GAP) / 2 + 9,
+      y: MOON_Y + 4,
+    });
+    more.textContent = `+${moons.length - MOONS_SHOWN}`;
+    group.append(more);
+  }
+
+  /** Which orbit a drawn group belongs to, so a moon knows its own giant. */
+  function orbitOfGroup(group: SVGGElement): number {
+    return Number(group.dataset["orbit"] ?? 0);
+  }
+
+  /** Whether anybody lives on a moon, which is what marks it out on the strip. */
+  function hasPeople(moon: Moon): boolean {
+    const population = moon.uwp.slice(4, 5);
+    return population !== "0" && population !== "";
   }
 
   /** What sits in the orbit, drawn. Sizes say kind, not scale. */
@@ -332,12 +409,16 @@ export function createOrbitDiagram(): OrbitDiagram {
       // back underneath.
       drawSelection();
     },
-    setSelected(orbitIndex) {
+    setSelected(orbitIndex, moon = null) {
       selected = orbitIndex;
+      selectedMoon = moon;
       drawSelection();
     },
     onSelect(handler) {
       handlers.push(handler);
+    },
+    onSelectMoon(handler) {
+      moonHandlers.push(handler);
     },
   };
 }

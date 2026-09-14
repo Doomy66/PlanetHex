@@ -2138,13 +2138,14 @@ el<HTMLTextAreaElement>("sys-written").addEventListener("input", (event) => {
 function selectBody(orbitIndex: number | null, moon: number | null): void {
   orbitShown = orbitIndex;
   moonShown = moon;
-  orbits.setSelected(orbitIndex);
+  orbits.setSelected(orbitIndex, moon);
   model.setSelected(orbitIndex);
   showOrbit(orbitIndex);
   markTree();
 }
 
 orbits.onSelect((index) => selectBody(index, null));
+orbits.onSelectMoon((index, moon) => selectBody(index, moon));
 model.onSelect((index) => selectBody(index, null));
 
 el("sys-roll").addEventListener("click", startNewSystem);
@@ -2315,8 +2316,14 @@ function markTree(): void {
     const orbit = Number(button.dataset["orbit"]);
     const moon = button.dataset["moon"] === "" ? null : Number(button.dataset["moon"]);
     const here = orbit === orbitShown && moon === moonShown;
-    if (here) button.setAttribute("aria-current", "true");
-    else button.removeAttribute("aria-current");
+    if (here) {
+      button.setAttribute("aria-current", "true");
+      // Picked in the model or on the strip, the row may be well down a list
+      // nobody has scrolled. A mark that cannot be seen marks nothing.
+      button.scrollIntoView({ block: "nearest" });
+    } else {
+      button.removeAttribute("aria-current");
+    }
   }
 }
 
