@@ -392,6 +392,12 @@ export function worldName(systemName: string, planet: number): string {
  * repeating itself. One system, one way of naming things, and no two places in
  * it called the same.
  *
+ * Not everywhere people live has one. A place is named by the people who stayed
+ * there, and a few dozen of them working a rock have rarely bothered: it was
+ * Corrise-8b when they landed and nobody ever called it anything else. So the
+ * bigger the population the likelier the name, and an outpost usually keeps its
+ * designation. SystemSpec 7.3.4.
+ *
  * The first name drawn is the system's, which is its main world's under 7.1:
  * a system is named for the world people mean when they say its name, whether
  * or not the main world is the only inhabited one.
@@ -414,43 +420,60 @@ export function namesOf(system: StarSystem): SystemNames {
   const worlds = new Map<number, string>();
   const moons = new Map<string, string>();
 
-  // Who wants a name, in the order the names are handed out: the main world
-  // first, since the system is called after it, then everything else outward.
-  const wanting: { orbit: number; moon: number | null }[] = [];
-  for (const orbit of system.orbits) {
-    if (orbit.content.kind === "world" && orbit.content.main) wanting.push({ orbit: orbit.index, moon: null });
-  }
+  // Everywhere anybody lives, outward, and whether the people there ever gave
+  // the place a name of its own.
+  const main = system.mainWorld.orbitIndex;
+  const named: { orbit: number; moon: number | null }[] = [];
+  let mainNamed = false;
   for (const orbit of system.orbits) {
     const content = orbit.content;
-    if (content.kind === "world" && !content.main && livedOn(content.uwp)) {
-      wanting.push({ orbit: orbit.index, moon: null });
+    if (content.kind === "world" && wasNamed(system.seed, content.uwp, orbit.index, null)) {
+      if (orbit.index === main) mainNamed = true;
+      else named.push({ orbit: orbit.index, moon: null });
     }
     if (content.kind !== "giant") continue;
     for (const moon of content.moons) {
-      if (livedOn(moon.uwp)) wanting.push({ orbit: orbit.index, moon: moon.index });
+      if (wasNamed(system.seed, moon.uwp, orbit.index, moon.index)) {
+        named.push({ orbit: orbit.index, moon: moon.index });
+      }
     }
   }
 
-  // The main world is always drawn for, even where nobody lives on it: the
-  // system still has to be called something.
-  const drawn = settlementNames(`${system.seed}:names`, Math.max(1, wanting.length));
-  wanting.forEach((place, at) => {
-    const name = drawn[at] ?? `${system.seed}-${at}`;
-    if (place.moon === null) worlds.set(place.orbit, name);
-    else moons.set(moonKey(place.orbit, place.moon), name);
+  // One more name than there are named places: the first is the system's, and
+  // the main world takes it where the main world is one of them. A system is
+  // called something whatever its main world is called.
+  const drawn = settlementNames(`${system.seed}:names`, named.length + 1);
+  const name = drawn[0] ?? system.seed;
+  if (mainNamed) worlds.set(main, name);
+  named.forEach((place, at) => {
+    const held = drawn[at + 1] ?? `${name}-${at + 1}`;
+    if (place.moon === null) worlds.set(place.orbit, held);
+    else moons.set(moonKey(place.orbit, place.moon), held);
   });
-
-  const main = system.mainWorld.orbitIndex;
-  const name = worlds.get(main) ?? drawn[0] ?? system.seed;
-  // A main world nobody lives on has lent its name to the system and kept none
-  // of its own: an empty rock is a place on a chart, not somewhere with a name.
-  if (!livedOn(system.mainWorld.uwp)) worlds.delete(main);
   return { system: name, worlds, moons };
 }
 
-function livedOn(uwp: string): boolean {
+/**
+ * How likely a place with people on it is to have a name of its own rather than
+ * the designation it was given before anybody went there. SystemSpec 7.3.4.
+ *
+ * A world with millions on it has been called something for centuries. A mining
+ * crew of forty has a contract number and a shift rota, and the chart said
+ * Corrise-8b.
+ */
+const NAMED_AT_ALL = 0.15;
+const NAMED_PER_DIGIT = 0.1;
+const NAMED_AT_MOST = 0.95;
+
+function wasNamed(seed: string, uwp: string, orbitIndex: number, moon: number | null): boolean {
   const profile = parseUwp(uwp);
-  return profile !== null && profile.population > 0;
+  if (profile === null || profile.population === 0) return false;
+  const chance = Math.min(
+    NAMED_AT_MOST,
+    NAMED_AT_ALL + NAMED_PER_DIGIT * profile.population,
+  );
+  const stream = moon === null ? "named" : `named-moon-${moon}`;
+  return valueFor(`${seed}:${stream}`, orbitIndex) < chance;
 }
 
 /** What a belt is called. Belts are counted apart from planets. SystemSpec 7.4. */

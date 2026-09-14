@@ -244,29 +244,51 @@ describe("what a body is called", () => {
     }
   });
 
-  it("names the places people live and numbers the rest", () => {
-    // SystemSpec 7.3: people name where they live, and a numbered rock is a rock
-    // nobody stayed on.
-    let named = 0;
+  it("never names a place nobody lives on", () => {
+    // SystemSpec 7.3: a place is named by the people who stayed there, so a rock
+    // nobody stayed on keeps the designation that says where it is.
     for (const seed of SEEDS) {
       const system = generateSystem(seed);
       const names = namesOf(system);
       expect(names.system, seed).not.toBe("");
       for (const orbit of system.orbits) {
         const content = orbit.content;
-        if (content.kind === "world") {
-          const people = parseUwp(content.uwp)!.population > 0;
-          expect(names.worlds.has(orbit.index), `${seed} orbit ${orbit.index}`).toBe(people);
-          if (people) named++;
+        if (content.kind === "world" && parseUwp(content.uwp)!.population === 0) {
+          expect(names.worlds.has(orbit.index), `${seed} orbit ${orbit.index}`).toBe(false);
         }
         if (content.kind !== "giant") continue;
         for (const moon of content.moons) {
-          const people = parseUwp(moon.uwp)!.population > 0;
-          expect(names.moons.has(moonKey(orbit.index, moon.index))).toBe(people);
+          if (parseUwp(moon.uwp)!.population > 0) continue;
+          expect(names.moons.has(moonKey(orbit.index, moon.index))).toBe(false);
         }
       }
     }
-    expect(named).toBeGreaterThan(100);
+  });
+
+  it("leaves the smallest places with the designation they landed on", () => {
+    // SystemSpec 7.3.4: it was Corrise-8b when they got there and nobody has
+    // called it anything else. The bigger the population the likelier the name.
+    let small = { named: 0, all: 0 };
+    let large = { named: 0, all: 0 };
+    for (const seed of SEEDS) {
+      const system = generateSystem(seed);
+      const names = namesOf(system);
+      for (const orbit of system.orbits) {
+        const content = orbit.content;
+        if (content.kind !== "world") continue;
+        const people = parseUwp(content.uwp)!.population;
+        if (people === 0) continue;
+        const tally = people <= 3 ? small : large;
+        tally.all++;
+        if (names.worlds.has(orbit.index)) tally.named++;
+      }
+    }
+    expect(small.all).toBeGreaterThan(20);
+    expect(large.all).toBeGreaterThan(20);
+    // Some of each, and the big ones far likelier.
+    expect(small.named).toBeGreaterThan(0);
+    expect(small.named).toBeLessThan(small.all);
+    expect(large.named / large.all).toBeGreaterThan(small.named / small.all + 0.2);
   });
 
   it("gives no two places in a system the same name", () => {
@@ -278,15 +300,19 @@ describe("what a body is called", () => {
   });
 
   it("calls the system after its main world", () => {
-    // SystemSpec 7.3.3. A main world nobody lives on lends its name and keeps
-    // none of its own, since the system still has to be called something.
+    // SystemSpec 7.3.3. A main world with a name of its own is the system's
+    // name; one without lends none, and the system is called something anyway.
+    let named = 0;
     for (const seed of SEEDS) {
       const system = generateSystem(seed);
       const names = namesOf(system);
+      expect(names.system).not.toBe("");
       const main = names.worlds.get(system.mainWorld.orbitIndex);
-      if (parseUwp(system.mainWorld.uwp)!.population > 0) expect(main).toBe(names.system);
-      else expect(main).toBeUndefined();
+      if (main === undefined) continue;
+      named++;
+      expect(main, seed).toBe(names.system);
     }
+    expect(named).toBeGreaterThan(50);
   });
 
   it("writes the names Traveller writes", () => {

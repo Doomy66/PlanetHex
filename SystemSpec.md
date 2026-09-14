@@ -190,7 +190,11 @@ This document sits under [SubSectorSpec.md](SubSectorSpec.md) and over [PlanetSp
 
 7.3.2 The names of one system are one draw. The machinery picks a flavour and then makes as many names as are asked for without repeating itself, so a system's places sound like each other's neighbours and no two of them are called the same thing.
 
-7.3.3 The system's name is the first of that draw, and it is the main world's. A main world nobody lives on lends its name to the system and keeps none of its own, because an empty rock is a place on a chart rather than somewhere with a name, and the system still has to be called something.
+7.3.3 The system's name is the first of that draw, and it is the main world's. A main world that has no name of its own lends none, and the system is still called that first name, because an empty rock is a place on a chart rather than somewhere with a name and the system has to be called something.
+
+7.3.4 Not everywhere people live is named. A place is named by the people who stayed there, and a few dozen working a rock have often never bothered: it was Corrise-8b when they landed and nobody has called it anything else since. So the likelihood follows the population - a world with millions on it has been called something for centuries, an outpost of forty has a contract number - and the designation of 7.2 is what a place without a name of its own is called.
+
+7.3.4.1 This is why 7.2 is the naming and 7.3 is the exception rather than the other way round. Every body in a system has a designation and always did; a name is a thing that happened to some of them afterwards.
 
 7.4 A gas giant is a planet and is counted as one. A belt is not, and takes a numbering of its own: the system name, Belt, and which belt it is, so Sol Belt-1 is the one between Mars and Jupiter.
 

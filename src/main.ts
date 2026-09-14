@@ -2281,6 +2281,10 @@ function showTree(): void {
 
   const peopleOnly = el<HTMLInputElement>("sys-inhabited").checked;
   for (const orbit of system.orbits) {
+    // An empty orbit is a gap rather than a thing, and a list of things is not
+    // the place to say how many gaps there are. The model and the strip draw
+    // them, which is where an empty orbit is worth seeing.
+    if (orbit.content.kind === "empty") continue;
     // Whatever is selected stays in the list whether anybody lives on it or
     // not: a filter that hides what the rest of the window is about is a filter
     // that has lost the user.
