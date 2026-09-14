@@ -99,7 +99,15 @@ import { auLabel, contentLabel, createOrbitDiagram } from "./ui/orbits";
 import { createOrbitMap } from "./ui/orbitmap";
 import { liveGlobe, worldImage } from "./ui/worldimage";
 import { giantImage } from "./ui/giant";
-import { moonsOf, worldName, worldSettings, worldsOf, type StarSystem } from "./gen/system";
+import {
+  beltName,
+  moonsOf,
+  ordinalOf,
+  worldName,
+  worldSettings,
+  worldsOf,
+  type StarSystem,
+} from "./gen/system";
 import {
   newSystemDoc,
   overrideFor,
@@ -2023,7 +2031,6 @@ function showOrbit(index: number | null): void {
     el("sys-note").textContent = describeUwp(moon.uwp, detail) ?? "";
     showMoonPicture(system, orbit.index, moon.seed, moon.uwp);
     open.hidden = false;
-    open.textContent = `Open ${moonName(system, orbit.index, moon.index)}`;
     return;
   }
 
@@ -2040,7 +2047,6 @@ function showOrbit(index: number | null): void {
     // diagram's are: the panel should be readable before the picture arrives.
     showWorldPicture(system, orbit.index);
     open.hidden = false;
-    open.textContent = `Open ${worldName(systemName(system.seed), orbit.index)}`;
   } else if (content.kind === "giant") {
     const moons = content.moons.length === 1 ? "one moon" : `${content.moons.length} moons`;
     el("sys-note").textContent =
@@ -2302,8 +2308,12 @@ function showTree(): void {
 function bodyName(open: StarSystem, orbitIndex: number): string {
   const orbit = open.orbits.find((held) => held.index === orbitIndex);
   if (orbit === undefined) return "";
-  const named = orbit.content.kind === "world" || orbit.content.kind === "giant";
-  return named ? worldName(systemName(open.seed), orbitIndex) : `${auLabel(orbit.au)}`;
+  const held = ordinalOf(open, orbitIndex);
+  if (held.kind === "planet") return worldName(systemName(open.seed), held.n);
+  if (held.kind === "belt") return beltName(systemName(open.seed), held.n);
+  // An empty orbit is a place rather than a thing, and how far out it is the
+  // only thing there is to say about it.
+  return auLabel(orbit.au);
 }
 
 /** Whether anybody lives on the body in an orbit, or on any of its moons. */
@@ -2399,7 +2409,7 @@ function showMoons(open: StarSystem, orbitIndex: number): void {
 /** A moon is its planet and a letter. SystemSpec 7.2. */
 function moonName(open: StarSystem, orbitIndex: number, moon: number): string {
   const letter = String.fromCharCode(96 + Math.min(26, moon));
-  return `${worldName(systemName(open.seed), orbitIndex)}${letter}`;
+  return `${bodyName(open, orbitIndex)}${letter}`;
 }
 
 
@@ -2461,7 +2471,7 @@ el("sys-open").addEventListener("click", () => {
   openWorld(
     orbit.content.seed,
     orbit.content.uwp,
-    worldName(systemName(system.seed), orbit.index),
+    bodyName(system, orbit.index),
     worldSettings(system, orbit.index),
     orbit.au,
   );

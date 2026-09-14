@@ -1,7 +1,15 @@
 import { describe, expect, it } from "vitest";
 import { parseUwp, rollUwp } from "../planet";
 import { pbgFor } from "./trade";
-import { generateSystem, mainWorldSeed, orbitsFor, worldSettings } from "./system";
+import {
+  beltName,
+  generateSystem,
+  mainWorldSeed,
+  ordinalOf,
+  orbitsFor,
+  worldName,
+  worldSettings,
+} from "./system";
 import { planetDetail } from "./detail";
 import { luminosityOf, starsFor } from "./star";
 
@@ -197,6 +205,46 @@ describe("generateSystem", () => {
     for (const seed of SEEDS) {
       expect(generateSystem(seed).orbits.length, seed).toBeGreaterThan(0);
     }
+  });
+});
+
+describe("what a body is called", () => {
+  it("counts the planets outward from one, and the belts apart from them", () => {
+    // SystemSpec 7.2.1 and 7.4.1: a reader counts planets, and a belt between
+    // two of them does not push the ones beyond it along.
+    for (const seed of SEEDS) {
+      const system = generateSystem(seed);
+      let planets = 0;
+      let belts = 0;
+      for (const orbit of system.orbits) {
+        const kind = orbit.content.kind;
+        const held = ordinalOf(system, orbit.index);
+        if (kind === "world" || kind === "giant") {
+          planets++;
+          expect(held, `${seed} orbit ${orbit.index}`).toEqual({ kind: "planet", n: planets });
+        } else if (kind === "belt") {
+          belts++;
+          expect(held, `${seed} orbit ${orbit.index}`).toEqual({ kind: "belt", n: belts });
+        } else {
+          expect(held.kind).toBe("none");
+        }
+      }
+    }
+  });
+
+  it("never names a planet nought", () => {
+    for (const seed of SEEDS) {
+      const system = generateSystem(seed);
+      for (const orbit of system.orbits) {
+        const held = ordinalOf(system, orbit.index);
+        if (held.kind !== "none") expect(held.n).toBeGreaterThan(0);
+      }
+    }
+  });
+
+  it("writes the names Traveller writes", () => {
+    expect(worldName("Sol", 3)).toBe("Sol-3");
+    expect(beltName("Sol", 1)).toBe("Sol Belt-1");
   });
 });
 

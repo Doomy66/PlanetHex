@@ -174,9 +174,11 @@ This document sits under [SubSectorSpec.md](SubSectorSpec.md) and over [PlanetSp
 
 7.1 The system is named for its main world, which the subsector spec 3.4 named. A system does not get a name of its own.
 
-7.2 A world is the system name, a hyphen, and its orbit number: the third orbit of Sol is Sol-3. Moons are the world and a letter, Sol-5a.
+7.2 A planet is the system name, a hyphen, and which planet it is, counting outward from one: the third planet of Sol is Sol-3. Moons are the planet and a letter, Sol-5a.
 
-7.2.1 Numbered by orbit rather than counted off in sequence, so a world's name says where it is. The fourth orbit is Sol-4 whether or not orbits one to three hold anything.
+7.2.1 Counted rather than taken from the orbit's own number. The orbits are slots in a table that starts closer in than most systems have anything, so an orbit number would be a fact about the table rather than about the system, and a system whose innermost slot held a world would have a Sol-0 in it. A reader counts planets, and the third planet of Sol is Earth whether or not there is a slot inside Mercury's.
+
+7.2.1.1 What this costs is that a name says which planet rather than where: two systems' third planets are both -3 wherever their orbits happen to fall. The distance is on the diagram, in the panel, and beside the name in the tree, so nothing is lost that was being read off the name.
 
 7.2.2 Arabic and hyphenated rather than the Roman numeral a catalogue would use, because this is a filename as much as a label: it is the stem every file of that world is saved under, at the app spec 4.2.1. Sol III reads better and sorts worse.
 
@@ -186,7 +188,9 @@ This document sits under [SubSectorSpec.md](SubSectorSpec.md) and over [PlanetSp
 
 7.3.1 As well as, not instead of. The name is what the world is called and 7.2 is where it sits, and a referee needs both: the app spec 4.2.1.1 saves under the second, and everything a player sees uses the first.
 
-7.4 Belts and gas giants take the numeral of their orbit like anything else, so a referee can say where something is without counting inwards from the edge.
+7.4 A gas giant is a planet and is counted as one. A belt is not, and takes a numbering of its own: the system name, Belt, and which belt it is, so Sol Belt-1 is the one between Mars and Jupiter.
+
+7.4.1 Counted apart so that a belt does not push the planets beyond it along. A system with a belt at its second orbit still has a third planet, and it is the third thing anybody would point at.
 
 ## 8. Display
 

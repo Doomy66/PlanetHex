@@ -92,11 +92,19 @@ export function createOrbitMap(): OrbitMap {
   let selected: number | null = null;
   let view = { ...HOME_VIEW };
 
+  /**
+   * The window on the drawing. Its height is the drawing's own, and its width is
+   * whatever the panel's shape asks for, so a wide panel shows more of the
+   * system to either side rather than the same square with a margin down both
+   * ends of it.
+   */
   function showView(): void {
-    const width = SIZE / view.zoom;
+    const height = SIZE / view.zoom;
+    const across = svg.clientWidth > 0 && svg.clientHeight > 0 ? svg.clientWidth / svg.clientHeight : 1;
+    const width = height * across;
     svg.setAttribute(
       "viewBox",
-      `${CENTRE - width / 2 + view.panX} ${CENTRE - width / 2 + view.panY} ${width} ${width}`,
+      `${CENTRE - width / 2 + view.panX} ${CENTRE - height / 2 + view.panY} ${width} ${height}`,
     );
   }
 
@@ -193,8 +201,12 @@ export function createOrbitMap(): OrbitMap {
         }),
       );
       if (orbit.content.kind === "belt") drawBelt(system, orbit, r);
-      if (r - lastLabel < LABEL_GAP) continue;
-      lastLabel = r;
+      // Spaced by where the labels actually land, which is the leant distance:
+      // seen edge on, paths a long way apart in the plane are a few units apart
+      // on the page.
+      const under = r * lean;
+      if (under - lastLabel < LABEL_GAP) continue;
+      lastLabel = under;
       // The distance sits under its own path, and only where there is room for
       // it: four figures stacked on each other say less than one that is read.
       const label = make("text", { class: "map-au", x: CENTRE, y: CENTRE + r * lean - 8 });
@@ -472,6 +484,9 @@ export function createOrbitMap(): OrbitMap {
   }
 
   svg.addEventListener("dblclick", resetView);
+
+  // A panel that changes shape changes what the window on to the drawing is.
+  new ResizeObserver(() => draw()).observe(svg);
 
   return {
     element: svg,

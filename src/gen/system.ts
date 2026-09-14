@@ -341,12 +341,47 @@ export function moonsOf(system: StarSystem, orbitIndex: number): readonly Moon[]
 }
 
 /**
- * What a world in a system is called, before anybody names it. SystemSpec 7.2:
- * the system's name, a hyphen, and the orbit it is in, which is also the stem
+ * Which planet or which belt an orbit holds, counting outward from one.
+ * SystemSpec 7.2.
+ *
+ * Counted rather than taken from the orbit's own number, because the orbits are
+ * slots in a table that starts closer in than most systems have anything, and a
+ * reader counts planets. The third planet of Sol is Earth whether or not there
+ * is a slot inside Mercury's.
+ *
+ * Planets and belts are counted apart, so a belt between two planets does not
+ * push the numbering of everything beyond it along.
+ */
+export function ordinalOf(
+  system: StarSystem,
+  orbitIndex: number,
+): { kind: "planet" | "belt" | "none"; n: number } {
+  let planets = 0;
+  let belts = 0;
+  for (const orbit of system.orbits) {
+    const kind = orbit.content.kind;
+    if (kind === "world" || kind === "giant") planets++;
+    else if (kind === "belt") belts++;
+    if (orbit.index !== orbitIndex) continue;
+    if (kind === "world" || kind === "giant") return { kind: "planet", n: planets };
+    if (kind === "belt") return { kind: "belt", n: belts };
+    return { kind: "none", n: 0 };
+  }
+  return { kind: "none", n: 0 };
+}
+
+/**
+ * What a planet of a system is called, before anybody names it. SystemSpec 7.2:
+ * the system's name, a hyphen, and which planet it is, which is also the stem
  * every file of that world is saved under at the app spec 4.2.1.
  */
-export function worldName(systemName: string, orbitIndex: number): string {
-  return `${systemName}-${orbitIndex}`;
+export function worldName(systemName: string, planet: number): string {
+  return `${systemName}-${planet}`;
+}
+
+/** What a belt is called. Belts are counted apart from planets. SystemSpec 7.4. */
+export function beltName(systemName: string, belt: number): string {
+  return `${systemName} Belt-${belt}`;
 }
 
 function countOf(content: Map<number, OrbitContent>, kind: OrbitContent["kind"]): number {

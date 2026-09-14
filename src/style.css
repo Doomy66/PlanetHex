@@ -653,8 +653,15 @@ body[data-view="planet"] .system { display: none; }
 
 /* Most of a system is empty rock, and a referee working on the places people
    are should be able to put the rest away. */
-.sys-only { display: flex; align-items: center; gap: 6px; margin: 0 0 8px; }
-.sys-only input { margin: 0; }
+.sys-only {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 6px;
+  margin: 0 0 8px;
+  white-space: nowrap;
+}
+.sys-only input { flex: none; width: auto; margin: 0; }
 
 /* The tree: the system's bodies in order, a giant's moons indented under it. */
 .sys-tree { list-style: none; margin: 0; padding: 0; }
@@ -692,9 +699,8 @@ body[data-view="planet"] .system { display: none; }
 /* The model is turned by dragging and zoomed by the wheel, so the browser must
    not take either gesture for a scroll. */
 .orbitmap {
-  width: auto;
+  width: 100%;
   height: 100%;
-  max-width: 100%;
   display: block;
   cursor: grab;
   touch-action: none;
@@ -792,6 +798,11 @@ body[data-view="planet"] .system { display: none; }
 .sys-globe canvas { display: block; cursor: grab; }
 .sys-globe canvas:active { cursor: grabbing; }
 
+/* The name of the body, and the way into it, on one line: the button says
+   what it opens by sitting beside it. */
+.sys-title { display: flex; align-items: baseline; gap: 10px; margin: 0 0 8px; }
+.sys-title h2 { flex: 1; min-width: 0; }
+.sys-title .sys-open { flex: none; margin: 0; padding: 3px 10px; }
 .sys-detail h2 { margin: 0 0 8px; color: var(--text); text-transform: none; letter-spacing: 0; font-size: 14px; }
 .sys-facts { display: grid; grid-template-columns: auto 1fr; gap: 2px 12px; margin: 0; }
 .sys-facts dt { color: var(--muted); }
@@ -799,7 +810,7 @@ body[data-view="planet"] .system { display: none; }
 .sys-note { color: var(--muted); margin: 8px 0 0; }
 .sys-written { display: block; margin: 10px 0 0; color: var(--muted); }
 .sys-written textarea { margin-top: 4px; }
-.sys-open { margin-top: 10px; }
+
 
 /* The moons of a gas giant, each a world that can be opened. SystemSpec 4.5.1. */
 .sys-moons { list-style: none; margin: 8px 0 0; padding: 0; display: flex; flex-wrap: wrap; gap: 6px; }
