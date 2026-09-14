@@ -96,6 +96,7 @@ import { EXPORT_FORMATS, manifest, type ExportContext } from "./io/export";
 import { shaderFor, surfaceOn } from "./surface";
 import { currentAppView, landingSay, setAppView, wireLanding } from "./ui/landing";
 import { auLabel, contentLabel, createOrbitDiagram } from "./ui/orbits";
+import { createOrbitMap } from "./ui/orbitmap";
 import { liveGlobe, worldImage } from "./ui/worldimage";
 import { giantImage } from "./ui/giant";
 import { moonsOf, worldName, worldSettings, worldsOf, type StarSystem } from "./gen/system";
@@ -1792,6 +1793,8 @@ el("home").addEventListener("click", () => {
 
 const orbits = createOrbitDiagram();
 el("sys-diagram").append(orbits.element);
+const model = createOrbitMap();
+el("sys-model").append(model.element);
 
 /**
  * How big a world is drawn, once, for both the diagram and the panel.
@@ -1832,7 +1835,10 @@ function drawNextWorld(): void {
     return;
   }
   const png = pictureOf(pending.system, next);
-  if (png !== null) orbits.setPicture(next, png);
+  if (png !== null) {
+    orbits.setPicture(next, png);
+    model.setPicture(next, png);
+  }
   setTimeout(drawNextWorld, 0);
 }
 
@@ -1864,7 +1870,12 @@ function pictureOf(open: StarSystem, orbitIndex: number): string | null {
  */
 let doc: SystemDoc | null = null;
 let system: StarSystem | null = null;
+/**
+ * Which body the right-hand panel is about: an orbit, and a moon within it
+ * where the user picked one out of the tree or the moon list.
+ */
 let orbitShown: number | null = null;
+let moonShown: number | null = null;
 /** The folder this system was loaded from or last saved into. AppSpec 3.3.2. */
 let systemFolder: DirectoryHandle | null = null;
 let systemDirty = false;
@@ -1933,15 +1944,18 @@ function openSystem(next: SystemDoc): void {
   el<HTMLInputElement>("sys-sector").value = next.sector;
   el<HTMLInputElement>("sys-hex").value = next.hex;
   orbits.render(system);
+  model.render(system);
   // The gas giants first, because they cost nothing: a picture of one is bands
   // on a canvas rather than a surface generated and photographed.
   for (const orbit of system.orbits) {
     if (orbit.content.kind !== "giant") continue;
-    orbits.setPicture(orbit.index, giantImage(`${system.seed}:${orbit.index}`, GLOBE_PX));
+    const png = giantImage(`${system.seed}:${orbit.index}`, GLOBE_PX);
+    orbits.setPicture(orbit.index, png);
+    model.setPicture(orbit.index, png);
   }
-  orbits.setSelected(orbitShown);
+  selectBody(orbitShown, null);
   showHeader();
-  showOrbit(orbitShown);
+  showTree();
   drawWorldsSoon(system);
   const worlds = worldsOf(system).length;
   sysSay(`${system.orbits.length} orbits, ${worlds === 1 ? "one world" : `${worlds} worlds`}.`);
@@ -1988,6 +2002,30 @@ function showOrbit(index: number | null): void {
   row("Sunlight", sunlightNote(orbit.sunEquivalentAu));
   row("Year", yearNote(orbit.au, system.stars.primary.luminosity));
   if (orbit.habitable) row("Zone", "habitable");
+
+  // A moon of the giant in this orbit, where the tree or the moon list picked
+  // one out. It sits at its giant's distance and under its giant's star, so
+  // everything about where it is comes from the orbit. SystemSpec 4.5.1.
+  const moon =
+    moonShown === null
+      ? undefined
+      : moonsOf(system, orbit.index).find((held) => held.index === moonShown);
+  if (moon !== undefined) {
+    const settings = worldSettings(system, orbit.index);
+    const detail = planetDetail(moon.seed, moon.uwp, settings);
+    el("sys-what").textContent = `${moonName(system, orbit.index, moon.index)} — moon`;
+    row("Moon of", `the gas giant at ${auLabel(orbit.au)}`);
+    row("Profile", moon.uwp);
+    row("Seed", moon.seed);
+    const codes = tradeCodes(moon.uwp);
+    if (codes.length > 0) row("Trade", codes.map((code) => `${code.code} ${code.label}`).join(", "));
+    row("Surface", `${(detail.meanTempK - 273.15).toFixed(0)}°C mean`);
+    el("sys-note").textContent = describeUwp(moon.uwp, detail) ?? "";
+    showMoonPicture(system, orbit.index, moon.seed, moon.uwp);
+    open.hidden = false;
+    open.textContent = `Open ${moonName(system, orbit.index, moon.index)}`;
+    return;
+  }
 
   if (content.kind === "world") {
     const detail = planetDetail(content.seed, content.uwp, worldSettings(system, orbit.index));
@@ -2037,6 +2075,20 @@ function sunlightNote(sunEquivalentAu: number): string {
  * and shortly if it has not. The check on the way back is what stops a picture
  * landing in a panel that has moved on to another orbit.
  */
+function showMoonPicture(
+  open: StarSystem,
+  orbitIndex: number,
+  seed: string,
+  uwp: string,
+): void {
+  const box = el("sys-globe");
+  setTimeout(() => {
+    if (system !== open || orbitShown !== orbitIndex) return;
+    box.replaceChildren(liveGlobe({ seed, uwp, ...worldSettings(open, orbitIndex) }));
+    box.hidden = false;
+  }, 0);
+}
+
 function showWorldPicture(open: StarSystem, orbitIndex: number): void {
   const box = el("sys-globe");
   setTimeout(() => {
@@ -2082,11 +2134,18 @@ el<HTMLTextAreaElement>("sys-written").addEventListener("input", (event) => {
   markSystemDirty();
 });
 
-orbits.onSelect((index) => {
-  orbitShown = index;
-  orbits.setSelected(index);
-  showOrbit(index);
-});
+/** Select a body: an orbit, or a moon of the giant in one. */
+function selectBody(orbitIndex: number | null, moon: number | null): void {
+  orbitShown = orbitIndex;
+  moonShown = moon;
+  orbits.setSelected(orbitIndex);
+  model.setSelected(orbitIndex);
+  showOrbit(orbitIndex);
+  markTree();
+}
+
+orbits.onSelect((index) => selectBody(index, null));
+model.onSelect((index) => selectBody(index, null));
 
 el("sys-roll").addEventListener("click", startNewSystem);
 
@@ -2167,6 +2226,100 @@ async function loadSystem(): Promise<void> {
  * world that opens is the world the system made rather than one that happens to
  * share its seed.
  */
+/**
+ * What the system holds, down the left: every orbit in order, and a gas giant's
+ * moons under it. The one place a moon can be found without knowing which giant
+ * it belongs to.
+ */
+function showTree(): void {
+  const tree = el("sys-tree");
+  const about = el("sys-about");
+  tree.replaceChildren();
+  about.replaceChildren();
+  if (system === null || doc === null) return;
+
+  const fact = (term: string, value: string) => {
+    const dt = document.createElement("dt");
+    dt.textContent = term;
+    const dd = document.createElement("dd");
+    dd.textContent = value;
+    about.append(dt, dd);
+  };
+  fact("Stars", starsLabel(system.stars));
+  fact("Orbits", String(system.orbits.length));
+  const worlds = worldsOf(system).length;
+  fact("Worlds", String(worlds));
+  fact("Belts", String(system.placed.belts));
+  fact("Gas giants", String(system.placed.gasGiants));
+  fact("Seed", doc.seed);
+
+  for (const orbit of system.orbits) {
+    const row = document.createElement("li");
+    row.append(treeButton(orbit.index, null));
+    const moons = moonsOf(system, orbit.index);
+    if (moons.length > 0) {
+      const nested = document.createElement("ul");
+      for (const moon of moons) {
+        const li = document.createElement("li");
+        li.append(treeButton(orbit.index, moon.index));
+        nested.append(li);
+      }
+      row.append(nested);
+    }
+    tree.append(row);
+  }
+  markTree();
+}
+
+/** One row of the tree. Its name, what it is, and whether anybody lives there. */
+function treeButton(orbitIndex: number, moon: number | null): HTMLButtonElement {
+  const open = system!;
+  const orbit = open.orbits.find((held) => held.index === orbitIndex)!;
+  const button = document.createElement("button");
+  button.type = "button";
+  button.dataset["orbit"] = String(orbitIndex);
+  button.dataset["moon"] = moon === null ? "" : String(moon);
+
+  const held = moon === null ? null : moonsOf(open, orbitIndex).find((m) => m.index === moon);
+  const uwp = held?.uwp ?? (orbit.content.kind === "world" ? orbit.content.uwp : null);
+  const name = document.createElement("span");
+  name.textContent =
+    held !== null && held !== undefined
+      ? moonName(open, orbitIndex, held.index)
+      : orbit.content.kind === "world"
+        ? worldName(systemName(open.seed), orbitIndex)
+        : `${orbit.au} AU`;
+  button.append(name);
+
+  if (uwp !== null && uwp !== undefined) {
+    const profile = parseUwp(uwp);
+    const digits = document.createElement("span");
+    digits.className = "tree-uwp";
+    digits.textContent = uwp;
+    if (profile !== null && profile.population > 0) digits.classList.add("tree-people");
+    button.append(digits);
+  }
+  const what = document.createElement("span");
+  what.className = "tree-what";
+  what.textContent =
+    held !== null && held !== undefined ? "moon" : contentLabel(orbit).toLowerCase();
+  button.append(what);
+
+  button.addEventListener("click", () => selectBody(orbitIndex, moon));
+  return button;
+}
+
+/** Mark the row the panel is about. */
+function markTree(): void {
+  for (const button of el("sys-tree").querySelectorAll("button")) {
+    const orbit = Number(button.dataset["orbit"]);
+    const moon = button.dataset["moon"] === "" ? null : Number(button.dataset["moon"]);
+    const here = orbit === orbitShown && moon === moonShown;
+    if (here) button.setAttribute("aria-current", "true");
+    else button.removeAttribute("aria-current");
+  }
+}
+
 /** The moons of a gas giant, each one a world that opens. SystemSpec 4.5.1. */
 function showMoons(open: StarSystem, orbitIndex: number): void {
   const list = el("sys-moons");
@@ -2186,15 +2339,7 @@ function showMoons(open: StarSystem, orbitIndex: number): void {
       people.textContent = "inhabited";
       button.append(people);
     }
-    button.addEventListener("click", () => {
-      openWorld(
-        moon.seed,
-        moon.uwp,
-        moonName(open, orbitIndex, moon.index),
-        worldSettings(open, orbitIndex),
-        orbitOf(open, orbitIndex),
-      );
-    });
+    button.addEventListener("click", () => selectBody(orbitIndex, moon.index));
     list.append(button);
   }
 }
@@ -2205,9 +2350,6 @@ function moonName(open: StarSystem, orbitIndex: number, moon: number): string {
   return `${worldName(systemName(open.seed), orbitIndex)}${letter}`;
 }
 
-function orbitOf(open: StarSystem, orbitIndex: number): number {
-  return open.orbits.find((held) => held.index === orbitIndex)?.au ?? 0;
-}
 
 /**
  * A world out of a system, opened as a planet. SystemSpec 6.2 and the app spec
@@ -2250,7 +2392,20 @@ function openWorld(
 el("sys-open").addEventListener("click", () => {
   if (system === null || orbitShown === null) return;
   const orbit = system.orbits.find((held) => held.index === orbitShown);
-  if (orbit === undefined || orbit.content.kind !== "world") return;
+  if (orbit === undefined) return;
+  if (moonShown !== null) {
+    const moon = moonsOf(system, orbit.index).find((held) => held.index === moonShown);
+    if (moon === undefined) return;
+    openWorld(
+      moon.seed,
+      moon.uwp,
+      moonName(system, orbit.index, moon.index),
+      worldSettings(system, orbit.index),
+      orbit.au,
+    );
+    return;
+  }
+  if (orbit.content.kind !== "world") return;
   openWorld(
     orbit.content.seed,
     orbit.content.uwp,

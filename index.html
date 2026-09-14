@@ -81,6 +81,14 @@
     <!-- The system view. SystemSpec section 8: the star or stars at one end, the
          orbits laid out from it, and a panel for whatever orbit is selected.
          Read only, at this stage: nothing here edits a system. -->
+    <!-- The system view. SystemSpec section 8, laid out the way the planet view
+         is: what is in the system down the left, the system itself in the
+         middle, the body being looked at on the right, and the orbits in order
+         along the bottom. -->
+    <!-- The system view. SystemSpec section 8, laid out the way the planet view
+         is: what is in the system down the left, the system itself in the
+         middle, the body being looked at on the right, and the orbits in order
+         along the bottom. -->
     <section id="system" class="system">
       <header class="system-head">
         <input id="sys-name" class="sys-name" type="text" autocomplete="off" aria-label="System name" />
@@ -96,12 +104,22 @@
         </span>
       </header>
 
-      <div id="sys-diagram" class="sys-diagram"></div>
+      <!-- Everything the system holds, in order, with a gas giant's moons under
+           it. The one place a moon can be reached without knowing which giant
+           it belongs to. -->
+      <aside class="sys-tree-panel">
+        <h2>System</h2>
+        <dl id="sys-about" class="sys-facts"></dl>
+        <h2>Bodies</h2>
+        <ul id="sys-tree" class="sys-tree"></ul>
+      </aside>
 
-      <div class="sys-below">
+      <div class="sys-model" id="sys-model"></div>
+
+      <aside class="sys-side">
+        <div id="sys-globe" class="sys-globe" hidden></div>
         <div class="sys-detail">
-          <div id="sys-globe" class="sys-globe" hidden></div>
-          <h2 id="sys-what">Select an orbit</h2>
+          <h2 id="sys-what">Select a body</h2>
           <dl id="sys-facts" class="sys-facts"></dl>
           <p id="sys-note" class="sys-note"></p>
           <ul id="sys-moons" class="sys-moons"></ul>
@@ -110,6 +128,10 @@
           </label>
           <button id="sys-open" class="sys-open" type="button" hidden>Open as a planet</button>
         </div>
+      </aside>
+
+      <div class="sys-strip">
+        <div id="sys-diagram" class="sys-diagram"></div>
         <p id="sys-status" class="status" role="status"></p>
       </div>
     </section>

@@ -591,45 +591,133 @@ body[data-view="planet"] .landing { display: none; }
    too, only the first of them pushes. */
 .home + .help-open { margin-left: 6px; }
 
-/* The system view. SystemSpec section 8 --------------------------------- */
+/* The system view. SystemSpec section 8 ---------------------------------- */
 
 body[data-view="system"] .layout,
 body[data-view="system"] .landing { display: none; }
 body[data-view="landing"] .system,
 body[data-view="planet"] .system { display: none; }
 
+/* The same shape as the planet view: a panel each side, the thing itself in
+   the middle, and a strip along the bottom. */
 .system {
   height: 100vh;
   display: grid;
+  grid-template-columns: 260px minmax(0, 1fr) 330px;
   grid-template-rows: auto minmax(0, 1fr) auto;
+  grid-template-areas:
+    "head head head"
+    "tree model side"
+    "strip strip strip";
   gap: 10px;
-  padding: 12px 16px 16px;
-  overflow: auto;
+  padding: 10px 14px 12px;
+  overflow: hidden;
 }
 
-.system-head { display: flex; align-items: baseline; gap: 12px; }
+.system-head { grid-area: head; display: flex; align-items: baseline; gap: 12px; }
 .system-head h1 { margin: 0; }
 .sys-stars { color: var(--accent); }
 .sys-counts { color: var(--muted); }
 .system-actions { margin-left: auto; display: flex; gap: 6px; align-items: center; }
 
-.sys-diagram {
+.sys-name {
+  width: 190px;
+  font-size: 15px;
+  letter-spacing: 0.04em;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 3px;
+  color: var(--text);
+  padding: 2px 6px;
+  margin: 0;
+}
+.sys-name:hover { border-color: var(--line); }
+.sys-name:focus { border-color: var(--muted); background: var(--bg); }
+.sys-where { display: flex; align-items: center; gap: 5px; margin: 0; color: var(--muted); }
+.sys-where input { width: 104px; margin: 0; }
+.sys-where:last-of-type input { width: 58px; }
+
+.sys-tree-panel,
+.sys-side {
   min-height: 0;
+  overflow: auto;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  padding: 10px 12px;
+}
+.sys-tree-panel { grid-area: tree; }
+.sys-side { grid-area: side; display: flex; flex-direction: column; gap: 10px; }
+.sys-tree-panel h2 { margin: 0 0 6px; }
+.sys-tree-panel h2 + dl { margin-bottom: 14px; }
+
+/* The tree: the system's bodies in order, a giant's moons indented under it. */
+.sys-tree { list-style: none; margin: 0; padding: 0; }
+.sys-tree ul { list-style: none; margin: 0; padding: 0 0 0 14px; border-left: 1px solid var(--line); }
+.sys-tree li { margin: 0; }
+.sys-tree button {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  width: 100%;
+  text-align: left;
+  padding: 3px 6px;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 3px;
+}
+.sys-tree button:hover { background: #262b33; }
+.sys-tree button[aria-current="true"] { border-color: var(--select); color: var(--text); }
+.sys-tree .tree-what { color: var(--muted); font-size: 11px; margin-left: auto; }
+.sys-tree .tree-uwp { color: var(--muted); font-size: 11px; }
+.sys-tree .tree-people { color: var(--accent); }
+
+.sys-model {
+  grid-area: model;
+  min-height: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #0d0f13;
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  padding: 6px;
+}
+.orbitmap { width: auto; height: 100%; max-width: 100%; display: block; }
+
+.map-path { fill: none; stroke: #2a313c; stroke-width: 1.2; }
+/* Sized in the drawing's own units, which are about a third of a pixel once it
+   is scaled into the panel. */
+.map-au { fill: #59616e; font-size: 26px; text-anchor: middle; }
+.map-zone-label { fill: #5dcaa5; font-size: 26px; text-anchor: middle; letter-spacing: 0.08em; }
+.map-zone { fill: none; stroke: rgba(93, 202, 165, 0.1); }
+.map-star { stroke: rgba(0, 0, 0, 0.4); stroke-width: 1; }
+.map-hit { fill: transparent; }
+.map-body { cursor: pointer; }
+.map-body:hover .map-hit { fill: rgba(255, 255, 255, 0.05); }
+.map-body:focus { outline: none; }
+.map-body:focus .map-hit { fill: rgba(255, 255, 255, 0.08); }
+.map-world { fill: #9fb6cf; }
+.map-giant { fill: #c8a06a; }
+.map-rock { fill: #4e5764; }
+.map-edge { fill: none; stroke: rgba(0, 0, 0, 0.5); stroke-width: 1; }
+.map-edge-main { stroke: var(--accent); stroke-width: 2.5; }
+.map-ring { fill: none; stroke: #c8a06a; stroke-width: 2; opacity: 0.65; }
+.map-select { fill: none; stroke: var(--select); stroke-width: 2; }
+
+/* The strip along the bottom: what is in what order, and how far out. */
+.sys-strip { grid-area: strip; }
+.sys-diagram {
   border: 1px solid var(--line);
   border-radius: 4px;
   background: var(--panel);
-  padding: 6px;
+  padding: 4px;
   display: flex;
   align-items: center;
   overflow-x: auto;
 }
-/* Height follows the drawing's own proportions rather than filling the box,
-   since a schematic stretched to whatever height is going spare is a schematic
-   with a lot of nothing in it. */
-.orbits { width: 100%; min-width: 520px; height: auto; max-height: 100%; display: block; }
+.orbits { width: 100%; min-width: 520px; height: auto; max-height: 150px; display: block; }
 
-/* Schematic, so the axis is a line and the orbits are slots on it rather than
-   circles at their real distances. SystemSpec 8.2. */
 .orbit-axis { stroke: var(--line); stroke-width: 2; }
 .orbit-tick { stroke: var(--line); stroke-width: 1.5; }
 .orbit-star { stroke: rgba(0, 0, 0, 0.35); stroke-width: 1; }
@@ -650,55 +738,41 @@ body[data-view="planet"] .system { display: none; }
 .orbit:focus .orbit-hit { fill: rgba(255, 255, 255, 0.07); }
 
 .orbit-world { fill: #9fb6cf; }
-/* The world the chart drew, in the gold the application marks a choice in
-   everywhere else. SystemSpec 8.5. */
 .orbit-main { fill: var(--accent); }
 .orbit-giant { fill: #c8a06a; }
 .orbit-ring { fill: none; stroke: #c8a06a; stroke-width: 1.5; opacity: 0.7; }
 .orbit-belt { fill: var(--muted); }
 .orbit-select { fill: none; stroke: var(--select); stroke-width: 1.5; }
-
-.orbit-au { fill: var(--muted); font-size: 11px; text-anchor: middle; }
-.orbit-label { fill: var(--muted); font-size: 10px; text-anchor: middle; opacity: 0.75; }
-
-.sys-name {
-  width: 200px;
-  font-size: 15px;
-  letter-spacing: 0.04em;
-  background: transparent;
-  border: 1px solid transparent;
-  border-radius: 3px;
-  color: var(--text);
-  padding: 2px 6px;
-  margin: 0;
-}
-.sys-name:hover { border-color: var(--line); }
-.sys-name:focus { border-color: var(--muted); background: var(--bg); }
-.sys-where { display: flex; align-items: center; gap: 5px; margin: 0; color: var(--muted); }
-.sys-where input { width: 110px; margin: 0; }
-.sys-where:last-of-type input { width: 62px; }
-.sys-written { display: block; margin: 10px 0 0; color: var(--muted); }
-.sys-written textarea { margin-top: 4px; }
-
-/* A world drawn on the diagram is the world, not a disc standing in for one. */
 .orbit-globe { image-rendering: auto; }
 .orbit-edge { fill: none; stroke: rgba(0, 0, 0, 0.5); stroke-width: 1; }
 .orbit-edge-main { stroke: var(--accent); stroke-width: 2; }
 
-/* The selected world, beside its profile. Floated so the facts wrap round it
-   rather than being pushed down the panel. */
+.orbit-au { fill: var(--muted); font-size: 11px; text-anchor: middle; }
+.orbit-label { fill: var(--muted); font-size: 10px; text-anchor: middle; opacity: 0.75; }
+
+/* The body being looked at: its globe at the top of the panel, the rest under. */
 .sys-globe {
-  float: right;
-  width: 150px;
-  height: 150px;
-  margin: 0 0 8px 14px;
+  width: 100%;
+  max-width: 220px;
+  align-self: center;
+  aspect-ratio: 1;
   border-radius: 50%;
   overflow: hidden;
   background: #0b0d10;
+  flex: none;
 }
 .sys-globe img { display: block; width: 100%; height: 100%; }
 .sys-globe canvas { display: block; cursor: grab; }
 .sys-globe canvas:active { cursor: grabbing; }
+
+.sys-detail h2 { margin: 0 0 8px; color: var(--text); text-transform: none; letter-spacing: 0; font-size: 14px; }
+.sys-facts { display: grid; grid-template-columns: auto 1fr; gap: 2px 12px; margin: 0; }
+.sys-facts dt { color: var(--muted); }
+.sys-facts dd { margin: 0; }
+.sys-note { color: var(--muted); margin: 8px 0 0; }
+.sys-written { display: block; margin: 10px 0 0; color: var(--muted); }
+.sys-written textarea { margin-top: 4px; }
+.sys-open { margin-top: 10px; }
 
 /* The moons of a gas giant, each a world that can be opened. SystemSpec 4.5.1. */
 .sys-moons { list-style: none; margin: 8px 0 0; padding: 0; display: flex; flex-wrap: wrap; gap: 6px; }
@@ -714,20 +788,6 @@ body[data-view="planet"] .system { display: none; }
 .sys-moons button:hover { background: #262b33; border-color: var(--muted); }
 .sys-moons .moon-uwp { color: var(--muted); font-size: 12px; }
 .sys-moons .moon-people { color: var(--accent); font-size: 12px; }
-
-.sys-below { display: flex; flex-direction: column; gap: 4px; }
-.sys-detail {
-  border: 1px solid var(--line);
-  border-radius: 4px;
-  background: var(--panel);
-  padding: 10px 12px;
-}
-.sys-detail h2 { margin: 0 0 8px; color: var(--text); text-transform: none; letter-spacing: 0; font-size: 14px; }
-.sys-facts { display: grid; grid-template-columns: auto 1fr; gap: 2px 14px; margin: 0; }
-.sys-facts dt { color: var(--muted); }
-.sys-facts dd { margin: 0; }
-.sys-note { color: var(--muted); margin: 8px 0 0; }
-.sys-open { margin-top: 10px; }
 
 /* Help, Spec 4.8 --------------------------------------------------------- */
 
