@@ -333,8 +333,16 @@ export function flavourFor(seed: string): Flavour {
  * and two places on one world with one name between them is worse than a name
  * drawn a second time: the rank is shifted and the draw made again.
  */
-export function settlementNames(seed: string, count: number): string[] {
-  const flavour = flavourFor(seed);
+export function settlementNames(
+  seed: string,
+  count: number,
+  /**
+   * The way these names are made, where the caller has one in mind. A subsector
+   * hands its own flavour to most of its worlds under SubSectorSpec 3.4.2, so a
+   * region sounds like one; left out, a seed picks its own.
+   */
+  flavour: Flavour = flavourFor(seed),
+): string[] {
   const out: string[] = [];
   const used = new Set<string>();
   for (let rank = 0; rank < count; rank++) {

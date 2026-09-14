@@ -14,8 +14,10 @@ export const SECTOR_COLS = 32;
 export const SECTOR_ROWS = 40;
 
 /** Columns and rows per subsector: four across and four down make the sixteen. */
-const SUB_COLS = 8;
-const SUB_ROWS = 10;
+export const SUB_COLS = 8;
+export const SUB_ROWS = 10;
+/** The sixteen subsectors of a sector, A to P. SubSectorSpec 2.2. */
+export const SUBSECTOR_LETTERS = "ABCDEFGHIJKLMNOP";
 
 export interface SectorHex {
   /** 1 to SECTOR_COLS. */
@@ -54,6 +56,27 @@ export function subsectorLetter(hex: SectorHex): string {
   const across = Math.floor((hex.col - 1) / SUB_COLS);
   const down = Math.floor((hex.row - 1) / SUB_ROWS);
   return String.fromCharCode(65 + down * 4 + across);
+}
+
+/**
+ * The eighty hexes of one subsector, in reading order: across the top row, then
+ * the next, as a chart is read. SubSectorSpec 2.1.1 and 2.2.2.
+ *
+ * Sector-absolute, so a hex of subsector G is numbered where subsector G is on
+ * the sector chart rather than from its own corner. 2.2.2.1 gives the reason:
+ * the referee who writes down 1914 wants to find 1914 later.
+ */
+export function subsectorHexes(letter: string): SectorHex[] {
+  const at = Math.max(0, SUBSECTOR_LETTERS.indexOf(letter.toUpperCase()));
+  const acrossFrom = (at % 4) * SUB_COLS;
+  const downFrom = Math.floor(at / 4) * SUB_ROWS;
+  const out: SectorHex[] = [];
+  for (let row = 1; row <= SUB_ROWS; row++) {
+    for (let col = 1; col <= SUB_COLS; col++) {
+      out.push({ col: acrossFrom + col, row: downFrom + row });
+    }
+  }
+  return out;
 }
 
 export interface PlanetLocation {
