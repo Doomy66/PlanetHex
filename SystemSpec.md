@@ -220,17 +220,29 @@ This document sits under [SubSectorSpec.md](SubSectorSpec.md) and over [PlanetSp
 
 ## 8. Display
 
-8.1 The system is drawn as an orbit diagram: the star or stars at one end and the orbits laid out from it, each slot holding what it holds.
+8.1 The system is drawn twice, and the two drawings answer different questions.
 
-8.2 Schematic rather than to scale. A system to scale is a dot, a few invisible specks, and an expanse of nothing — the outer orbits are hundreds of times the inner ones, and a picture honest about that is a picture of empty space.
+8.1.1 A strip along the foot: the star at one end and the orbits laid out from it in order, one slot each. Schematic, and deliberately so — it is for what is where and in what order, and every slot gets the same room whether it is at 0.2 AU or 50.
 
-8.2.1 The distances are stated in the panel, under 3.4.1, which is where a number belongs. The diagram is for what is where, in what order, and how far out the habitable zone is.
+8.1.2 A model in the middle: the same orbits as paths round the star, leaning, turnable and zoomable.
 
-8.3 The habitable zone is marked on the diagram, since it is why most of the systems that matter matter.
+8.2 The model is to scale in distance. A path's radius is its orbit's distance, and the outermost path is the edge of the drawing. A system really is mostly empty with everything worth visiting bunched at the middle, and a model that spread the orbits evenly would be drawing the slots — which is 8.1.1's job, done better by a strip.
+
+8.2.1 What that costs is the inner system, which at the whole-system view is a knot round the star. That is what the zoom is for, and it is why anything with a size of its own — a world, a star, a rock, a mark, a line — is drawn at a fixed size on the page rather than a fixed size in the drawing. Zooming in has to spread the orbits apart without inflating what sits on them, or it separates nothing.
+
+8.2.1.1 The habitable band is the exception that proves it: its width is the zone's own width, which is a distance like all the others and scales with them. Only the margin drawn either side of it is a thing on the page. A band held to the page instead swallowed the view as soon as anybody zoomed in.
+
+8.2.2 The distances are still stated in the panel and along the strip, under 3.4.1, which is where a number belongs. Nothing is written on the model itself.
+
+8.3 The habitable zone is marked on both, since it is why most of the systems that matter matter.
 
 8.4 Selecting an orbit fills a panel: for a world, its profile digit by digit as the planet spec 6.7 shows it, its trade classifications, its seed, and the button that opens it as a planet; for a belt or a gas giant, what there is to say.
 
 8.5 The main world is marked as the main world wherever it appears. 5.3 says the chart already decided, and a user coming down from the chart should see which one they came for.
+
+8.5.1 What the chart marks against a hex is marked here against the body it is actually about, which is the main world: the naval base's star, the scout station's triangle, and the travel zone's dashed ring. The same three marks the chart uses, so a referee who can read one can read the other.
+
+8.5.2 A chart has one hex to say them in and has to say them about the system. A system has the room to say which world the navy is parked over, and saying it is most of why somebody came down a level.
 
 8.6 A header carries the stars, the counts of 1.6.3, and the system's place — sector, subsector, hex — so the chain of the app spec 6.5 is visible from inside.
 

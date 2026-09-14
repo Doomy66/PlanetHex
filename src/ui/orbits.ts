@@ -1,4 +1,5 @@
 import type { Moon, Orbit, StarSystem } from "../gen/system";
+import { basesLabel, hasNaval, hasScout, zoneLabel } from "../gen/base";
 import type { SpectralClass, Star } from "../gen/star";
 
 /**
@@ -79,6 +80,13 @@ export function contentLabel(orbit: Orbit): string {
 const MOONS_SHOWN = 8;
 const MOON_GAP = 9;
 const MOON_Y = AXIS_Y + 31;
+/**
+ * Where the chart's own marks sit: between the zone's label along the top of the
+ * strip and the body itself, which is the one band of the slot with nothing in
+ * it.
+ */
+const MARK_Y = 40;
+const MARK_GAP = 15;
 
 export interface OrbitDiagram {
   readonly element: SVGSVGElement;
@@ -110,6 +118,7 @@ export function createOrbitDiagram(): OrbitDiagram {
   const handlers: ((orbitIndex: number) => void)[] = [];
   const moonHandlers: ((orbitIndex: number, moon: number) => void)[] = [];
   const pictures = new Map<number, string>();
+  let shown: StarSystem | null = null;
   const groups = new Map<number, SVGGElement>();
   let placed: { index: number; x: number }[] = [];
   let selected: number | null = null;
@@ -150,6 +159,7 @@ export function createOrbitDiagram(): OrbitDiagram {
   }
 
   function render(system: StarSystem): void {
+    shown = system;
     pictures.clear();
     groups.clear();
     drawn = system.orbits;
@@ -241,6 +251,7 @@ export function createOrbitDiagram(): OrbitDiagram {
     );
     group.append(make("line", { class: "orbit-tick", x1: x, y1: AXIS_Y - 7, x2: x, y2: AXIS_Y + 7 }));
     group.append(...bodyOf(orbit, x));
+    drawChartMarks(group, orbit, x);
 
     if (orbit.content.kind === "giant") drawMoons(group, orbit.content.moons, x);
 
@@ -262,6 +273,58 @@ export function createOrbitDiagram(): OrbitDiagram {
     if (already === undefined) bodyLayer.append(group);
     else already.replaceWith(group);
     groups.set(orbit.index, group);
+  }
+
+/**
+   * The marks a chart puts on a hex, on the body they are actually about.
+   * SubSectorSpec 4.2 draws them against the system as a whole; here there is
+   * room to say which world they belong to, and that is the main world: a naval
+   * base is a station in its orbit, a scout way station a field on it, and a
+   * travel zone is a warning about the world people are going to.
+   *
+   * The same three marks the chart uses, so a referee who can read one can read
+   * the other: the star, the triangle and the dashed ring.
+   */
+  function drawChartMarks(group: SVGGElement, orbit: Orbit, x: number): void {
+    if (shown === null || orbit.index !== shown.bases.orbitIndex) return;
+    const kinds: string[] = [];
+    if (hasNaval(shown.bases.letter)) kinds.push("naval");
+    if (hasScout(shown.bases.letter)) kinds.push("scout");
+    if (shown.zone !== "") kinds.push("zone");
+    const from = x - ((kinds.length - 1) * MARK_GAP) / 2;
+
+    for (const [at, kind] of kinds.entries()) {
+      const cx = from + at * MARK_GAP;
+      const mark =
+        kind === "naval"
+          ? make("polygon", { class: "orbit-naval", points: starPoints(cx, MARK_Y) })
+          : kind === "scout"
+            ? make("polygon", {
+                class: "orbit-scout",
+                points: `${cx},${MARK_Y - 5} ${cx + 5},${MARK_Y + 4} ${cx - 5},${MARK_Y + 4}`,
+              })
+            : make("circle", {
+                class: shown.zone === "R" ? "orbit-travel orbit-red" : "orbit-travel",
+                cx,
+                cy: MARK_Y,
+                r: 5.5,
+              });
+      const title = make("title");
+      title.textContent =
+        kind === "zone" ? `${zoneLabel(shown.zone)} zone` : `${basesLabel(shown.bases.letter)} base`;
+      mark.append(title);
+      group.append(mark);
+    }
+  }
+
+  function starPoints(cx: number, cy: number): string {
+    const points: string[] = [];
+    for (let i = 0; i < 10; i++) {
+      const r = i % 2 === 0 ? 6 : 2.6;
+      const angle = (Math.PI / 180) * (i * 36 - 90);
+      points.push(`${cx + r * Math.cos(angle)},${cy + r * Math.sin(angle)}`);
+    }
+    return points.join(" ");
   }
 
   /**

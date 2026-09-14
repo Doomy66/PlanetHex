@@ -1,5 +1,6 @@
 /**
- * The bases a system carries. SubSectorSpec 3.5 and SystemSpec 4.7.
+ * What a system carries besides its profile: its bases and its travel zone.
+ * SubSectorSpec 3.5 and 3.6, SystemSpec 4.7.
  *
  * A base is a fact about the system rather than about the chart that draws it,
  * so it lives here where both levels can read it. The chart puts it in the Bases
@@ -49,4 +50,24 @@ export function basesLabel(bases: string): string {
   if (bases === "N") return "naval";
   if (bases === "S") return "scout";
   return "none";
+}
+
+/**
+ * Whether a world is worth a warning. SubSectorSpec 3.6.
+ *
+ * Amber is a description of a profile and can be derived. Red is a referee's
+ * decision about their own campaign - it says something has gone wrong here that
+ * the players should not walk into - and nothing in a profile knows that, so
+ * nothing here ever writes one.
+ */
+export function zoneFor(profile: Uwp): string {
+  const dangerous = profile.law >= 9 || profile.government === 0 || profile.government === 7;
+  return dangerous ? "A" : "";
+}
+
+/** What the zone letter says, in words. */
+export function zoneLabel(zone: string): string {
+  if (zone === "A") return "amber";
+  if (zone === "R") return "red";
+  return "green";
 }

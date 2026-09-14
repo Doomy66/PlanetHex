@@ -21,7 +21,7 @@ import { starsFor, starsLabel, systemLuminosity, type Stars } from "./star";
 import { formatPbg, pbgFor, tradeCodes, type Pbg, type TradeCode } from "./trade";
 import { flavourFor, settlementNames } from "./settle";
 import { valueFor } from "./rng";
-import { basesFor } from "./base";
+import { basesFor, zoneFor } from "./base";
 
 /**
  * How thickly the stars lie. SubSectorSpec 3.2.2.
@@ -151,19 +151,6 @@ export function holdsSystem(seed: string, at: string, density: Density): boolean
 
 function presenceOf(seed: string, at: string): number {
   return valueFor(`${seed}:presence`, Number(at));
-}
-
-/**
- * Whether a world is worth a warning. SubSectorSpec 3.6.
- *
- * Amber is a description of a profile and can be derived. Red is a referee's
- * decision about their own campaign - it says something has gone wrong here that
- * the players should not walk into - and nothing in a profile knows that, so
- * nothing here ever writes one.
- */
-function zoneFor(profile: Uwp): string {
-  const dangerous = profile.law >= 9 || profile.government === 0 || profile.government === 7;
-  return dangerous ? "A" : "";
 }
 
 /** The world in one hex, or null where the hex is empty space. */

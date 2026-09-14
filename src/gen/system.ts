@@ -20,7 +20,7 @@ import { pbgFor, type Pbg } from "./trade";
 import { planetDetail } from "./detail";
 import { valueFor } from "./rng";
 import { starsFor, systemLuminosity, type Stars } from "./star";
-import { basesFor } from "./base";
+import { basesFor, zoneFor } from "./base";
 
 /**
  * The orbits, in AU. The solar system's own spacing, which is the pattern
@@ -146,6 +146,13 @@ export interface StarSystem {
    * the two agree without either being told.
    */
   readonly bases: { readonly letter: string; readonly orbitIndex: number };
+  /**
+   * The travel zone, as the Zone column writes it: "A" for amber, "" for green.
+   * Derived from the main world's profile the way the chart derives it, for the
+   * reason the bases are - what both levels can work out, neither owns. Nothing
+   * here ever writes a red: that is the referee's, under SubSectorSpec 3.6.2.
+   */
+  readonly zone: string;
   /**
    * How many of those belts and gas giants the orbits had room for.
    *
@@ -311,6 +318,7 @@ export function generateSystem(seed: string): StarSystem {
     orbits,
     pbg,
     bases: { letter: basesFor(worldSeed, parseUwp(uwp)!), orbitIndex: home.index },
+    zone: zoneFor(parseUwp(uwp)!),
     placed: { belts: countOf(content, "belt"), gasGiants: countOf(content, "giant") },
     mainWorld: {
       seed: worldSeed,

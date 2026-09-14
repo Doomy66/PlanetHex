@@ -17,10 +17,16 @@ import type { SpectralClass } from "../gen/star";
  * the lean is what says the paths are circles being looked across rather than
  * rings on a page.
  *
- * Not to scale, and it cannot be: the outer orbit is two hundred times the inner
- * one and a drawing honest about that is a dot in an empty circle. The radii go
- * as a low power of the distance, so the inner orbits stay apart and the outer
- * ones stay on the page, and every path with room for it says how far out it is.
+ * To scale, in distance: a path's radius is its orbit's distance in AU, and the
+ * outermost path is the edge of the drawing. A system really is mostly empty
+ * with everything interesting bunched at the middle, and a diagram that spaces
+ * the orbits evenly is drawing the slots rather than the system.
+ *
+ * What that costs is the inner system, which at the whole-system view is a knot
+ * around the star. That is what zoom is for, and why the bodies are drawn at a
+ * fixed size on the page rather than a fixed size in the drawing: zooming in
+ * spreads the orbits apart without inflating the worlds on them, so the inner
+ * system opens out as you go in and the view stays readable at every depth.
  */
 
 const SVG_NS = "http://www.w3.org/2000/svg";
@@ -28,19 +34,19 @@ const SVG_NS = "http://www.w3.org/2000/svg";
 /** The drawing is square, in these units, and scaled to whatever it is given. */
 const SIZE = 1000;
 const CENTRE = SIZE / 2;
-/** The innermost and outermost path, as a fraction of the half-width. */
-const RING = { nearest: 0.15, furthest: 0.92 } as const;
-/**
- * How hard the distances are squeezed. One would be true scale and unreadable;
- * a third is close to drawing each orbit a fixed step further out. This leaves
- * the inner system open and still lets the outer orbits read as further away.
- */
-const SQUEEZE = 0.42;
+/** Where the outermost path sits, as a fraction of the half-width. */
+const RING = { furthest: 0.92 } as const;
 
 /** Where the view starts: leant over far enough to read as a plane seen across. */
 const HOME_VIEW = { tiltDeg: 58, spinDeg: 0, zoom: 1, panX: 0, panY: 0 };
 const TILT_LIMITS = { flattest: 0, steepest: 86 } as const;
-const ZOOM_LIMITS = { out: 0.55, in: 6 } as const;
+/**
+ * How far in the view goes. Far enough to open up an inner system against an
+ * outer one: a star with a world at 0.2 AU and a giant at 50 needs two hundred
+ * times to separate them, and sixty puts the inner orbits a comfortable way
+ * apart without letting the view get lost in empty space.
+ */
+const ZOOM_LIMITS = { out: 0.55, in: 60 } as const;
 /** A pointer that moved further than this was a drag, not a click. */
 const DRAG_SLOP = 4;
 
@@ -106,16 +112,25 @@ export function createOrbitMap(): OrbitMap {
     );
   }
 
-  /** Where an orbit's path sits, as a radius in drawing units. */
+  /**
+   * Where an orbit's path sits, as a radius in drawing units: its distance in
+   * AU, against the outermost orbit in the system.
+   */
   function radiusOf(orbit: Orbit, all: readonly Orbit[]): number {
-    const near = all[0]!.au;
     const far = all.at(-1)!.au;
-    const span = Math.pow(far, SQUEEZE) - Math.pow(near, SQUEEZE);
-    // One orbit has nothing to be spaced against, so it goes in the middle of
-    // the room rather than hard against the inside of it.
-    if (span === 0) return CENTRE * ((RING.nearest + RING.furthest) / 2);
-    const at = (Math.pow(orbit.au, SQUEEZE) - Math.pow(near, SQUEEZE)) / span;
-    return CENTRE * (RING.nearest + at * (RING.furthest - RING.nearest));
+    if (far <= 0) return CENTRE * RING.furthest;
+    return CENTRE * RING.furthest * (orbit.au / far);
+  }
+
+  /**
+   * How much to shrink anything drawn at a size of its own - a body, a star, a
+   * rock, a mark - so that it keeps the same size on the page however far in the
+   * view is. Distances scale with the zoom; the things at those distances do
+   * not, or zooming in to separate two orbits would grow the worlds on them just
+   * as fast and separate nothing.
+   */
+  function onPage(): number {
+    return 1 / view.zoom;
   }
 
   /** Where a body stands on its path. Fixed by the seed, so it never jumps. */
@@ -142,7 +157,9 @@ export function createOrbitMap(): OrbitMap {
     if (selected === null) return;
     const at = places.get(selected);
     if (at === undefined) return;
-    selectLayer.append(make("circle", { class: "map-select", cx: at.x, cy: at.y, r: at.r + 14 }));
+    selectLayer.append(
+      make("circle", { class: "map-select", cx: at.x, cy: at.y, r: at.r + 14 * onPage() }),
+    );
   }
 
   function render(system: StarSystem): void {
@@ -174,7 +191,12 @@ export function createOrbitMap(): OrbitMap {
           cy: CENTRE,
           rx: middle,
           ry: Math.max(1, middle * lean),
-          "stroke-width": Math.max(26, outer - inner) + 18,
+          // The band's width is the zone's own width, which is a distance like
+          // any other and scales with them. Only the margin either side of it is
+          // a thing on the page, so only the margin is held to the page: without
+          // that, zooming in fattened a band that is already a region of space
+          // until it swallowed the view.
+          "stroke-width": Math.max(outer - inner, 8 * onPage()) + 18 * onPage(),
         }),
       );
     }
@@ -236,7 +258,7 @@ export function createOrbitMap(): OrbitMap {
           class: "map-rock",
           cx: at.x,
           cy: at.y,
-          r: 1.4 + valueFor(`${key}:size`, i) * 3.4,
+          r: (1.4 + valueFor(`${key}:size`, i) * 3.4) * onPage(),
           opacity:
             (0.35 + valueFor(`${key}:dim`, i) * 0.5) * (at.depth < 0 ? 0.7 : 1),
         }),
@@ -264,7 +286,12 @@ export function createOrbitMap(): OrbitMap {
     ];
     for (const [n, mark] of marks.entries()) {
       bodyLayer.append(
-        make("circle", { class: `map-base ${mark}`, cx: at.x + 14 + n * 9, cy: at.y - 14, r: 3.2 }),
+        make("circle", {
+          class: `map-base ${mark}`,
+          cx: at.x + (14 + n * 9) * onPage(),
+          cy: at.y - 14 * onPage(),
+          r: 3.2 * onPage(),
+        }),
       );
     }
   }
@@ -276,7 +303,7 @@ export function createOrbitMap(): OrbitMap {
         class: "map-star",
         cx: CENTRE,
         cy: CENTRE,
-        r: 26,
+        r: 26 * onPage(),
         fill: STAR_COLOUR[primary.spectral],
       }),
     );
@@ -285,14 +312,14 @@ export function createOrbitMap(): OrbitMap {
     // path. SystemSpec 2.4 allows nothing in between.
     const close = companionOrbit === "close";
     const at = close
-      ? { x: CENTRE + 42, y: CENTRE }
+      ? { x: CENTRE + 42 * onPage(), y: CENTRE }
       : pointOn(CENTRE * RING.furthest * 1.06, radians(view.spinDeg) + Math.PI * 1.5);
     bodyLayer.append(
       make("circle", {
         class: "map-star",
         cx: at.x,
         cy: at.y,
-        r: close ? 16 : 20,
+        r: (close ? 16 : 20) * onPage(),
         fill: STAR_COLOUR[companion.spectral],
       }),
     );
@@ -309,7 +336,9 @@ export function createOrbitMap(): OrbitMap {
     const title = make("title");
     title.textContent = `Orbit ${orbit.index}, ${orbit.au} AU`;
     group.append(title);
-    group.append(make("circle", { class: "map-hit", cx: x, cy: y, r: Math.max(r + 12, 26) }));
+    group.append(
+      make("circle", { class: "map-hit", cx: x, cy: y, r: Math.max(r + 12 * onPage(), 26 * onPage()) }),
+    );
 
     if (content.kind === "world" || content.kind === "giant") {
       const picture = pictures.get(orbit.index) ?? null;
@@ -359,7 +388,7 @@ export function createOrbitMap(): OrbitMap {
         );
       }
     } else if (content.kind === "empty") {
-      group.append(make("circle", { class: "map-nothing", cx: x, cy: y, r: 4 }));
+      group.append(make("circle", { class: "map-nothing", cx: x, cy: y, r: 4 * onPage() }));
     }
 
     group.addEventListener("click", () => {
@@ -380,16 +409,24 @@ export function createOrbitMap(): OrbitMap {
     bodyLayer.append(group);
   }
 
-  /** How big a body is drawn. Kind, not scale: a giant beside a world. */
+  /**
+   * How big a body is drawn. Kind, not scale: a giant beside a world.
+   *
+   * Nothing here is to scale and nothing can be - the distances are, and a world
+   * drawn to the same scale as its orbit would be a fraction of a pixel. So a
+   * body says what it is by its size rather than how big it is, and keeps that
+   * size on the page as the view goes in and out.
+   */
   function sizeOf(orbit: Orbit): number {
-    switch (orbit.content.kind) {
-      case "giant":
-        return 26;
-      case "world":
-        return orbit.content.main ? 22 : 16;
-      default:
-        return 6;
-    }
+    const kind =
+      orbit.content.kind === "giant"
+        ? 26
+        : orbit.content.kind === "world"
+          ? orbit.content.main
+            ? 22
+            : 16
+          : 6;
+    return kind * onPage();
   }
 
   /* Turning it round ------------------------------------------------------ */

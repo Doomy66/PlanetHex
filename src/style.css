@@ -592,6 +592,12 @@ body[data-view="planet"] .landing { display: none; }
    too, only the first of them pushes. */
 .home + .help-open { margin-left: 6px; }
 
+/* The chart's own marks, on the strip, against the world they are about. */
+.orbit-naval { fill: #e6ebf2; }
+.orbit-scout { fill: #9fb0c4; }
+.orbit-travel { fill: none; stroke: #e0b341; stroke-width: 1.6; stroke-dasharray: 3 3; }
+.orbit-red { stroke: #e24b4a; }
+
 /* A base is a mark beside the world it is at rather than a body of its own. */
 .map-base { stroke: #0d0f13; stroke-width: 1; }
 .map-naval { fill: #e6ebf2; }
@@ -855,7 +861,9 @@ body[data-view="planet"] .system { display: none; }
 .orbitmap:active { cursor: grabbing; }
 .orbitmap:focus { outline: none; }
 
-.map-path { fill: none; stroke: #2a313c; stroke-width: 1.2; }
+/* A line on the drawing is a line on the page: the zoom moves the orbits apart
+   and must not fatten what is drawn round them. */
+.map-path { fill: none; stroke: #2a313c; stroke-width: 1.2; vector-effect: non-scaling-stroke; }
 /* Sized in the drawing's own units, which are about a third of a pixel once it
    is scaled into the panel. */
 .map-au { fill: #59616e; font-size: 26px; text-anchor: middle; }
@@ -873,10 +881,21 @@ body[data-view="planet"] .system { display: none; }
 /* An orbit with nothing in it is still a place on the diagram: a mark small
    enough to read as empty and big enough to click. */
 .map-nothing { fill: #39414d; }
-.map-edge { fill: none; stroke: rgba(0, 0, 0, 0.5); stroke-width: 1; }
+.map-edge {
+  fill: none;
+  stroke: rgba(0, 0, 0, 0.5);
+  stroke-width: 1;
+  vector-effect: non-scaling-stroke;
+}
 .map-edge-main { stroke: var(--accent); stroke-width: 2.5; }
-.map-ring { fill: none; stroke: #c8a06a; stroke-width: 2; opacity: 0.65; }
-.map-select { fill: none; stroke: var(--select); stroke-width: 2; }
+.map-ring {
+  fill: none;
+  stroke: #c8a06a;
+  stroke-width: 2;
+  opacity: 0.65;
+  vector-effect: non-scaling-stroke;
+}
+.map-select { fill: none; stroke: var(--select); stroke-width: 2; vector-effect: non-scaling-stroke; }
 
 /* The strip along the bottom: what is in what order, and how far out. */
 .sys-strip { grid-area: strip; }
