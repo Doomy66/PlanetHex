@@ -125,6 +125,14 @@ This document is the shell. [PlanetSpec.md](PlanetSpec.md) specifies a planet, [
 
 4.9 A folder at any level may hold anything else the user has put in it. Nothing is deleted, and nothing unrecognised is complained about. A referee's own notes, maps, and handouts belong in the folder with the thing they are about.
 
+4.9.1 **What a level says about itself, the level above hears.** Rename a world or type over its profile and the system it is in says the new name, and the chart above the system says it too. A name and a profile are what the levels above draw, so a change to either has to reach them or two levels are describing one world differently.
+
+4.9.1.1 It lands as an override at the level above, which is where every typed value in this application lives — the world document holds everything about the world, and the override holds the part the levels above are looking at. So it obeys the same rule as any other override: typed back to what the generator said, it goes away again.
+
+4.9.1.2 A main world and its system are one thing named once, under the system spec 7.3.4.1. Renaming the main world renames the system, and renames the hex on the chart.
+
+4.9.1.3 Nothing flows the other way by itself. A level above sets what a level below starts as, under 1.3; once a world exists, what it says about itself is its own.
+
 4.10 **One Save per chain.** The level you opened owns the document, and the levels below it do not offer a Save of their own — a world reached through a system and a chart is saved by that chart.
 
 4.10.1 Nor an unsaved mark of their own. Work done at any level marks the level that will save it, so there is one place to look and one thing to press.

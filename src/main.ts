@@ -1840,6 +1840,7 @@ el("home").addEventListener("click", () => {
   // work, and only then if it was never saved.
   if (planetParent === "system" && system !== null) {
     keepPlanetForSystem();
+    refreshSystem();
     setAppView("system");
     return;
   }
@@ -1988,6 +1989,13 @@ let names: SystemNames | null = null;
 
 /** The name of the world or moon a body is, where anybody lives on it. */
 function properName(orbitIndex: number, moon: number | null): string | null {
+  // What the referee called it beats what the generator called it. The override
+  // is the one place a typed name lives, whether it was typed here or came up
+  // from the world itself. SystemSpec 9.3.
+  if (moon === null && doc !== null) {
+    const written = overrideFor(doc, orbitIndex)?.name;
+    if (written !== undefined && written.trim() !== "") return written;
+  }
   if (names === null) return null;
   return moon === null
     ? (names.worlds.get(orbitIndex) ?? null)
@@ -2040,6 +2048,41 @@ function openSystem(next: SystemDoc): void {
   drawWorldsSoon(system);
   const worlds = worldsOf(system).length;
   sysSay(`${system.orbits.length} orbits, ${worlds === 1 ? "one world" : `${worlds} worlds`}.`);
+}
+
+/**
+ * Draw the open system again from its document, keeping the body being looked
+ * at. What came up from the level below has changed the document, and a view
+ * that did not redraw would be showing the world as it was before it was edited.
+ */
+function refreshSystem(): void {
+  if (doc === null) return;
+  const held = orbitShown;
+  const moon = moonShown;
+  system = systemOf(doc);
+  names = namesOf(system, doc.name);
+  el<HTMLInputElement>("sys-name").value = doc.name;
+  orbits.render(system);
+  model.render(system);
+  for (const orbit of system.orbits) {
+    if (orbit.content.kind !== "giant") continue;
+    const png = giantImage(`${system.seed}:${orbit.index}`, GLOBE_PX);
+    orbits.setPicture(orbit.index, png);
+    model.setPicture(orbit.index, png);
+  }
+  selectBody(held ?? system.mainWorld.orbitIndex, moon);
+  showHeader();
+  showTree();
+  showCrumbs();
+  drawWorldsSoon(system);
+}
+
+/** The same for the chart, when a system has come back up to it. */
+function refreshChart(): void {
+  if (subDoc === null) return;
+  drawSubsector();
+  selectHex(hexShown);
+  showCrumbs();
 }
 
 /** What a save would lose, asked before anything discards it. SystemSpec 9.6. */
@@ -2260,6 +2303,22 @@ el("sys-roll").addEventListener("click", () => {
   startNewSystem();
 });
 
+/**
+ * What the system says about its main world, said to the chart as well.
+ *
+ * The chart draws one world per hex and that world is this system's main world,
+ * so a name or a profile changed down here has to reach the hex or the two
+ * levels disagree about the same world. SubSectorSpec 5.3.
+ */
+function tellChartAboutSystem(chart: SubsectorDoc, at: string, open: SystemDoc): void {
+  const rolled = rolledWorld(at);
+  if (rolled === null) return;
+  const held = systemOf(open);
+  setHexOverride(chart, at, "name", open.name === rolled.name ? "" : open.name);
+  const uwp = held.mainWorld.uwp;
+  setHexOverride(chart, at, "uwp", uwp === rolled.uwp ? "" : uwp);
+}
+
 /** Roll a different system into a hex, and tell the chart about it. */
 function rerollHexSystem(at: string): void {
   if (subDoc === null) return;
@@ -2303,6 +2362,7 @@ el("sys-home").addEventListener("click", () => {
   // ask about.
   if (systemParent === "subsector" && subsector !== null) {
     keepSystemForChart();
+    refreshChart();
     setAppView("subsector");
     return;
   }
@@ -2331,7 +2391,39 @@ function keepPlanetForSystem(): void {
   // A copy, because state.planet is the one object the planet view edits: kept
   // by reference it would go on changing after it had been put down.
   keepWorld(doc, structuredClone(state.planet));
+  tellSystemAboutWorld(doc, state.planet);
   if (had === undefined) markSystemDirty();
+}
+
+/**
+ * What the world says about itself, said to the system as well. AppSpec 1.3.3.
+ *
+ * A name and a profile are what the level above draws: rename a world and the
+ * tree, the strip and the chart above should all say the new name. They read
+ * the system's overrides, so that is where it has to land - the world document
+ * holds everything about the world, and the override holds the part the levels
+ * above are looking at.
+ */
+function tellSystemAboutWorld(open: SystemDoc, planet: Planet): void {
+  const held = systemOf({ ...open, overrides: [] });
+  const orbit = held.orbits.find((one) => worldIn(one.content)?.seed === planet.seed);
+  if (orbit === undefined) return;
+  const rolled = worldIn(orbit.content);
+  if (rolled === undefined || rolled === null) return;
+
+  // Only what differs from what the generator said, the way every override in
+  // this application works: typed back to what it was, it goes away again.
+  setOverride(open, orbit.index, "uwp", planet.uwp === rolled.uwp ? "" : planet.uwp);
+
+  // The main world and its system are the same thing named once, under
+  // SystemSpec 7.3.4.1: renaming the world renames the system.
+  if (rolled.main) {
+    if (planet.name.trim() !== "") open.name = planet.name;
+    open.mainWorldUwp = planet.uwp;
+    return;
+  }
+  const rolledName = positionName(held, orbit.index);
+  setOverride(open, orbit.index, "name", planet.name === rolledName ? "" : planet.name);
 }
 
 el("sys-save").addEventListener("click", async () => {
@@ -3230,6 +3322,7 @@ function keepSystemForChart(): void {
   keepPlanetForSystem();
   const had = savedSystem(subDoc, at);
   keepSystem(subDoc, at, doc);
+  tellChartAboutSystem(subDoc, at, doc);
   // The chart now holds something its seed alone would not produce, so it has
   // something to save. AppSpec 4.6.
   if (had !== doc) markSubDirty();
@@ -3278,11 +3371,16 @@ function goToLevel(level: Level): void {
   if (level === view) return;
   // Moving up the chain keeps what is below, so nothing is asked on the way.
   // What is carried is put down on the way past, level by level.
-  if (view === "planet" && planetParent === "system") keepPlanetForSystem();
-  if (view === "planet" && level === "subsector" && systemParent === "subsector") {
-    keepSystemForChart();
+  if (view === "planet" && planetParent === "system") {
+    keepPlanetForSystem();
+    refreshSystem();
   }
-  if (view === "system" && level === "subsector") keepSystemForChart();
+  if (view === "system" || (view === "planet" && systemParent === "subsector")) {
+    if (level === "subsector") {
+      keepSystemForChart();
+      refreshChart();
+    }
+  }
   if (level === "subsector" && openLevels.subsector) setAppView("subsector");
   else if (level === "system" && openLevels.system) setAppView("system");
   else if (level === "planet" && openLevels.planet) setAppView("planet");
