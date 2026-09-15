@@ -211,11 +211,11 @@ describe("how far apart two hexes are", () => {
   });
 });
 
-describe("the lanes", () => {
+describe("the routes", () => {
   const charts = SEEDS.map((seed) => generateSubsector(seed, "A"));
 
-  it("runs no lane to a world nobody is on", () => {
-    // SubSectorSpec 3.9.2: two inhabited worlds, or no lane. A rock with a
+  it("runs no route to a world nobody is on", () => {
+    // SubSectorSpec 3.9.2: two inhabited worlds, or no route. A rock with a
     // beacon on it is not a destination.
     for (const chart of charts) {
       const empty = new Set(
@@ -228,32 +228,64 @@ describe("the lanes", () => {
     }
   });
 
-  it("keeps every lane inside the reach of the poorer port", () => {
-    // 3.9.2: A and B reach two hexes, C, D and E reach one, X reaches nothing.
-    const reach = (port: string) => ("AB".includes(port) ? 2 : "CDE".includes(port) ? 1 : 0);
+  it("keeps every route inside two jumps", () => {
+    // 3.9.2 and 3.9.3: an X-boat leg ends at a port that can service one, and a
+    // trader will cross two hexes for a cargo.
     for (const chart of charts) {
       const where = new Map(chart.worlds.map((world) => [world.at, world]));
       for (const route of chart.routes) {
-        const from = where.get(route.from)!;
-        const to = where.get(route.to)!;
-        const far = hexDistance(from.hex, to.hex);
+        const far = hexDistance(where.get(route.from)!.hex, where.get(route.to)!.hex);
         expect(far, `${route.from}-${route.to}`).toBeGreaterThan(0);
-        expect(far).toBeLessThanOrEqual(
-          Math.min(reach(from.profile.starport), reach(to.profile.starport)),
-        );
+        expect(far).toBeLessThanOrEqual(2);
       }
     }
   });
 
-  it("calls a lane main only where both ends can refit a ship", () => {
+  it("runs an X-boat leg only between ports that can service one", () => {
+    // 3.9.2.1: a station is a class A or B port. Anywhere else the boat cannot
+    // be turned round.
+    let legs = 0;
     for (const chart of charts) {
       const where = new Map(chart.worlds.map((world) => [world.at, world]));
       for (const route of chart.routes) {
-        const ends = [where.get(route.from)!, where.get(route.to)!];
-        const good = ends.every((world) => "AB".includes(world.profile.starport));
-        expect(route.main, `${route.from}-${route.to}`).toBe(good);
+        if (route.kind !== "xboat") continue;
+        legs++;
+        for (const at of [route.from, route.to]) {
+          expect("AB", `${at} ${where.get(at)!.uwp}`).toContain(where.get(at)!.profile.starport);
+        }
       }
     }
+    expect(legs).toBeGreaterThan(0);
+  });
+
+  it("runs a trade route only where the two worlds want what each other has", () => {
+    // 3.9.3.1. Food for the worlds that grow none, manufactures for the worlds
+    // that make none, and the run between somewhere rich and somewhere poor.
+    const pairs = [
+      ["Ag", "Na"],
+      ["Ag", "In"],
+      ["In", "NI"],
+      ["Hi", "Lo"],
+      ["Ri", "Po"],
+      ["Ht", "Lt"],
+    ];
+    let runs = 0;
+    for (const chart of charts) {
+      const where = new Map(chart.worlds.map((world) => [world.at, world]));
+      for (const route of chart.routes) {
+        if (route.kind !== "trade") continue;
+        runs++;
+        const from = where.get(route.from)!.trade.map((code) => code.code);
+        const to = where.get(route.to)!.trade.map((code) => code.code);
+        const wants = pairs.some(
+          ([one, other]) =>
+            (from.includes(one!) && to.includes(other!)) ||
+            (from.includes(other!) && to.includes(one!)),
+        );
+        expect(wants, `${route.from}-${route.to}`).toBe(true);
+      }
+    }
+    expect(runs).toBeGreaterThan(0);
   });
 
   it("draws each pair once and never a world to itself", () => {
@@ -269,15 +301,15 @@ describe("the lanes", () => {
   });
 
   it("leaves a web rather than a thicket", () => {
-    // 3.9.2.1: about one lane per world. Enough to follow across a subsector,
-    // few enough that the chart still reads.
+    // About one route per world. Enough to follow across a subsector, few
+    // enough that the chart still reads.
     const worlds = charts.reduce(
       (count, chart) => count + chart.worlds.filter((w) => w.profile.population > 0).length,
       0,
     );
     const lanes = charts.reduce((count, chart) => count + chart.routes.length, 0);
-    expect(lanes / worlds).toBeGreaterThan(0.5);
-    expect(lanes / worlds).toBeLessThan(2);
+    expect(lanes / worlds).toBeGreaterThan(0.3);
+    expect(lanes / worlds).toBeLessThan(2.5);
   });
 
   it("takes an interdicted world off the web altogether", () => {

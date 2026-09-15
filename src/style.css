@@ -745,10 +745,10 @@ body[data-view="system"] .subsector { display: none; }
 .chart-giant { fill: #d7b273; }
 .chart-giant-ring { fill: none; stroke: #d7b273; stroke-width: 1.4; }
 
-/* The lanes. Under the worlds, over the grid, and heavier where both ends have
-   a port worth keeping to a timetable. */
+/* The routes. Under the worlds, over the grid. The express network is the
+   heavier line, because it is the one that runs whatever else is happening. */
 .chart-route { stroke: #3d6ea8; stroke-width: 2; opacity: 0.75; }
-.chart-main { stroke: #6aa6e8; stroke-width: 3.4; opacity: 0.9; }
+.chart-xboat { stroke: #6aa6e8; stroke-width: 3.4; opacity: 0.9; }
 
 /* A travel zone is a ring around the world, not around the hex: the warning is
    about the world, and the hex is only where it is. */

@@ -67,17 +67,17 @@ export interface ChartWorld {
 }
 
 /**
- * A lane between two worlds. SubSectorSpec 3.9.
+ * A route between two worlds. SubSectorSpec 3.9.
  *
- * Main where both ends have a port good enough to build a scheduled run around,
- * and a feeder otherwise: the difference is worth drawing, because it is the
- * difference between a route somebody keeps to a timetable and a route somebody
- * flies when there is a reason to.
+ * Two kinds, as the published charts have two kinds. An X-boat route is a leg of
+ * the express network: the scheduled run between the ports big enough to service
+ * it, which is how word travels. A trade route is where two worlds want what
+ * each other has, which is why a free trader goes.
  */
 export interface Route {
   readonly from: string;
   readonly to: string;
-  readonly main: boolean;
+  readonly kind: "xboat" | "trade";
 }
 
 export interface Subsector {
@@ -86,47 +86,82 @@ export interface Subsector {
   readonly density: Density;
   /** The eighty hexes, in reading order, with the worlds among them. */
   readonly worlds: readonly ChartWorld[];
-  /** The lanes between them, each pair once. 3.9. */
+  /** The routes between them, each pair once. 3.9. */
   readonly routes: readonly Route[];
 }
 
 /**
- * How far a world's own traffic reaches, in jumps. SubSectorSpec 3.9.2.
+ * How far an X-boat leg runs, in jumps. SubSectorSpec 3.9.2.
  *
- * A port is what a lane is flown to, so the port decides how far the lane comes
- * from: a yard that can refine fuel and refit a ship is worth crossing two hexes
- * for, anywhere else is worth crossing one, and a world with no port at all is
- * on nobody's schedule.
- *
- * 3.9.2.1 The numbers are small on purpose. A lane between every pair of worlds
- * that could reach each other is a chart with a hundred lines on it, which is a
- * chart that says nothing. Roughly one lane per world leaves a web a referee can
- * follow from one end of a subsector to the other.
+ * The express boats are jump-4 ships and the network is built of long legs, but
+ * a leg still ends at a port that can service one: class A or B, which is where
+ * an X-boat station is. Two hexes here, because a subsector is eight across and
+ * legs of four would be two lines from one side to the other.
  */
-function reachOf(profile: Uwp): number {
-  if (profile.starport === "A" || profile.starport === "B") return 2;
-  if ("CDE".includes(profile.starport)) return 1;
-  return 0;
+const XBOAT_REACH = 2;
+
+/** How far a trader will go for a cargo. SubSectorSpec 3.9.3. */
+const TRADE_REACH = 2;
+
+/**
+ * What a world wants from a world that has the other. SubSectorSpec 3.9.3.1.
+ *
+ * The classic pairs: food for the worlds that grow none, manufactures for the
+ * worlds that make none, and the run between somewhere rich and somewhere that
+ * is not. A route needs one of these to point at, in either direction.
+ */
+const WANTS: readonly (readonly [string, string])[] = [
+  ["Ag", "Na"],
+  ["Ag", "In"],
+  ["In", "NI"],
+  ["Hi", "Lo"],
+  ["Ri", "Po"],
+  ["Ht", "Lt"],
+];
+
+function hasCode(world: ChartWorld, code: string): boolean {
+  return world.trade.some((held) => held.code === code);
+}
+
+/** Whether two worlds have anything to sell each other. */
+function trades(from: ChartWorld, to: ChartWorld): boolean {
+  return WANTS.some(
+    ([one, other]) =>
+      (hasCode(from, one) && hasCode(to, other)) || (hasCode(from, other) && hasCode(to, one)),
+  );
+}
+
+/** Whether a world can service an X-boat: a class A or B port. */
+function station(world: ChartWorld): boolean {
+  return world.profile.starport === "A" || world.profile.starport === "B";
 }
 
 /**
- * The lanes. SubSectorSpec 3.9.
+ * The routes. SubSectorSpec 3.9.
  *
- * Both ends have to be worth the trip and close enough for the poorer of the
- * two to be reached at all, which is what makes the web thin out around bad
- * ports and thicken between good ones without anything being rolled for. A red
- * zone is off the lanes entirely: an interdiction is exactly the thing a
- * scheduled run is not flown through.
+ * Nothing is rolled: two profiles and two hex numbers decide both kinds, which
+ * means a route cannot disagree with the worlds at its ends, and a chart
+ * regenerated from its seed has the same network on it.
+ *
+ * A red zone is off both networks. An interdiction is exactly the thing a
+ * scheduled run is not flown through, and nobody is trading with it either.
  */
 export function routesBetween(worlds: readonly ChartWorld[]): Route[] {
   const open = worlds.filter((world) => world.profile.population > 0 && world.zone !== "R");
   const routes: Route[] = [];
   for (const [at, from] of open.entries()) {
     for (const to of open.slice(at + 1)) {
-      const reach = Math.min(reachOf(from.profile), reachOf(to.profile));
-      if (reach === 0 || hexDistance(from.hex, to.hex) > reach) continue;
-      const main = "AB".includes(from.profile.starport) && "AB".includes(to.profile.starport);
-      routes.push({ from: from.at, to: to.at, main });
+      const far = hexDistance(from.hex, to.hex);
+      if (far === 0) continue;
+      if (station(from) && station(to) && far <= XBOAT_REACH) {
+        routes.push({ from: from.at, to: to.at, kind: "xboat" });
+        continue;
+      }
+      // A trade route where the X-boats do not run: two worlds that want what
+      // each other has, close enough for a free trader to make the crossing.
+      if (far <= TRADE_REACH && trades(from, to)) {
+        routes.push({ from: from.at, to: to.at, kind: "trade" });
+      }
     }
   }
   return routes;

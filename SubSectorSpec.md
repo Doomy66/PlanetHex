@@ -150,22 +150,27 @@ Nothing is marked Red by generation.
 
 3.8.3 The other worlds of a system are the system level's, not the chart's. A hex holds a system; what the chart draws and what a sector line carries is that system's main world plus its counts of belts and gas giants, which is what a referee reads a chart for. The rest is a level down, and [AppSpec.md](AppSpec.md) 1.3.2 puts it there.
 
-### 3.9 The lanes between worlds
+### 3.9 The routes between worlds
 
-3.9.1 Every published subsector map has lines on it between the hexes, and a chart without them is a list of worlds rather than a region. A lane says which worlds are in reach of each other, which is the question a referee is actually asking when they look at a chart.
+3.9.1 Every published subsector map has lines on it between the hexes, and a chart without them is a list of worlds rather than a region. Two kinds, as those maps have two kinds: the express network that carries word, and the trade that carries everything else.
 
 3.9.1.1 How far apart two hexes are is a jump count, not a row and column difference. The columns are offset against each other, so a step sideways is also half a step up or down: rows are counted in halves, a sideways step pays for half a row of the vertical distance for free, and only what is left over costs a jump.
 
-3.9.2 A lane runs between two inhabited worlds when they are within the reach of the poorer of the two ports. A port that can refine fuel and refit a ship — class A or B — reaches two hexes; C, D and E reach one; X reaches nothing and is on no schedule.
+3.9.2 **X-boat routes.** A leg of the express network runs between two worlds with a class A or B starport, within two jumps. Those are the ports with a station that can turn an express boat round; anywhere else the boat is stranded.
 
-3.9.2.1 The numbers are small on purpose. A lane between every pair of worlds that could reach each other is a chart with a hundred lines on it, which is a chart that says nothing. Roughly one lane per world leaves a web that can be followed from one end of a subsector to the other.
+3.9.2.1 Two jumps rather than the four an X-boat ship can make, because a subsector is eight hexes across and legs of four would be two lines from one side of it to the other. What is being drawn is the shape of the network in this region, not the range of the ship.
 
-3.9.2.2 A Red zone carries no lanes. An interdiction is exactly the thing a scheduled run is not flown through, so the world drops off the web entirely rather than being drawn and warned about twice.
+3.9.3 **Trade routes.** A trade route runs between two worlds within two jumps that want what each other has. Drawn lighter than an X-boat leg, because it is a run somebody makes when there is a cargo rather than a schedule that is kept whatever happens.
 
-3.9.3 A lane is main where both ends have a class A or B port, and a feeder otherwise. The difference is drawn, because it is the difference between a route somebody keeps to a timetable and a route somebody flies when there is a reason to.
+3.9.3.1 What counts as wanting: agricultural against non-agricultural, agricultural against industrial, industrial against non-industrial, high population against low, rich against poor, high technology against low. The classic pairs — food to the worlds that grow none, manufactures to the worlds that make none, and the run between somewhere rich and somewhere that is not.
 
-3.9.4 Nothing about a lane is rolled. Two profiles and two hex numbers decide it, which means a lane cannot disagree with the worlds at its ends, and a chart regenerated from its seed has the same web on it.
+3.9.3.2 Where an X-boat leg already runs, that is what is drawn. The express route is the stronger statement about the same pair of worlds, and two lines between two hexes say nothing the heavier one did not.
 
+3.9.4 A Red zone is off both networks. An interdiction is exactly the thing a scheduled run is not flown through, and nobody is trading with it either.
+
+3.9.5 Nothing about either is rolled. Two profiles and two hex numbers decide both, which means a route cannot disagree with the worlds at its ends, and a chart regenerated from its seed has the same network on it.
+
+3.9.6 This comes out at about four routes for every five inhabited worlds, most of them trade. That is a web a referee can follow from one end of a subsector to the other without the chart turning into a thicket — and it is the right shape as well as the right size, since the express network is meant to be sparse and trade is meant to be everywhere.
 
 ## 4. Display
 

@@ -15,7 +15,7 @@ import type { ChartWorld, Subsector } from "../gen/subsector";
  * a referee already knows how to read one of those: the hex number small at the
  * top, the starport letter above the world, the world as a disc in the middle,
  * its name under it, the bases as their own marks to the left, a gas giant to
- * the right, and the lanes drawn between hexes underneath the lot. What the
+ * the right, and the routes drawn between hexes underneath the lot. What the
  * published maps do in black on white this does in colour, which is the one
  * liberty taken: colour says what kind of world it is without a legend. 4.2.
  */
@@ -115,7 +115,7 @@ export function createChart(): Chart {
   const routeLayer = make("g");
   const worldLayer = make("g");
   const selectLayer = make("g");
-  // The lanes go under the worlds and over the grid: they are the thing a hex is
+  // The routes go under the worlds and over the grid: they are the thing a hex is
   // read in the context of, not a thing drawn on top of it.
   svg.append(gridLayer, routeLayer, worldLayer, selectLayer);
 
@@ -159,7 +159,7 @@ export function createChart(): Chart {
       if (from === undefined || to === undefined) continue;
       routeLayer.append(
         make("line", {
-          class: route.main ? "chart-route chart-main" : "chart-route",
+          class: route.kind === "xboat" ? "chart-route chart-xboat" : "chart-route",
           x1: from.x,
           y1: from.y,
           x2: to.x,
