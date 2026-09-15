@@ -18,6 +18,7 @@ import {
   type Density,
   type Subsector,
 } from "./gen/subsector";
+import { systemSeedFor } from "./gen/subsector";
 import { formatSectorHex, parseSectorHex, subsectorHexes } from "./location";
 import { parseUwp } from "./planet";
 import { tradeCodes } from "./gen/trade";
@@ -44,6 +45,17 @@ export interface HexOverride {
    * density. 3.2.3 and 5.3.4.
    */
   readonly present?: boolean;
+  /**
+   * The seed of the system in this hex, where the referee has rolled a
+   * different one. 5.3.5.
+   *
+   * The hex's own seed is derived from the subsector's under 3.1.3, and that is
+   * what a hex holds until somebody deliberately replaces it. Storing the
+   * replacement is what keeps the chart and the system view agreeing about what
+   * is in the hex: without it, a reroll would show one system and the chart
+   * would go on drawing another.
+   */
+  readonly systemSeed?: string;
 }
 
 /** The fields of an override that are plain text. */
@@ -94,7 +106,8 @@ function saysNothing(held: HexOverride): boolean {
     held.bases === undefined &&
     held.zone === undefined &&
     held.note === undefined &&
-    held.present === undefined
+    held.present === undefined &&
+    held.systemSeed === undefined
   );
 }
 
@@ -133,6 +146,24 @@ export function setPresence(doc: SubsectorDoc, at: string, present: boolean, rol
 }
 
 /**
+ * Put a different system into a hex. 5.3.5.
+ *
+ * Passing the hex's own seed back in clears the override, since a referee who
+ * has rolled their way back to what was there has said nothing.
+ */
+export function setSystemSeed(doc: SubsectorDoc, at: string, seed: string, rolled: string): void {
+  const held = overrideFor(doc, at);
+  const next: HexOverride & Record<string, unknown> = { ...held, at, systemSeed: seed };
+  if (seed === rolled) delete (next as Record<string, unknown>)["systemSeed"];
+  put(doc, at, next);
+}
+
+/** The seed of the system in a hex, the referee's if they have put one there. */
+export function systemSeedIn(doc: SubsectorDoc, at: string): string {
+  return overrideFor(doc, at)?.systemSeed ?? systemSeedFor(doc.seed, at);
+}
+
+/**
  * The chart a document describes: generated from its seed and density, with what
  * the referee wrote laid over the top. SubSectorSpec 5.2.
  *
@@ -146,13 +177,16 @@ export function subsectorOf(doc: SubsectorDoc): Subsector {
 
   const held = new Map(rolled.worlds.map((world) => [world.at, world]));
 
-  // A hex the referee turned on that the density left empty. 5.3.4: dropping it
-  // would lose written work to a slider.
   for (const override of doc.overrides) {
-    if (override.present !== true || held.has(override.at)) continue;
     const hex = parseSectorHex(override.at);
     if (hex === null) continue;
-    const world = worldAt(doc.seed, override.at, hex);
+    // A hex the referee turned on that the density left empty, 5.3.4 - dropping
+    // it would lose written work to a slider - and a hex whose system they have
+    // rolled again, 5.3.5.
+    const wanted = override.present === true && !held.has(override.at);
+    const replaced = override.systemSeed !== undefined && held.has(override.at);
+    if (!wanted && !replaced) continue;
+    const world = worldAt(doc.seed, override.at, hex, undefined, override.systemSeed);
     if (world !== null) held.set(override.at, world);
   }
 
@@ -251,6 +285,7 @@ function parseOverrides(raw: unknown): HexOverride[] {
       ...(text("zone") === undefined ? {} : { zone: text("zone")! }),
       ...(text("note") === undefined ? {} : { note: text("note")! }),
       ...(present === undefined ? {} : { present }),
+      ...(text("systemSeed") === undefined ? {} : { systemSeed: text("systemSeed")! }),
     };
     if (saysNothing(held)) continue;
     out.push(held);

@@ -27,7 +27,15 @@ import {
 } from "./gen/crater";
 import { isIced, type IceCaps } from "./gen/ice";
 import { DEFAULT_FIELD_OPTIONS, type HeightFieldOptions } from "./gen/field";
-import { blankPlanet, newPlanet, parseUwp, randomSeed, rollUwp, type Planet } from "./planet";
+import {
+  blankPlanet,
+  newPlanet,
+  parsePlanet,
+  parseUwp,
+  randomSeed,
+  rollUwp,
+  type Planet,
+} from "./planet";
 import { starportSite } from "./gen/site";
 import {
   MAX_SETTLEMENTS,
@@ -84,6 +92,7 @@ import {
   PickerCancelled,
   pickFolder,
   planetFile,
+  readNestedFolders,
   saveName,
   saveTo,
   stemFor,
@@ -101,6 +110,7 @@ import { createChart } from "./ui/chart";
 import { createCrumbs, type Level, type Trail } from "./ui/crumbs";
 import {
   generateSubsector,
+  systemSeedFor,
   type ChartWorld,
   type Density,
   type Subsector,
@@ -112,6 +122,7 @@ import {
   parseSubsectorDoc,
   setOverride as setHexOverride,
   setPresence,
+  setSystemSeed,
   subsectorOf as chartOf,
   type HexField,
   type SubsectorDoc,
@@ -1820,6 +1831,7 @@ function setPlanetParent(parent: "landing" | "system"): void {
 el("home").addEventListener("click", () => {
   if (!confirmDiscard(planetParent === "system" ? "Leave this world" : "Leave this planet")) return;
   if (planetParent === "system" && system !== null) {
+    keepPlanetForSystem();
     setAppView("system");
     return;
   }
@@ -2225,7 +2237,32 @@ orbits.onSelect((index) => selectBody(index, null));
 orbits.onSelectMoon((index, moon) => selectBody(index, moon));
 model.onSelect((index) => selectBody(index, null));
 
-el("sys-roll").addEventListener("click", startNewSystem);
+el("sys-roll").addEventListener("click", () => {
+  // A system that came out of a hex belongs to that hex, so rolling it again
+  // rolls what is in the hex rather than wandering off to an unrelated system
+  // the chart above has never heard of. SubSectorSpec 5.3.5.
+  if (systemParent === "subsector" && subDoc !== null && doc !== null && doc.hex.trim() !== "") {
+    rerollHexSystem(doc.hex.trim());
+    return;
+  }
+  startNewSystem();
+});
+
+/** Roll a different system into a hex, and tell the chart about it. */
+function rerollHexSystem(at: string): void {
+  if (subDoc === null) return;
+  if (!confirmSystemDiscard("Roll another system into this hex")) return;
+  setSystemSeed(subDoc, at, randomSeed(), systemSeedFor(subDoc.seed, at));
+  workedUp.delete(at);
+  markSubDirty();
+  drawSubsector();
+  const world = subsector?.worlds.find((held) => held.at === at);
+  if (world === undefined) return;
+  // The chart names what is in a hex, so the new system takes the new name.
+  setHexOverride(subDoc, at, "name", "");
+  openHexSystem(at, world.systemSeed, world.name);
+  subSay(`Rolled another system into ${at}.`);
+}
 
 /**
  * Where the button at the head of the system goes back to. AppSpec 6.2, the same
@@ -2250,6 +2287,7 @@ el("sys-home").addEventListener("click", () => {
   // The chart is still laid out and still selected on the hex this system came
   // out of, so going back up is showing it again rather than rolling it again.
   if (systemParent === "subsector" && subsector !== null) {
+    keepSystemForChart();
     setAppView("subsector");
     return;
   }
@@ -2265,15 +2303,60 @@ function systemFile(open: SystemDoc): SaveFile {
   return { name: `${stem}.json`, data: JSON.stringify(open, null, 2) };
 }
 
+/**
+ * The worlds under a system that the referee has worked on, by system seed and
+ * then by the world's own seed. AppSpec 4.2 and 4.6, the same arrangement one
+ * level up.
+ *
+ * A world is its seed until somebody does something to it. Once they have, the
+ * document is what they have, and it has to survive going back up to the system
+ * and down again - otherwise the level below quietly undoes itself every time
+ * anybody looks at the level above.
+ *
+ * Kept by seed rather than by designation, because a designation moves: rename
+ * the system and every world in it is called something else, and a world put
+ * down as Karreach-1 would be looked for as Kepler's Rest-1 and not found. The
+ * seed is the world, which is the same rule the chart follows at 5.3.3.
+ */
+const workedWorlds = new Map<string, Map<string, Planet>>();
+
+function worldsUnder(systemSeed: string): Map<string, Planet> {
+  const held = workedWorlds.get(systemSeed) ?? new Map<string, Planet>();
+  workedWorlds.set(systemSeed, held);
+  return held;
+}
+
+/** Keep the open world against the system it came out of. */
+function keepPlanetForSystem(): void {
+  if (doc === null || planetParent !== "system") return;
+  const held = worldsUnder(doc.seed);
+  const had = held.get(state.planet.seed);
+  // A copy, because state.planet is the one object the planet view edits: kept
+  // by reference it would go on changing after it had been put down.
+  held.set(state.planet.seed, structuredClone(state.planet));
+  if (had === undefined) markSystemDirty();
+}
+
+/** The files a system save writes: the system, and the worlds worked up in it. */
+function systemFiles(open: SystemDoc): SaveFile[] {
+  keepPlanetForSystem();
+  const files: SaveFile[] = [systemFile(open)];
+  for (const planet of worldsUnder(open.seed).values()) files.push(planetFile(planet));
+  return files;
+}
+
 el("sys-save").addEventListener("click", async () => {
   if (doc === null) return;
   try {
     // The folder is asked for once: a load or an earlier save has already said
     // where this system lives, and AppSpec 3.3.2 has it stay there.
     systemFolder ??= await pickFolder();
-    await saveTo(systemFolder, [systemFile(doc)]);
+    const files = systemFiles(doc);
+    await saveTo(systemFolder, files);
     markSystemClean();
-    sysSay(`Saved ${systemFile(doc).name} into ${systemFolder.name}.`);
+    const worlds = files.length - 1;
+    const also = worlds === 0 ? "" : ` with ${worlds === 1 ? "one world" : `${worlds} worlds`}`;
+    sysSay(`Saved ${files[0]!.name}${also} into ${systemFolder.name}.`);
   } catch (error) {
     if (error instanceof PickerCancelled) return;
     sysSay(error instanceof Error ? error.message : String(error), true);
@@ -2309,6 +2392,17 @@ async function loadSystem(): Promise<void> {
     const first = found[0]!;
     systemFolder = dir;
     openSystem(first.doc);
+    // The worlds of that system, out of the same folder. AppSpec 4.2 and 4.3:
+    // a system folder holds the files of each world worked up in it.
+    for (const file of files) {
+      if (file.name === first.name) continue;
+      try {
+        const planet = parsePlanet(file.text);
+        worldsUnder(first.doc.seed).set(planet.seed, planet);
+      } catch {
+        // Not a world either. AppSpec 4.9 leaves it where it is.
+      }
+    }
     markSystemClean();
     const others = found.length === 1 ? "" : ` (${found.length - 1} more in the folder)`;
     sysSay(`Loaded ${first.name} from ${dir.name}.${others}`);
@@ -2554,16 +2648,26 @@ function openWorld(
   designation: string,
 ): void {
   setPlanetParent("system");
-  Object.assign(state.planet, newPlanet(seed), {
-    name,
-    // Which body of which system this is, which is what its files are named
-    // for and what it goes on being called after it has been saved and
-    // reopened with no system in sight. AppSpec 4.2.1.
-    designation,
-    uwp,
-    orbitAu: settings.orbitAu,
-    luminosity: settings.luminosity,
-  });
+  // The world they left, if they have been here before. Anything they typed on
+  // it, drew on it or placed on it is still on it.
+  const kept = doc === null ? undefined : worldsUnder(doc.seed).get(seed);
+  Object.assign(
+    state.planet,
+    kept === undefined
+      ? Object.assign(newPlanet(seed), {
+        name,
+        // Which body of which system this is, which is what its files are named
+        // for and what it goes on being called after it has been saved and
+        // reopened with no system in sight. AppSpec 4.2.1.
+        designation,
+          uwp,
+          orbitAu: settings.orbitAu,
+          luminosity: settings.luminosity,
+        })
+      : // What the referee left, wearing the designation the system gives it
+        // now: rename a system and its worlds are filed under the new name.
+        { ...kept, designation },
+  );
   state.folder = null;
   state.selected = null;
   state.hovered = null;
@@ -2624,6 +2728,17 @@ let subFolder: DirectoryHandle | null = null;
 let hexShown: string | null = null;
 let subDirty = false;
 
+/**
+ * The systems under this chart that the referee has worked on, by hex.
+ * SubSectorSpec 5.7 and AppSpec 4.6.
+ *
+ * A hex is its seed until somebody does something to it, and then it is a
+ * document. Held here while the chart is open so that going up to the chart and
+ * back down into a hex returns the system as it was left rather than a freshly
+ * generated one, and written into the subsector's folder on save.
+ */
+const workedUp = new Map<string, SystemDoc>();
+
 for (const letter of SUBSECTOR_LETTERS) {
   const option = document.createElement("option");
   option.value = letter;
@@ -2666,6 +2781,10 @@ function startNewSubsector(): void {
 /** Put a document on screen, and the chart it describes with it. */
 function openSubsector(next: SubsectorDoc): void {
   subDoc = next;
+  // Another chart is another set of systems, and another set of worlds under
+  // them. What was held belonged to the one being put down.
+  workedUp.clear();
+  workedWorlds.clear();
   setAppView("subsector");
   el<HTMLInputElement>("sub-name").value = next.name;
   el<HTMLInputElement>("sub-sector").value = next.sector;
@@ -2960,7 +3079,13 @@ function subsectorFileFor(open: SubsectorDoc): SaveFile {
   return { name: `${stem}.json`, data: JSON.stringify(open, null, 2) };
 }
 
-/** The files a subsector save writes: the document, and the sector file. */
+/**
+ * The files a subsector save writes: the document, the sector file, and a folder
+ * for every system the referee has worked up. AppSpec 4.4 and 4.6.
+ *
+ * Only what was actually worked on. Eighty folders for eighty hexes nobody has
+ * opened would be eighty folders describing what the seed already describes.
+ */
 function subsectorFiles(open: SubsectorDoc): SaveFile[] {
   const stem = subsectorFileFor(open).name.replace(/\.json$/, "");
   const files: SaveFile[] = [subsectorFileFor(open)];
@@ -2972,7 +3097,30 @@ function subsectorFiles(open: SubsectorDoc): SaveFile[] {
       data: subsectorFile(subsector, el<HTMLInputElement>("sub-sector").value.trim()),
     });
   }
+  // Whatever is open right now counts as worked up, since the referee is
+  // standing in it.
+  keepSystemForChart();
+  for (const [at, held] of workedUp) {
+    const into = systemFolderName(held, at);
+    for (const file of systemFiles(held)) {
+      files.push({ name: `${into}/${file.name}`, data: file.data });
+    }
+  }
   return files;
+}
+
+/** What a save wrote, said in the terms the referee thinks in. */
+function subsectorSaveNote(files: readonly SaveFile[]): string {
+  const chart = files[0]!.name;
+  const systems = files.filter((file) => file.name.includes("/")).length;
+  if (systems === 0) return chart;
+  return `${chart} and ${systems === 1 ? "one file" : `${systems} files`} of worked up systems`;
+}
+
+/** The folder one system gets inside a subsector's: the world and its hex. 4.4. */
+function systemFolderName(held: SystemDoc, at: string): string {
+  const name = held.name.replace(/[^A-Za-z0-9 _-]/g, "").trim() || "System";
+  return `${name} ${at}`;
 }
 
 el("sub-save").addEventListener("click", async () => {
@@ -2986,7 +3134,7 @@ el("sub-save").addEventListener("click", async () => {
       subFolder ??= await pickFolder();
       await saveTo(subFolder, files);
       markSubClean();
-      subSay(`Saved ${files.map((file) => file.name).join(" and ")} into ${subFolder.name}.`);
+      subSay(`Saved ${subsectorSaveNote(files)} into ${subFolder.name}.`);
       return;
     }
     // The same fallback a planet save has under the planet spec 6.4.1: a browser
@@ -3027,9 +3175,47 @@ async function loadSubsector(): Promise<void> {
     const first = found[0]!;
     subFolder = dir;
     openSubsector(first.doc);
+    // The systems worked up under this chart, out of the folders beside it.
+    // AppSpec 4.4.1: a level's saved children sit in its own folder.
+    const systems = await readNestedFolders(dir);
+    let held = 0;
+    const planets: { folder: string; planet: Planet }[] = [];
+    for (const file of systems) {
+      try {
+        const system = parseSystemDoc(file.text);
+        const at = system.hex.trim();
+        if (at === "") continue;
+        workedUp.set(at, system);
+        held++;
+      } catch {
+        // Not a system. It may be one of that system's worlds, which the app
+        // spec 4.2 puts in the same folder; anything else is somebody's own
+        // file and 4.9 leaves it alone rather than complaining about it.
+        try {
+          planets.push({ folder: file.folder, planet: parsePlanet(file.text) });
+        } catch {
+          // Leave it alone.
+        }
+      }
+    }
+    // The worlds go under the system whose folder they were in.
+    for (const { folder, planet } of planets) {
+      const owner = [...workedUp.entries()].find(
+        ([at, system]) => systemFolderName(system, at) === folder,
+      );
+      if (owner === undefined) continue;
+      worldsUnder(owner[1].seed).set(planet.seed, planet);
+    }
     markSubClean();
     const others = found.length === 1 ? "" : ` (${found.length - 1} more in the folder)`;
-    subSay(`Loaded ${first.name} from ${dir.name}.${others}`);
+    const worlds = planets.length;
+    const worked =
+      held === 0
+        ? ""
+        : ` ${held === 1 ? "One system" : `${held} systems`}${
+            worlds === 0 ? "" : ` and ${worlds === 1 ? "one world" : `${worlds} worlds`}`
+          } worked up.`;
+    subSay(`Loaded ${first.name} from ${dir.name}.${others}${worked}`);
   } catch (error) {
     if (error instanceof PickerCancelled) return;
     const message = error instanceof Error ? error.message : String(error);
@@ -3078,18 +3264,46 @@ el("sub-home").addEventListener("click", () => {
  * from that, so what opens is the system the chart drew.
  */
 el("sub-open").addEventListener("click", () => {
-  if (subsector === null || hexShown === null) return;
+  if (subsector === null || subDoc === null || hexShown === null) return;
   const world = subsector.worlds.find((held) => held.at === hexShown);
   if (world === undefined) return;
-  const held = newSystemDoc(world.systemSeed, world.name);
+  openHexSystem(world.at, world.systemSeed, world.name);
+});
+
+/**
+ * Open the system in a hex. SubSectorSpec section 7.
+ *
+ * The one the referee left if they have been in here before, and a fresh one
+ * off the hex's seed if they have not. A system worked on and gone back to is
+ * the system they worked on: the alternative is the level below quietly undoing
+ * itself every time somebody looks at the chart.
+ */
+function openHexSystem(at: string, seed: string, name: string): void {
+  const held = workedUp.get(at) ?? newSystemDoc(seed, name);
   held.sector = el<HTMLInputElement>("sub-sector").value;
-  held.hex = world.at;
+  held.hex = at;
   systemFolder = null;
   openSystem(held);
   markSystemClean();
   setSystemParent("subsector");
   showCrumbs();
-});
+}
+
+/**
+ * Keep the open system against the hex it came out of, so the chart carries it.
+ * Called on the way back up rather than on every keystroke: what is being kept
+ * is the document, and the document is the same object being edited.
+ */
+function keepSystemForChart(): void {
+  if (doc === null || systemParent !== "subsector" || subDoc === null) return;
+  const at = doc.hex.trim();
+  if (at === "") return;
+  const had = workedUp.get(at);
+  workedUp.set(at, doc);
+  // The chart has something in it that its seed alone would not produce, so it
+  // has something to save. AppSpec 4.6.
+  if (had !== doc) markSubDirty();
+}
 
 /* The trail across the levels. AppSpec 6.2 -------------------------------- */
 
@@ -3134,6 +3348,12 @@ function goToLevel(level: Level): void {
   if (level === view) return;
   if (view === "planet" && !confirmDiscard("Leave this world")) return;
   if (view === "system" && !confirmSystemDiscard("Leave this system")) return;
+  if (view === "planet" && planetParent === "system") keepPlanetForSystem();
+  if (view === "system" && level === "subsector") keepSystemForChart();
+  // Up two levels at once still puts down what is being carried on the way.
+  if (view === "planet" && level === "subsector" && systemParent === "subsector") {
+    keepSystemForChart();
+  }
   if (level === "subsector" && openLevels.subsector) setAppView("subsector");
   else if (level === "system" && openLevels.system) setAppView("system");
   else if (level === "planet" && openLevels.planet) setAppView("planet");

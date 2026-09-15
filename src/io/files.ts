@@ -120,9 +120,50 @@ export function planetFile(planet: Planet): SaveFile {
   return { name: `${stemFor(planet)}.json`, data: JSON.stringify(planet, null, 2) };
 }
 
-/** The chosen files, written into a folder already chosen. */
+/**
+ * The chosen files, written into a folder already chosen.
+ *
+ * A name with slashes in it is a path: the folders are made as it goes. That is
+ * what lets one save write a level and its saved children in one pass, which is
+ * the shape of folder the app spec section 4 asks for at every level, and it is
+ * also exactly how a name behaves inside the archive of the fallback.
+ */
 export async function saveTo(dir: DirectoryHandle, files: readonly SaveFile[]): Promise<void> {
-  for (const file of files) await write(dir, file.name, file.data);
+  for (const file of files) {
+    const steps = file.name.split("/").filter((step) => step !== "");
+    const name = steps.pop();
+    if (name === undefined) continue;
+    let into = dir;
+    for (const step of steps) into = await folderIn(into, step);
+    await write(into, name, file.data);
+  }
+}
+
+async function folderIn(dir: DirectoryHandle, name: string): Promise<DirectoryHandle> {
+  if (!dir.getDirectoryHandle) throw new Error("This browser cannot make folders.");
+  return dir.getDirectoryHandle(name, { create: true });
+}
+
+/**
+ * The documents in a folder and in the folders under it, one level down.
+ *
+ * A level's own folder holds its saved children beside it under the app spec
+ * 4.4.1, so loading a subsector means reading what is in the folders as well as
+ * what is in the folder.
+ */
+export async function readNestedFolders(
+  dir: DirectoryHandle,
+): Promise<{ folder: string; name: string; text: string }[]> {
+  if (!dir.values) return [];
+  const out: { folder: string; name: string; text: string }[] = [];
+  for await (const entry of dir.values()) {
+    const held = entry as DirectoryHandle;
+    if (typeof (entry as FileHandle).getFile === "function" || !held.values) continue;
+    for (const file of await readFolder(held)) {
+      out.push({ folder: held.name, name: file.name, text: file.text });
+    }
+  }
+  return out;
 }
 
 async function write(dir: DirectoryHandle, name: string, data: string | Blob): Promise<void> {

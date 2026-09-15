@@ -177,8 +177,12 @@ export function worldAt(
   at: string,
   hex: SectorHex,
   regional = flavourFor(`${seed}:flavour`),
+  given?: string,
 ): ChartWorld | null {
-  const systemSeed = systemSeedFor(seed, at);
+  // The hex's own system unless the referee has put another one there. A reroll
+  // from inside the system view is the one thing that can do that, and what it
+  // changes is which system is in the hex rather than anything about the hex.
+  const systemSeed = given ?? systemSeedFor(seed, at);
   const worldSeed = mainWorldSeed(systemSeed);
   const uwp = rollUwp(worldSeed);
   const profile = parseUwp(uwp);

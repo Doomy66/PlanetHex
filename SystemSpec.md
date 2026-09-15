@@ -294,7 +294,11 @@ This document sits under [SubSectorSpec.md](SubSectorSpec.md) and over [PlanetSp
 
 9.4 An override never changes a seed. A world edited is still the world its seed makes, wearing what the referee wrote on it.
 
-9.5 The system folder is the app spec 4.3, and it is the lowest folder the application makes: this document, and the files of each world the user has worked up and saved, named by 7.2.
+9.5 The system folder is the app spec 4.3, and it is the lowest folder the application makes: this document, and the files of each world the user has worked up, named by 7.2.
+
+9.5.1 A world opened from a system is held against that system while it is open, and written into the folder when the system is saved. A referee who names a world and goes back up to the system finds the name they gave it when they come down again; the alternative is the planet level undoing itself every time anybody looks at the system.
+
+9.5.2 Held by the world's own seed. A designation moves when the system is renamed, and a world put down as Sol-3 would be looked for as Alpha-3 and not found.
 
 9.6 Unsaved edits are tracked and warned about, under the app spec section 7.
 

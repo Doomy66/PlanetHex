@@ -224,6 +224,12 @@ Nothing is marked Red by generation.
 
 5.3.4 An override on a hex that the current density leaves empty is kept, and the hex is drawn as occupied with a mark saying it is there because the user put it there. Dropping it would lose written work to a slider, which is the thing the planet spec 6.4.4 exists to prevent.
 
+5.3.5 A hex also stores the seed of the system in it, where the referee has rolled a different one. A hex's system seed is derived from the subsector's under 3.1.3 and that is what the hex holds until somebody deliberately replaces it; storing the replacement is what keeps the chart and the system view agreeing about what is in the hex.
+
+5.3.5.1 This is not 5.3.3 being broken. That clause is about a profile: typing over a world's UWP does not reach back and change which world it is. Rolling the system in a hex is the referee asking for a different system, said out loud, and the document has to remember that they asked.
+
+5.3.5.2 Rolling from inside the system view rolls the hex rather than wandering off. A system reached down from a chart belongs to that chart, and a Roll that produced a system the chart above had never heard of would be the level below quietly leaving the document it came from.
+
 5.4 The document carries a version number and is validated on load, as the planet spec 6.4.2 and 6.4.3 require of a planet.
 
 5.5 A subsector save is a folder holding its JSON, the chart as a PNG, and whatever exports of section 6 were asked for, on the same File System Access route as the planet spec 6.4.1. A browser without that route gets the folder as an archive, as a planet save does.
@@ -234,9 +240,15 @@ Nothing is marked Red by generation.
 
 5.6 Unsaved edits are tracked and warned about, as the planet spec 6.4.4 does. An edit is any change to a stored field of 5.1, the seed and density included.
 
-5.7 A planet save and a subsector save are separate documents. A subsector does not contain its worlds' planet files, and opening a world under section 7 does not write one.
+5.7 A subsector save holds the systems the referee has worked up, and the worlds worked up inside those, each in the folder the app spec 4.4 gives it. Only those: a hex nobody has opened is its seed, and eighty folders describing what the seed already describes is eighty folders of nothing.
 
-5.7.1 Eighty planet files, each with its images, is a directory of tens of megabytes describing worlds nobody has looked at. A seed is twelve bytes and produces the same thing. Where a referee has worked a world up and wants it kept, they save that planet themselves, the way they would have if they had generated it alone.
+5.7.1 Eighty planet files, each with its images, is a directory of tens of megabytes describing worlds nobody has looked at. A seed is twelve bytes and produces the same thing. What makes a system or a world worth a file is that somebody went into it and changed something.
+
+5.7.2 Going down a level and coming back up does not lose the level below. A system opened from a hex is held against that hex while the chart is open, and a world opened from that system against that system, so a referee who names a world, goes up to look at the chart and comes back down finds the name they gave it. Without that, the level below undoes itself every time anybody looks at the level above.
+
+5.7.2.1 Held by seed rather than by name or designation, since both of those move: rename a system and every world in it is designated something else, and a world put down under the old name would be looked for under the new one and not found. The seed is the world, which is 5.3.3 again.
+
+5.7.2.2 Held while the application is open; written when the referee saves. Moving between levels is not saving, and nothing is written to disk until Save is pressed — but nothing is lost on the way between them either.
 
 ## 6. Exporting the subsector
 
