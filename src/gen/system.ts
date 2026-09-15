@@ -418,6 +418,26 @@ export function worldIn(
 }
 
 /**
+ * Where a body sits round its orbit, in radians. SystemSpec 3.5.
+ *
+ * Fixed by the system's seed rather than by a clock: a system is a picture of
+ * one moment, and the one thing worse than a diagram that does not move is a
+ * diagram whose distances change while you read them. The angles are what make
+ * two worlds at similar distances a short hop or a long haul apart.
+ */
+export function angleOf(system: StarSystem, orbitIndex: number): number {
+  return valueFor(`${system.seed}:where`, orbitIndex) * Math.PI * 2;
+}
+
+/** Where a body is, in AU, with the star at the origin. */
+export function positionAu(system: StarSystem, orbitIndex: number): { x: number; y: number } {
+  const orbit = system.orbits.find((held) => held.index === orbitIndex);
+  if (orbit === undefined) return { x: 0, y: 0 };
+  const angle = angleOf(system, orbitIndex);
+  return { x: Math.cos(angle) * orbit.au, y: Math.sin(angle) * orbit.au };
+}
+
+/**
  * How far out the primary's jump shadow reaches, in AU. SystemSpec 4.8.
  *
  * Both stars of a close pair sit inside it together, near enough: a companion

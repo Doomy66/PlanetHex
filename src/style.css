@@ -592,6 +592,13 @@ body[data-view="planet"] .landing { display: none; }
    too, only the first of them pushes. */
 .home + .help-open { margin-left: 6px; }
 
+/* How long it takes to get anywhere from here. SystemSpec 4.9. */
+.travel { border-top: 1px solid var(--line); margin-top: 8px; padding-top: 8px; }
+.travel-rate { display: flex; align-items: center; gap: 6px; font-size: 0.85rem; color: var(--muted); }
+.travel-rate input { width: 5em; }
+.travel-note { font-size: 0.78rem; color: var(--muted); margin: 6px 0 0; }
+#sys-travel-list dd { font-variant-numeric: tabular-nums; }
+
 /* A jump shadow: the sphere round a mass that a ship cannot jump from. Filled
    rather than outlined, because it is a volume rather than a boundary. */
 .map-shadow { fill: rgba(120, 140, 190, 0.13); stroke: rgba(140, 165, 220, 0.35); stroke-width: 1; vector-effect: non-scaling-stroke; }

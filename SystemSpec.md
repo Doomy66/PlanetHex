@@ -144,6 +144,24 @@ This document sits under [SubSectorSpec.md](SubSectorSpec.md) and over [PlanetSp
 
 4.8.5 The panel gives the figure in kilometres and in hours at one gravity, from a standing start and without stopping at the far end. To jump, a ship has to be outside the shadow, not at rest outside it.
 
+### 4.9 Travel times
+
+4.9.1 A referee's commonest question about a system is not what is in it but how long it takes to cross, and the answer is arithmetic nobody wants to do at the table. A manoeuvre drive is a constant acceleration, so a crossing is the schoolbook problem, and the numbers are unintuitive enough to be worth working out rather than guessing at: ten hours to the gas giant and three weeks to the outer belt is the difference between an adventure and a different adventure.
+
+4.9.1.1 The panel gives them from whatever body is selected, at an acceleration the user sets and which starts at one gravity. Every body in the system except the moons: a moon is a destination once a ship is already at the giant, and a list with fifteen of them on it hides the twelve places a ship might actually be going.
+
+4.9.2 Two figures for each, the second in brackets. The first is the run arriving stopped — half of it accelerating and half decelerating, which is how a ship with a constant-thrust drive actually travels and where the flip at the midpoint comes from. The second is burning the whole way and arriving fast, which is what matters when the point is to be somewhere rather than to stop there.
+
+4.9.2.1 The first is always the longer, by exactly the square root of two, because half the run is spent slowing down. A million kilometres at one gravity is five and a half hours stopped or four straight through.
+
+4.9.3 The first line is the run to the jump point: out of every jump shadow the ship is inside. There is always one to leave, since a ship at a world is inside that world's own shadow by definition, and around a dim star it is usually inside the star's as well. The question is never whether but how far.
+
+4.9.3.1 Measured straight out from the star, which leaves the system and the star's shadow at once. Not the shortest escape from a world's shadow taken alone — that would be straight up out of the plane — because a ship leaving is leaving, and what a referee wants is the run to the jump point rather than the shortest hop to technically legal space.
+
+4.9.4 Distances are taken from where the model of 8.1.2 draws the bodies: each at its orbit's distance and at the angle its seed gave it. That arrangement is a picture of one moment rather than an ephemeris, and this document takes it as the truth — a referee reading the diagram and a referee reading these numbers have to be told the same thing, and a system where the worlds were somewhere else for the arithmetic would be two systems.
+
+4.9.4.1 A belt is a ring rather than a place, so a crossing to one is a crossing to its nearest part. A ship going to the belt goes to the near edge, not to an agreed point on the far side of the star.
+
 ## 5. The main world
 
 5.1 The main world's seed is derived from the system seed, and its profile is `rollUwp` of that seed, unmodified. Under the subsector spec 3.1.3 the chart derives the same seed from the same hex, so the chart and the system agree by construction rather than by being checked against each other.

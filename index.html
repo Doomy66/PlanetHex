@@ -242,9 +242,23 @@
         <div class="sys-detail">
           <div class="sys-title">
             <h2 id="sys-what">Select a body</h2>
+            <button id="sys-travel" class="sys-open" type="button" hidden>Travel times</button>
             <button id="sys-open" class="sys-open" type="button" hidden>Open</button>
           </div>
           <dl id="sys-facts" class="sys-facts"></dl>
+
+          <!-- How long it takes to get anywhere from here. SystemSpec 4.9. -->
+          <div id="sys-travel-panel" class="travel" hidden>
+            <label class="travel-rate">
+              Acceleration
+              <input id="sys-gees" type="number" min="0.1" max="10" step="0.1" value="1" />
+              G
+            </label>
+            <dl id="sys-travel-list" class="sys-facts"></dl>
+            <p class="travel-note">
+              Time to arrive at rest, and in brackets burning the whole way.
+            </p>
+          </div>
           <p id="sys-note" class="sys-note"></p>
           <ul id="sys-moons" class="sys-moons"></ul>
           <label class="sys-written">Notes

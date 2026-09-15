@@ -128,6 +128,12 @@ import { giantImage } from "./ui/giant";
 import { basesLabel } from "./gen/base";
 import { crossingLabel, hoursAt1g, jumpShadowKm, kmLabel } from "./gen/jump";
 import {
+  auToKm,
+  clearOfShadows,
+  crossing,
+  type ShadowBody,
+} from "./gen/travel";
+import {
   beltName,
   generateSystem,
   moonKey,
@@ -135,10 +141,12 @@ import {
   namesOf,
   ordinalOf,
   worldName,
+  positionAu,
   starShadowAu,
   worldIn,
   worldSettings,
   worldsOf,
+  type Orbit,
   type StarSystem,
   type SystemNames,
 } from "./gen/system";
@@ -2094,6 +2102,8 @@ function confirmSystemDiscard(action: string): boolean {
 /** The panel for one orbit. SystemSpec 8.4. */
 function showOrbit(index: number | null): void {
   const open = el<HTMLButtonElement>("sys-open");
+  el<HTMLButtonElement>("sys-travel").hidden = index === null;
+  showTravel();
   const facts = el("sys-facts");
   const written = el<HTMLTextAreaElement>("sys-written");
   const globe = el("sys-globe");
@@ -2370,6 +2380,98 @@ el("sys-home").addEventListener("click", () => {
   setAppView("landing");
   landingSay("");
 });
+
+/* How long it takes to get anywhere from here. SystemSpec 4.9 ----------- */
+
+/**
+ * Every mass in the system that casts a shadow, placed where the model draws it.
+ *
+ * The model's arrangement is taken as the truth: a body sits at its orbit's
+ * distance and at the angle its seed gave it, which is what the diagram shows
+ * and therefore what a referee reading the diagram will expect the numbers to
+ * agree with. A belt has no centre to cast one and is left out.
+ */
+function shadowsIn(open: StarSystem): ShadowBody[] {
+  const out: ShadowBody[] = [
+    // The star, at the middle of everything.
+    { x: 0, y: 0, shadowKm: auToKm(starShadowAu(open)) },
+  ];
+  for (const orbit of open.orbits) {
+    const size = bodyDiameterKm(open, orbit);
+    if (size === null) continue;
+    const at = positionAu(open, orbit.index);
+    out.push({ x: auToKm(at.x), y: auToKm(at.y), shadowKm: jumpShadowKm(size) });
+  }
+  return out;
+}
+
+/** How wide the body in an orbit is, or null where there is nothing to measure. */
+function bodyDiameterKm(open: StarSystem, orbit: Orbit): number | null {
+  const content = orbit.content;
+  if (content.kind === "giant") return content.diameterKm;
+  const held = worldIn(content);
+  if (held === null) return null;
+  return planetDetail(held.seed, held.uwp, worldSettings(open, orbit.index)).diameterKm;
+}
+
+/**
+ * The run from one body to another, in km, as the model lays them out.
+ *
+ * A belt is a ring rather than a place, so the crossing to one is the crossing
+ * to the nearest part of it: a ship going to the belt goes to the near edge,
+ * not to some agreed point on the far side of the star.
+ */
+function reachKm(open: StarSystem, from: number, to: Orbit): number {
+  const here = positionAu(open, from);
+  if (to.content.kind === "belt") {
+    return auToKm(Math.abs(Math.hypot(here.x, here.y) - to.au));
+  }
+  const there = positionAu(open, to.index);
+  return auToKm(Math.hypot(there.x - here.x, there.y - here.y));
+}
+
+function showTravel(): void {
+  const panel = el("sys-travel-panel");
+  const list = el("sys-travel-list");
+  list.replaceChildren();
+  if (system === null || orbitShown === null || panel.hidden) return;
+  const open = system;
+  const from = orbitShown;
+  const gees = Math.min(10, Math.max(0.1, Number(el<HTMLInputElement>("sys-gees").value) || 1));
+
+  const row = (term: string, value: string) => {
+    const dt = document.createElement("dt");
+    dt.textContent = term;
+    const dd = document.createElement("dd");
+    dd.textContent = value;
+    list.append(dt, dd);
+  };
+
+  // Out of the shadows first, because nothing else matters until a ship can
+  // leave. There is always one to clear: a ship at a world is inside that
+  // world's own. SystemSpec 4.9.3.
+  const here = positionAu(open, from);
+  const clear = clearOfShadows(shadowsIn(open), {
+    x: auToKm(here.x),
+    y: auToKm(here.y),
+  });
+  row("Jump point", `${kmLabel(clear)} · ${crossing(clear, gees)}`);
+
+  for (const orbit of open.orbits) {
+    if (orbit.index === from || orbit.content.kind === "empty") continue;
+    const km = reachKm(open, from, orbit);
+    row(bodyName(open, orbit.index), `${kmLabel(km)} · ${crossing(km, gees)}`);
+  }
+}
+
+el("sys-travel").addEventListener("click", () => {
+  const panel = el("sys-travel-panel");
+  panel.hidden = !panel.hidden;
+  el("sys-travel").setAttribute("aria-expanded", String(!panel.hidden));
+  showTravel();
+});
+
+el("sys-gees").addEventListener("input", showTravel);
 
 /* Saving and loading a system. SystemSpec 9.5, AppSpec 3.3 and 4.3 ------- */
 

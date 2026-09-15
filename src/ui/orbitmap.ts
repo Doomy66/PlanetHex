@@ -1,5 +1,5 @@
 import type { Orbit, StarSystem } from "../gen/system";
-import { starShadowAu } from "../gen/system";
+import { angleOf as placeOf, starShadowAu } from "../gen/system";
 import { jumpShadowKm, kmToAu } from "../gen/jump";
 import { valueFor } from "../gen/rng";
 import type { SpectralClass } from "../gen/star";
@@ -138,7 +138,8 @@ export function createOrbitMap(): OrbitMap {
 
   /** Where a body stands on its path. Fixed by the seed, so it never jumps. */
   function angleOf(system: StarSystem, orbit: Orbit): number {
-    return valueFor(`${system.seed}:where`, orbit.index) * Math.PI * 2 + radians(view.spinDeg);
+    // The body's own fixed angle, turned by however far the view has been spun.
+    return placeOf(system, orbit.index) + radians(view.spinDeg);
   }
 
   /** The lean of the plane: 1 seen flat on, 0 seen edge on. */
