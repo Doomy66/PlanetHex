@@ -435,32 +435,29 @@ export function moonsOf(system: StarSystem, orbitIndex: number): readonly Moon[]
 }
 
 /**
- * Which planet or which belt an orbit holds, counting outward from one.
- * SystemSpec 7.2.
+ * Which slot a body is in, counting outward from one. SystemSpec 7.2.
  *
- * Counted rather than taken from the orbit's own number, because the orbits are
- * slots in a table that starts closer in than most systems have anything, and a
- * reader counts planets. The third planet of Sol is Earth whether or not there
- * is a slot inside Mercury's.
+ * The orbit's own number rather than a count of the bodies in front of it, so a
+ * designation says where a body is and not how many things happen to lie inside
+ * it. Two consequences, both of them wanted: the numbers skip where an orbit is
+ * empty, which is how a real catalogue of a system reads, and a body's name
+ * cannot change because something was added or taken away nearer the star.
  *
- * Planets and belts are counted apart, so a belt between two planets does not
- * push the numbering of everything beyond it along.
+ * Planets and belts share the numbering, since they share the slots: one orbit
+ * holds one thing, so a belt and a planet can never collide on a number.
  */
 export function ordinalOf(
   system: StarSystem,
   orbitIndex: number,
 ): { kind: "planet" | "belt" | "none"; n: number } {
-  let planets = 0;
-  let belts = 0;
-  for (const orbit of system.orbits) {
-    const kind = orbit.content.kind;
-    if (kind === "world" || kind === "giant") planets++;
-    else if (kind === "belt") belts++;
-    if (orbit.index !== orbitIndex) continue;
-    if (kind === "world" || kind === "giant") return { kind: "planet", n: planets };
-    if (kind === "belt") return { kind: "belt", n: belts };
-    return { kind: "none", n: 0 };
-  }
+  const orbit = system.orbits.find((held) => held.index === orbitIndex);
+  if (orbit === undefined) return { kind: "none", n: 0 };
+  const kind = orbit.content.kind;
+  // Slots are numbered from zero inside the generator and from one everywhere a
+  // person reads them: nothing is anybody's nought planet.
+  const n = orbit.index + 1;
+  if (kind === "world" || kind === "giant") return { kind: "planet", n };
+  if (kind === "belt") return { kind: "belt", n };
   return { kind: "none", n: 0 };
 }
 

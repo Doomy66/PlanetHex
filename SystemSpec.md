@@ -212,11 +212,13 @@ This document sits under [SubSectorSpec.md](SubSectorSpec.md) and over [PlanetSp
 
 7.1 The system is named for its main world, which the subsector spec 3.4 named. A system does not get a name of its own.
 
-7.2 A planet is the system name, a hyphen, and which planet it is, counting outward from one: the third planet of Sol is Sol-3. Moons are the planet and a letter, Sol-5a.
+7.2 A planet is the system name, a hyphen, and which slot it is in, counting outward from one: a world in the third orbit is Sol-3. Moons are the planet and a letter, Sol-5a.
 
-7.2.1 Counted rather than taken from the orbit's own number. The orbits are slots in a table that starts closer in than most systems have anything, so an orbit number would be a fact about the table rather than about the system, and a system whose innermost slot held a world would have a Sol-0 in it. A reader counts planets, and the third planet of Sol is Earth whether or not there is a slot inside Mercury's.
+7.2.1 The slot rather than a count of the bodies inside it, so a designation says where a body is and not how many things happen to lie between it and the star.
 
-7.2.1.1 What this costs is that a name says which planet rather than where: two systems' third planets are both -3 wherever their orbits happen to fall. The distance is on the diagram, in the panel, and beside the name in the tree, so nothing is lost that was being read off the name.
+7.2.1.1 Two consequences, both of them the point. The numbers skip where an orbit is empty — Sol-1, Sol-3, Sol-7 — which is how a catalogue of a real system reads and is a fact worth having on the name. And a body's designation cannot change because something was added or taken away nearer the star, which matters when the designation is also the filename: a world saved as Sol-3 stays Sol-3.
+
+7.2.1.2 Slots are numbered from zero inside the generator and from one everywhere a person reads one. Nothing is anybody's nought planet.
 
 7.2.2 Arabic and hyphenated rather than the Roman numeral a catalogue would use, because this is a filename as much as a label: it is the stem every file of that world is saved under, at the app spec 4.2.1. Sol III reads better and sorts worse.
 
@@ -236,9 +238,11 @@ This document sits under [SubSectorSpec.md](SubSectorSpec.md) and over [PlanetSp
 
 7.3.4.2 This is why 7.2 is the naming and 7.3 is the exception rather than the other way round. Every body in a system has a designation and always did; a name is a thing that happened to some of them afterwards.
 
-7.4 A gas giant is a planet and is counted as one. A belt is not, and takes a numbering of its own: the system name, Belt, and which belt it is, so Sol Belt-1 is the one between Mars and Jupiter.
+7.4 A gas giant is a planet and is designated as one. A belt says what it is: the system name, Belt, and its slot, so a belt in the fourth orbit is Sol Belt-4.
 
-7.4.1 Counted apart so that a belt does not push the planets beyond it along. A system with a belt at its second orbit still has a third planet, and it is the third thing anybody would point at.
+7.4.1 The same numbering as the planets, not one of its own, because they share the slots: one orbit holds one thing, so a belt and a planet can never collide on a number. A system with a belt in its fourth orbit has no fourth planet, and that is the truth about it rather than a clash to be worked around.
+
+7.4.2 The word Belt is kept in the designation even though the number alone would be unambiguous, because a designation is read on its own — in a file name, in a tree, at the top of a panel — and a reader should not have to open the system to find out that Sol-4 is not somewhere they can land.
 
 ## 8. Display
 

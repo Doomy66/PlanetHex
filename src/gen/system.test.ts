@@ -295,26 +295,61 @@ describe("the bases", () => {
 });
 
 describe("what a body is called", () => {
-  it("counts the planets outward from one, and the belts apart from them", () => {
-    // SystemSpec 7.2.1 and 7.4.1: a reader counts planets, and a belt between
-    // two of them does not push the ones beyond it along.
+  it("numbers a body by its slot, counting outward from one", () => {
+    // SystemSpec 7.2.1: the orbit's own number rather than a count of what lies
+    // inside it, so a designation says where a body is.
     for (const seed of SEEDS) {
       const system = generateSystem(seed);
-      let planets = 0;
-      let belts = 0;
       for (const orbit of system.orbits) {
         const kind = orbit.content.kind;
         const held = ordinalOf(system, orbit.index);
         if (kind === "world" || kind === "giant") {
-          planets++;
-          expect(held, `${seed} orbit ${orbit.index}`).toEqual({ kind: "planet", n: planets });
+          expect(held, `${seed} orbit ${orbit.index}`).toEqual({
+            kind: "planet",
+            n: orbit.index + 1,
+          });
         } else if (kind === "belt") {
-          belts++;
-          expect(held, `${seed} orbit ${orbit.index}`).toEqual({ kind: "belt", n: belts });
+          expect(held, `${seed} orbit ${orbit.index}`).toEqual({
+            kind: "belt",
+            n: orbit.index + 1,
+          });
         } else {
           expect(held.kind).toBe("none");
         }
       }
+    }
+  });
+
+  it("gives no two bodies the same number", () => {
+    // 7.2.1.2: one orbit holds one thing, so a belt and a planet cannot collide
+    // even though they share the numbering.
+    for (const seed of SEEDS) {
+      const system = generateSystem(seed);
+      const seen = new Set<number>();
+      for (const orbit of system.orbits) {
+        const held = ordinalOf(system, orbit.index);
+        if (held.kind === "none") continue;
+        expect(seen.has(held.n), `${seed} ${held.n}`).toBe(false);
+        seen.add(held.n);
+      }
+    }
+  });
+
+  it("leaves a gap in the numbering where an orbit is empty", () => {
+    // The point of slot numbering: Sol-1, Sol-3, Sol-7 says where things are.
+    const gappy = SEEDS.map(generateSystem).filter((system) =>
+      system.orbits.some(
+        (orbit, at) => orbit.content.kind === "empty" && at < system.orbits.length - 1,
+      ),
+    );
+    expect(gappy.length).toBeGreaterThan(0);
+    for (const system of gappy.slice(0, 5)) {
+      const numbers = system.orbits
+        .map((orbit) => ordinalOf(system, orbit.index))
+        .filter((held) => held.kind !== "none")
+        .map((held) => held.n);
+      // Consecutive only where the orbits themselves were.
+      expect(numbers).toEqual([...numbers].sort((a, b) => a - b));
     }
   });
 
