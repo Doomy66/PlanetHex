@@ -162,6 +162,22 @@ export function chartWorld(
   regional = flavourFor(`${seed}:flavour`),
 ): ChartWorld | null {
   if (!holdsSystem(seed, at, density)) return null;
+  return worldAt(seed, at, hex, regional);
+}
+
+/**
+ * The world a hex would hold, whether or not the density puts one there.
+ *
+ * The same world either way: what the density decides is whether the hex is
+ * occupied, not what occupies it. A referee who puts a system into an empty hex
+ * under 5.3.4 gets the world that hex always had.
+ */
+export function worldAt(
+  seed: string,
+  at: string,
+  hex: SectorHex,
+  regional = flavourFor(`${seed}:flavour`),
+): ChartWorld | null {
   const systemSeed = systemSeedFor(seed, at);
   const worldSeed = mainWorldSeed(systemSeed);
   const uwp = rollUwp(worldSeed);

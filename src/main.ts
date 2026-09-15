@@ -105,6 +105,17 @@ import {
   type Density,
   type Subsector,
 } from "./gen/subsector";
+import { subsectorFile } from "./io/export/subsector";
+import {
+  newSubsectorDoc,
+  overrideFor as hexOverride,
+  parseSubsectorDoc,
+  setOverride as setHexOverride,
+  setPresence,
+  subsectorOf as chartOf,
+  type HexField,
+  type SubsectorDoc,
+} from "./subsector";
 import { SUBSECTOR_LETTERS } from "./location";
 import { liveGlobe, worldImage } from "./ui/worldimage";
 import { giantImage } from "./ui/giant";
@@ -2601,14 +2612,17 @@ el("sys-open").addEventListener("click", () => {
 
 /* The subsector chart. SubSectorSpec section 4 --------------------------- */
 
-// Read only at this stage: the chart draws, the panel says what is in a hex,
-// and a hex opens as a system. Overrides and saving are SubSectorSpec 5.
+// The document is what is edited and saved; the chart is what the document
+// describes, rebuilt from its seed every time either changes. SubSectorSpec 5.2.
 
 const chart = createChart();
 el("sub-chart").append(chart.element);
 
+let subDoc: SubsectorDoc | null = null;
 let subsector: Subsector | null = null;
+let subFolder: DirectoryHandle | null = null;
 let hexShown: string | null = null;
+let subDirty = false;
 
 for (const letter of SUBSECTOR_LETTERS) {
   const option = document.createElement("option");
@@ -2617,39 +2631,70 @@ for (const letter of SUBSECTOR_LETTERS) {
   el("sub-letter").append(option);
 }
 
-function subSay(message: string): void {
-  el("sub-status").textContent = message;
+function subSay(message: string, isError = false): void {
+  const status = el("sub-status");
+  status.textContent = message;
+  status.classList.toggle("error", isError);
+}
+
+function markSubDirty(): void {
+  subDirty = true;
+  el("sub-dirty").hidden = false;
+}
+
+function markSubClean(): void {
+  subDirty = false;
+  el("sub-dirty").hidden = true;
+}
+
+/** What a save would lose, asked before anything discards it. SubSectorSpec 5.6. */
+function confirmSubDiscard(action: string): boolean {
+  if (subDoc === null || !subDirty) return true;
+  return confirm(`${subDoc.name || "This subsector"} has unsaved changes. ${action} and lose them?`);
 }
 
 function startNewSubsector(): void {
+  if (!confirmSubDiscard("Roll another subsector")) return;
   const letter = el<HTMLSelectElement>("sub-letter").value || "A";
   const density = (el<HTMLSelectElement>("sub-density").value || "standard") as Density;
-  drawSubsector(generateSubsector(randomSeed(), letter, density));
+  const held = newSubsectorDoc(randomSeed(), letter, density, `Subsector ${letter}`);
+  subFolder = null;
+  openSubsector(held);
+  markSubClean();
 }
 
-/** Draw a subsector, and open it on the world a referee would look at first. */
-function drawSubsector(next: Subsector): void {
-  subsector = next;
+/** Put a document on screen, and the chart it describes with it. */
+function openSubsector(next: SubsectorDoc): void {
+  subDoc = next;
   setAppView("subsector");
+  el<HTMLInputElement>("sub-name").value = next.name;
+  el<HTMLInputElement>("sub-sector").value = next.sector;
   el<HTMLSelectElement>("sub-letter").value = next.letter;
   el<HTMLSelectElement>("sub-density").value = next.density;
-  if (el<HTMLInputElement>("sub-name").value === "") {
-    el<HTMLInputElement>("sub-name").value = `Subsector ${next.letter}`;
-  }
   openLevels.subsector = true;
   openLevels.system = false;
   openLevels.planet = false;
-  chart.render(next);
-  showSubsectorAbout();
-  showSubsectorList();
+  drawSubsector();
   showCrumbs();
   // The busiest world, which is where a referee's eye goes and what the chart is
   // usually about.
-  const first = [...next.worlds].sort(
+  const first = [...(subsector?.worlds ?? [])].sort(
     (a, b) => b.profile.population - a.profile.population,
   )[0];
   selectHex(first?.at ?? null);
-  subSay(`${next.worlds.length} systems in eighty hexes.`);
+  subSay(`${subsector?.worlds.length ?? 0} systems in eighty hexes.`);
+}
+
+/**
+ * Rebuild the chart from the document and draw it. SubSectorSpec 5.2: nothing
+ * generated is stored, so every edit is a change to the document and then this.
+ */
+function drawSubsector(): void {
+  if (subDoc === null) return;
+  subsector = chartOf(subDoc);
+  chart.render(subsector);
+  showSubsectorAbout();
+  showSubsectorList();
 }
 
 
@@ -2669,6 +2714,8 @@ function showSubsectorAbout(): void {
   fact("Inhabited", String(inhabited));
   fact("Density", subsector.density);
   fact("Seed", subsector.seed);
+  const written = subDoc?.overrides.length ?? 0;
+  if (written > 0) fact("Edited", written === 1 ? "one hex" : `${written} hexes`);
   el("sub-where").textContent = `Subsector ${subsector.letter}`;
   const sector = el<HTMLInputElement>("sub-sector").value.trim();
   el("sub-counts").textContent = [sector, `seed ${subsector.seed}`].filter(Boolean).join(" · ");
@@ -2726,7 +2773,7 @@ function selectHex(at: string | null): void {
   showHexPanel(at);
 }
 
-/** What is in a hex. SubSectorSpec 4.3. */
+/** What is in a hex, and where it is edited. SubSectorSpec 4.3 and 4.4. */
 function showHexPanel(at: string | null): void {
   const facts = el("sub-facts");
   const open = el<HTMLButtonElement>("sub-open");
@@ -2734,11 +2781,13 @@ function showHexPanel(at: string | null): void {
   el("sub-note").textContent = "";
   open.hidden = true;
   el("sub-globe").hidden = true;
-  if (subsector === null || at === null) {
+  el("sub-edit").hidden = true;
+  if (subsector === null || subDoc === null || at === null) {
     el("sub-what").textContent = "Select a hex";
     return;
   }
   const world = subsector.worlds.find((held) => held.at === at) ?? null;
+  showHexFields(at, world);
   if (world === null) {
     el("sub-what").textContent = `${at} — empty`;
     el("sub-note").textContent = "Nothing here. Most of a subsector is nothing.";
@@ -2753,9 +2802,6 @@ function showHexPanel(at: string | null): void {
     facts.append(dt, dd);
   };
   el("sub-what").textContent = `${world.name} — ${at}`;
-  row("Profile", world.uwp);
-  row("Bases", basesLabel(world.bases));
-  row("Zone", world.zone === "A" ? "amber" : world.zone === "R" ? "red" : "green");
   row("PBG", `${world.pbg.multiplier}${world.pbg.belts}${world.pbg.gasGiants}`);
   row("Stars", starsLabel(world.stars));
   if (world.trade.length > 0) {
@@ -2817,24 +2863,211 @@ function showHexGlobe(
   }, 0);
 }
 
+/**
+ * The fields a referee writes over a hex with. SubSectorSpec 5.3.
+ *
+ * What is in a field is what the chart is showing, whether that came from the
+ * generator or from them: a box that showed only their own edits would be a box
+ * that is empty on every hex they have not touched yet, and they would be typing
+ * a world's name in from scratch to change one letter of it. What decides
+ * whether anything is stored is whether it still matches what was rolled.
+ */
+function showHexFields(at: string, world: ChartWorld | null): void {
+  if (subDoc === null) return;
+  const box = el("sub-edit");
+  box.hidden = false;
+  const here = el<HTMLInputElement>("sub-here");
+  here.checked = world !== null;
+  el("sub-fields").hidden = world === null;
+  if (world === null) return;
+  el<HTMLInputElement>("sub-e-name").value = world.name;
+  el<HTMLInputElement>("sub-e-uwp").value = world.uwp;
+  el<HTMLSelectElement>("sub-e-bases").value = world.bases;
+  el<HTMLSelectElement>("sub-e-zone").value = world.zone;
+  el<HTMLTextAreaElement>("sub-e-note").value = hexOverride(subDoc, at)?.note ?? "";
+}
+
+/**
+ * Take an edit. Only what differs from what the generator said is kept, under
+ * 5.3.1, so a referee who types a name back to what it already was leaves no
+ * override behind.
+ */
+function editHex(field: HexField, value: string): void {
+  if (subDoc === null || hexShown === null) return;
+  const at = hexShown;
+  const rolled = rolledWorld(at);
+  const same =
+    rolled !== null &&
+    (field === "name"
+      ? rolled.name === value.trim()
+      : field === "uwp"
+        ? rolled.uwp === value.trim().toUpperCase()
+        : field === "bases"
+          ? rolled.bases === value
+          : field === "zone"
+            ? rolled.zone === value
+            : false);
+  setHexOverride(subDoc, at, field, same ? "" : value);
+  markSubDirty();
+  drawSubsector();
+  selectHex(at);
+}
+
+/** What the generator says is in a hex, before anybody wrote on it. */
+function rolledWorld(at: string): ChartWorld | null {
+  if (subDoc === null) return null;
+  const rolled = generateSubsector(subDoc.seed, subDoc.letter, subDoc.density);
+  return rolled.worlds.find((held) => held.at === at) ?? null;
+}
+
+el("sub-here").addEventListener("change", () => {
+  if (subDoc === null || hexShown === null) return;
+  const at = hexShown;
+  const wanted = el<HTMLInputElement>("sub-here").checked;
+  setPresence(subDoc, at, wanted, rolledWorld(at) !== null);
+  markSubDirty();
+  drawSubsector();
+  selectHex(at);
+});
+
+for (const [id, field] of [
+  ["sub-e-name", "name"],
+  ["sub-e-uwp", "uwp"],
+] as const) {
+  // On change rather than on input: a half typed UWP is not a profile, and a
+  // chart redrawn on every keystroke is a chart that fights the typist.
+  el(id).addEventListener("change", (event) => {
+    editHex(field, (event.target as HTMLInputElement).value);
+  });
+}
+for (const [id, field] of [
+  ["sub-e-bases", "bases"],
+  ["sub-e-zone", "zone"],
+] as const) {
+  el(id).addEventListener("change", (event) => {
+    editHex(field, (event.target as HTMLSelectElement).value);
+  });
+}
+el("sub-e-note").addEventListener("change", (event) => {
+  editHex("note", (event.target as HTMLTextAreaElement).value);
+});
+
+/* Saving and loading a subsector. SubSectorSpec 5.5, AppSpec 3.3 and 4.4 --- */
+
+/** The file a subsector is saved as, named for the subsector. AppSpec 4.4. */
+function subsectorFileFor(open: SubsectorDoc): SaveFile {
+  const stem = open.name.replace(/[^A-Za-z0-9 _-]/g, "").trim() || `Subsector ${open.letter}`;
+  return { name: `${stem}.json`, data: JSON.stringify(open, null, 2) };
+}
+
+/** The files a subsector save writes: the document, and the sector file. */
+function subsectorFiles(open: SubsectorDoc): SaveFile[] {
+  const stem = subsectorFileFor(open).name.replace(/\.json$/, "");
+  const files: SaveFile[] = [subsectorFileFor(open)];
+  // The sector file beside it, since a chart that cannot be handed to a map is
+  // a chart only this application can read. SubSectorSpec 6.1.
+  if (subsector !== null) {
+    files.push({
+      name: `${stem}.sec`,
+      data: subsectorFile(subsector, el<HTMLInputElement>("sub-sector").value.trim()),
+    });
+  }
+  return files;
+}
+
+el("sub-save").addEventListener("click", async () => {
+  if (subDoc === null) return;
+  const held = subDoc;
+  try {
+    const files = subsectorFiles(held);
+    if (isSupported()) {
+      // Asked for once: a load or an earlier save has already said where this
+      // subsector lives, and AppSpec 3.3.2 has it stay there.
+      subFolder ??= await pickFolder();
+      await saveTo(subFolder, files);
+      markSubClean();
+      subSay(`Saved ${files.map((file) => file.name).join(" and ")} into ${subFolder.name}.`);
+      return;
+    }
+    // The same fallback a planet save has under the planet spec 6.4.1: a browser
+    // that cannot write a folder gets the folder as an archive instead. A
+    // download cannot be written over, so there is no folder to remember.
+    const stem = subsectorFileFor(held).name.replace(/\.json$/, "");
+    download(await zipSave(files), `${stem}.zip`);
+    markSubClean();
+    subSay(`Saved ${stem}.zip.`);
+  } catch (error) {
+    if (error instanceof PickerCancelled) return;
+    subSay(error instanceof Error ? error.message : String(error), true);
+  }
+});
+
+/**
+ * Open a subsector from the folder holding it. AppSpec 3.3 and section 5: what
+ * is chosen is the folder, not a file in it, and the folder is the save folder
+ * from that moment on.
+ */
+async function loadSubsector(): Promise<void> {
+  if (!confirmSubDiscard("Load another subsector")) return;
+  try {
+    const { dir, files } = await loadFolder();
+    const found: { name: string; doc: SubsectorDoc }[] = [];
+    const refused: string[] = [];
+    for (const file of files) {
+      try {
+        found.push({ name: file.name, doc: parseSubsectorDoc(file.text) });
+      } catch (error) {
+        refused.push(`${file.name}: ${error instanceof Error ? error.message : String(error)}`);
+      }
+    }
+    if (found.length === 0) {
+      const detail = refused.length === 0 ? "" : ` ${refused[0]!}`;
+      throw new Error(`No subsector in ${dir.name}.${detail}`);
+    }
+    const first = found[0]!;
+    subFolder = dir;
+    openSubsector(first.doc);
+    markSubClean();
+    const others = found.length === 1 ? "" : ` (${found.length - 1} more in the folder)`;
+    subSay(`Loaded ${first.name} from ${dir.name}.${others}`);
+  } catch (error) {
+    if (error instanceof PickerCancelled) return;
+    const message = error instanceof Error ? error.message : String(error);
+    if (currentAppView() === "landing") landingSay(message, true);
+    else subSay(message, true);
+  }
+}
+
 chart.onSelect(selectHex);
 el("sub-inhabited").addEventListener("change", showSubsectorList);
 el("sub-roll").addEventListener("click", startNewSubsector);
+
+// Every stored field of 5.1, and every one of them makes the document dirty.
 for (const id of ["sub-letter", "sub-density"]) {
   el(id).addEventListener("change", () => {
-    if (subsector === null) return;
-    drawSubsector(
-      generateSubsector(
-        subsector.seed,
-        el<HTMLSelectElement>("sub-letter").value,
-        el<HTMLSelectElement>("sub-density").value as Density,
-      ),
-    );
+    if (subDoc === null) return;
+    subDoc.letter = el<HTMLSelectElement>("sub-letter").value;
+    subDoc.density = el<HTMLSelectElement>("sub-density").value as Density;
+    markSubDirty();
+    drawSubsector();
+    selectHex(hexShown);
   });
 }
-el("sub-sector").addEventListener("input", showSubsectorAbout);
+el("sub-name").addEventListener("input", () => {
+  if (subDoc === null) return;
+  subDoc.name = el<HTMLInputElement>("sub-name").value;
+  markSubDirty();
+  showCrumbs();
+});
+el("sub-sector").addEventListener("input", () => {
+  if (subDoc === null) return;
+  subDoc.sector = el<HTMLInputElement>("sub-sector").value;
+  markSubDirty();
+  showSubsectorAbout();
+});
 
 el("sub-home").addEventListener("click", () => {
+  if (!confirmSubDiscard("Leave this subsector")) return;
   setAppView("landing");
   landingSay("");
 });
@@ -2913,6 +3146,7 @@ wireLanding({
   systemNew: startNewSystem,
   systemLoad: loadSystem,
   subsectorNew: startNewSubsector,
+  subsectorLoad: loadSubsector,
 });
 
 /* Start ------------------------------------------------------------------ */

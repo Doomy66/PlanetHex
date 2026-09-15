@@ -48,6 +48,8 @@ export interface LandingHandlers {
   systemLoad(): void | Promise<void>;
   /** Roll a new subsector and open its chart. SubSectorSpec section 4. */
   subsectorNew(): void;
+  /** Pick the folder a subsector lives in and open it. AppSpec 3.3. */
+  subsectorLoad(): void | Promise<void>;
 }
 
 export function wireLanding(handlers: LandingHandlers): void {
@@ -64,4 +66,5 @@ export function wireLanding(handlers: LandingHandlers): void {
   click("landing-system-new", handlers.systemNew);
   click("landing-system-load", handlers.systemLoad);
   click("landing-sub-new", handlers.subsectorNew);
+  click("landing-sub-load", handlers.subsectorLoad);
 }

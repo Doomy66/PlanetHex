@@ -226,7 +226,11 @@ Nothing is marked Red by generation.
 
 5.4 The document carries a version number and is validated on load, as the planet spec 6.4.2 and 6.4.3 require of a planet.
 
-5.5 A subsector save is a folder holding its JSON, the chart as a PNG, and whatever exports of section 6 were asked for, on the same File System Access route as the planet spec 6.4.1.
+5.5 A subsector save is a folder holding its JSON, the chart as a PNG, and whatever exports of section 6 were asked for, on the same File System Access route as the planet spec 6.4.1. A browser without that route gets the folder as an archive, as a planet save does.
+
+5.5.1 The sector file of 6.1 is written every time rather than being asked for. It is one line per world and costs nothing, and a chart that cannot be handed to a map is a chart only this application can read.
+
+5.5.2 The fields of 5.3 are edited in the hex panel, under whatever the hex says it is: the referee reads the world and then writes over it. Each field shows what the chart is showing, whether that came from the generator or from them — a box that held only their own edits would be empty on every hex they had not touched, and they would be typing a name in from scratch to change a letter of it. What decides whether anything is stored is whether it still matches what was rolled, so typing a name back to what it already was leaves nothing behind.
 
 5.6 Unsaved edits are tracked and warned about, as the planet spec 6.4.4 does. An edit is any change to a stored field of 5.1, the seed and density included.
 

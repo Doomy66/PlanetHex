@@ -58,7 +58,7 @@
             </div>
             <div class="actions">
               <button id="landing-sub-new" type="button">New</button>
-              <button type="button" disabled>Load</button>
+              <button id="landing-sub-load" type="button">Load</button>
             </div>
           </li>
           <li class="level">
@@ -87,6 +87,7 @@
         <input id="sub-name" class="sys-name" type="text" autocomplete="off" aria-label="Subsector name" />
         <span id="sub-where" class="sys-stars"></span>
         <span id="sub-counts" class="sys-counts"></span>
+        <span id="sub-dirty" class="dirty" hidden>unsaved</span>
         <span class="system-actions">
           <label class="sys-where">Sector<input id="sub-sector" type="text" autocomplete="off" /></label>
           <label class="sys-where">Subsector
@@ -101,6 +102,7 @@
             </select>
           </label>
           <button id="sub-roll" type="button" title="Another subsector">Roll</button>
+          <button id="sub-save" type="button">Save</button>
           <button id="sub-home" class="home" type="button" title="Back to the levels">Levels</button>
         </span>
       </header>
@@ -147,6 +149,38 @@
           </div>
           <dl id="sub-facts" class="sys-facts"></dl>
           <p id="sub-note" class="sys-note"></p>
+
+          <!-- What the referee says over what was rolled. SubSectorSpec 5.3:
+               only what they change is stored, so an empty field here is a
+               field that is not in the document at all. -->
+          <div id="sub-edit" class="sub-edit" hidden>
+            <label class="sys-only">
+              <input id="sub-here" type="checkbox" />
+              A system in this hex
+            </label>
+            <div id="sub-fields">
+              <label class="sys-written">Name<input id="sub-e-name" type="text" autocomplete="off" /></label>
+              <label class="sys-written">Profile<input id="sub-e-uwp" type="text" autocomplete="off" maxlength="9" /></label>
+              <label class="sys-written">Bases
+                <select id="sub-e-bases">
+                  <option value="">None</option>
+                  <option value="N">Naval</option>
+                  <option value="S">Scout</option>
+                  <option value="A">Naval and scout</option>
+                </select>
+              </label>
+              <label class="sys-written">Zone
+                <select id="sub-e-zone">
+                  <option value="">Green</option>
+                  <option value="A">Amber</option>
+                  <option value="R">Red</option>
+                </select>
+              </label>
+              <label class="sys-written">Notes
+                <textarea id="sub-e-note" rows="2" placeholder="What a referee wants to write here"></textarea>
+              </label>
+            </div>
+          </div>
         </div>
       </aside>
 

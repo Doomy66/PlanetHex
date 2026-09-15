@@ -608,6 +608,13 @@ body[data-view="planet"] .landing { display: none; }
 .map-naval { fill: #e6ebf2; }
 .map-scout { fill: #9fb0c4; }
 
+/* Where a hex is edited. The fields sit under what the hex says it is, so a
+   referee reads the world and then writes over it. */
+.sub-edit { display: grid; gap: 6px; border-top: 1px solid var(--line); padding-top: 8px; }
+.sub-edit .sys-written { margin: 0; }
+#sub-fields { display: grid; gap: 6px; }
+#sub-fields[hidden] { display: none; }
+
 /* The trail across the levels. AppSpec 6.2 -------------------------------- */
 
 .crumbs { display: flex; align-items: baseline; gap: 2px; flex-wrap: wrap; min-width: 0; }
