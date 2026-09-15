@@ -12,6 +12,7 @@ import {
   DEFAULT_DENSITY,
   DENSITIES,
   generateSubsector,
+  mainsIn,
   routesBetween,
   worldAt,
   type ChartWorld,
@@ -232,7 +233,7 @@ export function subsectorOf(doc: SubsectorDoc): Subsector {
     worlds.push(override === undefined ? world : wearing(world, override));
   }
 
-  return { ...rolled, worlds, routes: routesBetween(worlds) };
+  return { ...rolled, worlds, routes: routesBetween(worlds), mains: mainsIn(worlds) };
 }
 
 /** One world, wearing what the referee wrote on it. */

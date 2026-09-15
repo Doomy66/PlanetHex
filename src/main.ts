@@ -2869,6 +2869,7 @@ function drawSubsector(): void {
   if (subDoc === null) return;
   subsector = chartOf(subDoc);
   chart.render(subsector);
+  chart.setMains(el<HTMLInputElement>("sub-mains").checked);
   showSubsectorAbout();
   showSubsectorList();
 }
@@ -2890,6 +2891,13 @@ function showSubsectorAbout(): void {
   fact("Inhabited", String(inhabited));
   fact("Density", subsector.density);
   fact("Seed", subsector.seed);
+  // The Mains are worth a line of their own when they are being looked at: how
+  // many there are, and how far the longest one reaches. SubSectorSpec 3.10.
+  if (el<HTMLInputElement>("sub-mains").checked && subsector.mains.length > 0) {
+    const longest = subsector.mains[0]!;
+    fact("Mains", subsector.mains.length === 1 ? "one" : String(subsector.mains.length));
+    fact("Longest", `${longest.name}, ${longest.hexes.length} worlds`);
+  }
   const written = subDoc?.overrides.length ?? 0;
   if (written > 0) fact("Edited", written === 1 ? "one hex" : `${written} hexes`);
   el("sub-where").textContent = `Subsector ${subsector.letter}`;
@@ -3246,6 +3254,10 @@ async function loadSubsector(): Promise<void> {
 
 chart.onSelect(selectHex);
 el("sub-inhabited").addEventListener("change", showSubsectorList);
+el("sub-mains").addEventListener("change", () => {
+  chart.setMains(el<HTMLInputElement>("sub-mains").checked);
+  showSubsectorAbout();
+});
 el("sub-roll").addEventListener("click", startNewSubsector);
 
 // Every stored field of 5.1, and every one of them makes the document dirty.

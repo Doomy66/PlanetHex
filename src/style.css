@@ -745,6 +745,17 @@ body[data-view="system"] .subsector { display: none; }
 .chart-giant { fill: #d7b273; }
 .chart-giant-ring { fill: none; stroke: #d7b273; stroke-width: 1.4; }
 
+/* A Main washed behind the hexes it runs through. Low enough to read the chart
+   through, distinct enough to follow across it. */
+.chart-main > * { stroke: none; }
+.chart-main-0 > * { fill: rgba(90, 160, 220, 0.16); }
+.chart-main-1 > * { fill: rgba(200, 150, 90, 0.16); }
+.chart-main-2 > * { fill: rgba(140, 200, 140, 0.15); }
+.chart-main-3 > * { fill: rgba(190, 130, 200, 0.15); }
+.chart-main-4 > * { fill: rgba(220, 200, 120, 0.14); }
+/* The key's swatch has no chart behind it to tint, so it shows solid. */
+.chart-key .chart-main-0 > * { fill: rgba(90, 160, 220, 0.55); }
+
 /* The routes. Under the worlds, over the grid. The express network is the
    heavier line, because it is the one that runs whatever else is happening. */
 .chart-route { stroke: #3d6ea8; stroke-width: 2; opacity: 0.75; }

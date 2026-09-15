@@ -328,6 +328,100 @@ describe("the routes", () => {
   });
 });
 
+describe("the Mains", () => {
+  // SubSectorSpec 3.10. A run of worlds every one of which is within one jump
+  // of the next, which is the oldest piece of Traveller astrography there is.
+  const charts = SEEDS.map((seed) => generateSubsector(seed, "A"));
+
+  it("puts every world of a Main within one jump of another on it", () => {
+    for (const chart of charts) {
+      const where = new Map(chart.worlds.map((world) => [world.at, world]));
+      for (const main of chart.mains) {
+        for (const at of main.hexes) {
+          const here = where.get(at)!;
+          const near = main.hexes.some(
+            (other) => other !== at && hexDistance(here.hex, where.get(other)!.hex) === 1,
+          );
+          expect(near, `${at} in the ${main.name} Main`).toBe(true);
+        }
+      }
+    }
+  });
+
+  it("puts no world on two Mains", () => {
+    // A Main is a connected group, and a world cannot be in two of those.
+    for (const chart of charts) {
+      const seen = new Set<string>();
+      for (const main of chart.mains) {
+        for (const at of main.hexes) {
+          expect(seen.has(at), at).toBe(false);
+          seen.add(at);
+        }
+      }
+    }
+  });
+
+  it("takes in every neighbour there is, so no two Mains touch", () => {
+    // 3.10.1: if two groups had a jump-1 step between them they would be one
+    // group, so a walk that stopped early would show up here.
+    for (const chart of charts) {
+      const where = new Map(chart.worlds.map((world) => [world.at, world]));
+      for (const [at, main] of chart.mains.entries()) {
+        for (const other of chart.mains.slice(at + 1)) {
+          for (const one of main.hexes) {
+            for (const two of other.hexes) {
+              expect(
+                hexDistance(where.get(one)!.hex, where.get(two)!.hex),
+                `${one} and ${two}`,
+              ).toBeGreaterThan(1);
+            }
+          }
+        }
+      }
+    }
+  });
+
+  it("does not call a pair of worlds a Main", () => {
+    // 3.10.2: three in a row is the shortest thing worth the name.
+    for (const chart of charts) {
+      for (const main of chart.mains) expect(main.hexes.length).toBeGreaterThanOrEqual(3);
+    }
+  });
+
+  it("names a Main after the busiest world on it", () => {
+    // 3.10.3: the one anybody would say they were heading for.
+    for (const chart of charts) {
+      const where = new Map(chart.worlds.map((world) => [world.at, world]));
+      for (const main of chart.mains) {
+        const most = Math.max(...main.hexes.map((at) => where.get(at)!.profile.population));
+        const named = main.hexes.find((at) => where.get(at)!.name === main.name)!;
+        expect(where.get(named)!.profile.population, main.name).toBe(most);
+      }
+    }
+  });
+
+  it("finds them at all, and longest first", () => {
+    const found = charts.filter((chart) => chart.mains.length > 0);
+    expect(found.length).toBeGreaterThan(charts.length / 2);
+    for (const chart of found) {
+      const sizes = chart.mains.map((main) => main.hexes.length);
+      expect(sizes).toEqual([...sizes].sort((a, b) => b - a));
+    }
+  });
+
+  it("counts an empty world as a step along one", () => {
+    // 3.10.1.1: a Main is where a ship can go, and an unpopulated world with a
+    // gas giant to skim is as much a step along one as a hive world.
+    const anyEmpty = charts.some((chart) => {
+      const where = new Map(chart.worlds.map((world) => [world.at, world]));
+      return chart.mains.some((main) =>
+        main.hexes.some((at) => where.get(at)!.profile.population === 0),
+      );
+    });
+    expect(anyEmpty).toBe(true);
+  });
+});
+
 describe("the sector file", () => {
   it("writes a line a sector map can read for every world", () => {
     const chart = generateSubsector("REGINA42", "C", "standard");

@@ -172,6 +172,24 @@ Nothing is marked Red by generation.
 
 3.9.6 This comes out at about four routes for every five inhabited worlds, most of them trade. That is a web a referee can follow from one end of a subsector to the other without the chart turning into a thicket — and it is the right shape as well as the right size, since the express network is meant to be sparse and trade is meant to be everywhere.
 
+### 3.10 The Mains
+
+3.10.1 A Main is a run of worlds every one of which is within one jump of another on it. It is the oldest piece of Traveller astrography there is and the thing a region ends up named after — the Spinward Main — because a jump-1 ship can cross the whole of one, and a jump-1 ship is most of them.
+
+3.10.1.1 Every world counts, whether anybody lives on it or not. A Main is a fact about where a ship can go, and an empty world with a gas giant to skim is as much a step along one as a hive world is.
+
+3.10.1.2 A Main is a connected group and nothing cleverer: everything a jump-1 walk can reach from a world is on the same Main as it. So no world is on two, and no two Mains touch — if they did they would be one.
+
+3.10.2 Three worlds is the shortest run worth the name. Two worlds a jump apart is a pair of neighbours, and calling it a Main would empty the word out.
+
+3.10.3 A Main is named after the busiest world on it, which is the one anybody would say they were heading for.
+
+3.10.4 Drawn as a wash behind the hexes it runs through, on a switch, since it is context rather than content. A wash rather than a line because a Main is a region and not a path: it has no direction and no two ends, and drawing it as a line would mean choosing an order it does not have.
+
+3.10.4.1 Each Main gets its own colour so two that pass close by can be told apart, and the chart says how many there are and how far the longest reaches.
+
+3.10.5 What a Main looks like stops at the subsector's edge, and the real one does not. A chart is eight hexes by ten and a Main can run the width of a sector; what is drawn here is the part of it in view. The sector level is where that is fixed.
+
 ## 4. Display
 
 4.1 The chart is a panel of eighty hexes with the controls beside it, in the shape the planet view already uses: a left panel of settings, the chart in the middle.

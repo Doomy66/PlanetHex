@@ -41,6 +41,9 @@ const PAD = HEX_WIDE * 0.45;
 const DOT = { least: 6, most: 12 } as const;
 const ZONE_R = 20;
 
+/** How many colours the Mains are drawn in before they start round again. */
+const MAIN_COLOURS = 5;
+
 /** How big a world's dot is. Population, not size: 4.2.1 says why. */
 function dotFor(population: number): number {
   const at = Math.min(1, Math.max(0, population / 12));
@@ -105,23 +108,29 @@ function worldClass(world: ChartWorld): string {
 export interface Chart {
   readonly element: SVGSVGElement;
   render(subsector: Subsector): void;
+  /** Show or hide the Mains overlay. SubSectorSpec 3.10.4. */
+  setMains(show: boolean): void;
   setSelected(at: string | null): void;
   onSelect(handler: (at: string) => void): void;
 }
 
 export function createChart(): Chart {
   const svg = make("svg", { class: "chart" });
+  const mainLayer = make("g");
   const gridLayer = make("g");
   const routeLayer = make("g");
   const worldLayer = make("g");
   const selectLayer = make("g");
   // The routes go under the worlds and over the grid: they are the thing a hex is
   // read in the context of, not a thing drawn on top of it.
-  svg.append(gridLayer, routeLayer, worldLayer, selectLayer);
+  // Under everything: a Main is the ground the rest of the chart sits on.
+  svg.append(mainLayer, gridLayer, routeLayer, worldLayer, selectLayer);
 
   const handlers: ((at: string) => void)[] = [];
   const places = new Map<string, { x: number; y: number }>();
   let selected: string | null = null;
+  let shown: Subsector | null = null;
+  let mainsShown = false;
 
   function drawSelection(): void {
     selectLayer.replaceChildren();
@@ -132,6 +141,7 @@ export function createChart(): Chart {
   }
 
   function render(subsector: Subsector): void {
+    shown = subsector;
     gridLayer.replaceChildren();
     routeLayer.replaceChildren();
     worldLayer.replaceChildren();
@@ -171,7 +181,33 @@ export function createChart(): Chart {
     const width = PAD * 2 + (SUB_COLS - 1) * COLUMN_STEP + HEX_WIDE;
     const height = PAD * 2 + SUB_ROWS * HEX_HIGH + HEX_HIGH / 2;
     svg.setAttribute("viewBox", `0 0 ${width} ${height}`);
+    drawMains();
     drawSelection();
+  }
+
+  /**
+   * The Mains, as a tint behind the hexes they run through. SubSectorSpec 3.10.4.
+   *
+   * A wash rather than a line, because a Main is a region rather than a path:
+   * it has no direction and no two ends, and drawing it as a line would mean
+   * choosing an order it does not have. Each one gets its own colour off the
+   * top so that two that pass close by can be told apart.
+   */
+  function drawMains(): void {
+    mainLayer.replaceChildren();
+    if (!mainsShown || shown === null) return;
+    for (const [at, main] of shown.mains.entries()) {
+      const group = make("g", { class: `chart-main chart-main-${at % MAIN_COLOURS}` });
+      const title = make("title");
+      title.textContent = `The ${main.name} Main: ${main.hexes.length} worlds within one jump of each other`;
+      group.append(title);
+      for (const hex of main.hexes) {
+        const where = places.get(hex);
+        if (where === undefined) continue;
+        group.append(make("polygon", { points: hexPoints(where.x, where.y) }));
+      }
+      mainLayer.append(group);
+    }
   }
 
   function drawHex(at: string, x: number, y: number, world: ChartWorld | null): void {
@@ -297,6 +333,10 @@ export function createChart(): Chart {
   return {
     element: svg,
     render,
+    setMains(show) {
+      mainsShown = show;
+      drawMains();
+    },
     setSelected(at) {
       selected = at;
       drawSelection();

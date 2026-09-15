@@ -80,6 +80,23 @@ export interface Route {
   readonly kind: "xboat" | "trade";
 }
 
+/**
+ * A Main: a run of worlds every one of which is within one jump of the next.
+ * SubSectorSpec 3.10.
+ *
+ * The oldest piece of Traveller astrography there is, and the one a region ends
+ * up named after - the Spinward Main, the Trojan Reach Main. It matters because
+ * a jump-1 ship can cross the whole of one, which decides where trade goes,
+ * where a polity can hold together, and where the far side of a two hex gap is
+ * a different world entirely.
+ */
+export interface Main {
+  /** What it is called: the busiest world on it. 3.10.3. */
+  readonly name: string;
+  /** The hexes it runs through, in reading order. */
+  readonly hexes: readonly string[];
+}
+
 export interface Subsector {
   readonly seed: string;
   readonly letter: string;
@@ -88,6 +105,53 @@ export interface Subsector {
   readonly worlds: readonly ChartWorld[];
   /** The routes between them, each pair once. 3.9. */
   readonly routes: readonly Route[];
+  /** The jump-1 chains among them, longest first. 3.10. */
+  readonly mains: readonly Main[];
+}
+
+/** How many worlds in a row make a chain worth calling a Main. 3.10.2. */
+const SHORTEST_MAIN = 3;
+
+/**
+ * The Mains. SubSectorSpec 3.10.
+ *
+ * Every world that can be reached from another in one jump is on the same Main
+ * as it, which is a connected group and nothing cleverer: walk out from each
+ * world that has not been seen and take everything the walk reaches.
+ *
+ * Every world counts, whether anybody lives on it or not. A Main is a fact about
+ * where a ship can go, and an empty world with a gas giant to skim is as much a
+ * step along one as a hive world.
+ */
+export function mainsIn(worlds: readonly ChartWorld[]): Main[] {
+  const left = new Map(worlds.map((world) => [world.at, world]));
+  const mains: Main[] = [];
+  for (const world of worlds) {
+    if (!left.has(world.at)) continue;
+    const group: ChartWorld[] = [];
+    const walk = [world];
+    left.delete(world.at);
+    while (walk.length > 0) {
+      const here = walk.pop()!;
+      group.push(here);
+      for (const other of [...left.values()]) {
+        if (hexDistance(here.hex, other.hex) !== 1) continue;
+        left.delete(other.at);
+        walk.push(other);
+      }
+    }
+    if (group.length < SHORTEST_MAIN) continue;
+    // Named for the busiest world on it, which is the one anybody would say they
+    // were heading for.
+    const busiest = [...group].sort(
+      (a, b) => b.profile.population - a.profile.population || a.at.localeCompare(b.at),
+    )[0]!;
+    mains.push({
+      name: busiest.name,
+      hexes: group.map((held) => held.at).sort((a, b) => a.localeCompare(b)),
+    });
+  }
+  return mains.sort((a, b) => b.hexes.length - a.hexes.length || a.name.localeCompare(b.name));
 }
 
 /**
@@ -261,6 +325,7 @@ export function generateSubsector(
     density,
     worlds,
     routes: routesBetween(worlds),
+    mains: mainsIn(worlds),
   };
 }
 
