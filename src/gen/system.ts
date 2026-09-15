@@ -162,7 +162,7 @@ export interface StarSystem {
    * The travel zone, as the Zone column writes it: "A" for amber, "" for green.
    * Derived from the main world's profile the way the chart derives it, for the
    * reason the bases are - what both levels can work out, neither owns. Nothing
-   * here ever writes a red: that is the referee's, under SubSectorSpec 3.6.2.
+   * here ever writes a red: that is the referee's, under SubSectorSpec 3.6.4.
    */
   readonly zone: string;
   /**
@@ -345,7 +345,7 @@ export function generateSystem(seed: string): StarSystem {
     orbits,
     pbg,
     bases: { letter: basesFor(worldSeed, parseUwp(uwp)!), orbitIndex: home.index },
-    zone: zoneFor(parseUwp(uwp)!),
+    zone: zoneFor(worldSeed, parseUwp(uwp)!),
     placed: { belts: countOf(content, "belt"), gasGiants: countOf(content, "giant") },
     mainWorld: {
       seed: worldSeed,

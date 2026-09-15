@@ -116,20 +116,51 @@ describe("what the chart holds", () => {
     expect(scout).toBeGreaterThan(0);
   });
 
-  it("marks amber where the profile earns it and red nowhere", () => {
-    // SubSectorSpec 3.6.2: red is a referee's decision about their own campaign,
-    // and nothing in a profile knows that.
+  it("marks amber only where something is wrong, and red nowhere", () => {
+    // SubSectorSpec 3.6.1 and 3.6.4: three things put a world in the running,
+    // and red is a referee's decision about their own campaign that nothing in
+    // a profile knows.
     let amber = 0;
     for (const seed of SEEDS) {
       for (const world of generateSubsector(seed, "A").worlds) {
         expect(world.zone).not.toBe("R");
         if (world.zone !== "A") continue;
         amber++;
-        const { law, government } = world.profile;
-        expect(law >= 9 || government === 0 || government === 7, world.uwp).toBe(true);
+        const { atmosphere, government, law, population } = world.profile;
+        const lived = population > 0;
+        const wrong =
+          atmosphere >= 10 ||
+          (lived && (government === 0 || government === 7 || government === 10)) ||
+          (lived && (law === 0 || law >= 9));
+        expect(wrong, world.uwp).toBe(true);
       }
     }
     expect(amber).toBeGreaterThan(0);
+  });
+
+  it("posts two or three of them in a subsector rather than twenty", () => {
+    // SubSectorSpec 3.6.2. Half a chart qualifies on paper; a chart where half
+    // the hexes carry a warning is a chart where the warning means nothing.
+    const counts = SEEDS.map(
+      (seed) =>
+        generateSubsector(seed, "A").worlds.filter((world) => world.zone === "A").length,
+    );
+    const average = counts.reduce((sum, n) => sum + n, 0) / counts.length;
+    expect(average).toBeGreaterThan(1.5);
+    expect(average).toBeLessThan(3.5);
+    // And no chart is drowning in them, whichever way the dice fell.
+    expect(Math.max(...counts)).toBeLessThan(10);
+  });
+
+  it("flags nobody's rock for its air and never for its politics", () => {
+    // 3.6.1.1: an empty world has no government and no law rather than a
+    // dangerous amount of either.
+    for (const seed of SEEDS) {
+      for (const world of generateSubsector(seed, "A").worlds) {
+        if (world.profile.population > 0 || world.zone !== "A") continue;
+        expect(world.profile.atmosphere, world.uwp).toBeGreaterThanOrEqual(10);
+      }
+    }
   });
 
   it("names its worlds mostly the way the region names things", () => {

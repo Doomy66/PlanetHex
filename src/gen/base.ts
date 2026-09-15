@@ -53,16 +53,51 @@ export function basesLabel(bases: string): string {
 }
 
 /**
+ * How likely a world is to be flagged, by how many of the three things are wrong
+ * with it. SubSectorSpec 3.6.2.
+ *
+ * Something has to be wrong before a world can be flagged at all, but plenty of
+ * worlds have something wrong with them and most of them are visited anyway. So
+ * what a trigger buys is a chance rather than a verdict, and the chances are
+ * small: half a subsector qualifies on paper, and two or three of them are
+ * actually posted.
+ */
+const AMBER_CHANCE = [0, 0.07, 0.18, 0.4] as const;
+
+/**
+ * What is wrong with a world, as a count of the three things that can be.
+ * SubSectorSpec 3.6.1.
+ */
+function amberTriggers(profile: Uwp): number {
+  // A world nobody is on has no government and no law rather than a dangerous
+  // amount of either: those digits are blank, not extreme, and flagging an
+  // empty rock for anarchy would be warning travellers about nobody. Its air is
+  // still its air, though, and that is a hazard whoever is or is not there.
+  const lived = profile.population > 0;
+  const air = profile.atmosphere >= 10;
+  const rule = lived && (profile.government === 0 || profile.government === 7 || profile.government === 10);
+  const law = lived && (profile.law === 0 || profile.law >= 9);
+  return Number(air) + Number(rule) + Number(law);
+}
+
+/**
  * Whether a world is worth a warning. SubSectorSpec 3.6.
+ *
+ * Three things put a world in the running: an atmosphere that needs a suit and
+ * might eat it, a government that cannot be dealt with or cannot agree with
+ * itself, and a law level at either end - none at all, or so much that a crew
+ * will fall foul of something. The more of them are true, the likelier it is
+ * that the warning was actually posted.
  *
  * Amber is a description of a profile and can be derived. Red is a referee's
  * decision about their own campaign - it says something has gone wrong here that
  * the players should not walk into - and nothing in a profile knows that, so
  * nothing here ever writes one.
  */
-export function zoneFor(profile: Uwp): string {
-  const dangerous = profile.law >= 9 || profile.government === 0 || profile.government === 7;
-  return dangerous ? "A" : "";
+export function zoneFor(seed: string, profile: Uwp): string {
+  const triggers = amberTriggers(profile);
+  if (triggers === 0) return "";
+  return valueFor(`${seed}:zone`, 0) < AMBER_CHANCE[triggers]! ? "A" : "";
 }
 
 /** What the zone letter says, in words. */

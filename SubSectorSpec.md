@@ -108,11 +108,23 @@ This document is the companion to [PlanetSpec.md](PlanetSpec.md) and is numbered
 
 ### 3.6 The travel zone
 
-3.6.1 A world is marked Amber where its law level is 9 or above, or where its government is 0 or 7. Nothing is marked Red by generation.
+3.6.1 Three things put a world in the running for an Amber zone. Its atmosphere is 10 or above — exotic, corrosive or insidious, so a landing party needs a suit and the suit may not last. Its government is 0, 7 or 10 — nobody to deal with, a dozen rival states none of whose permits the others honour, or one person whose mood is the law. Or its law level is 0 or 9 and above — no law at all, or so much of it that a crew will fall foul of something they did not know was a crime.
 
-3.6.2 Amber is a description of a profile, so it can be derived. Red is a referee's decision about their own campaign — it says something has gone wrong here that the players should not walk into — and nothing in a profile knows that. Generating Red would be the geology-costume problem of the planet spec 8.3.3 in a different hat.
+3.6.1.1 A world nobody lives on qualifies on its air alone. It has no government and no law rather than a dangerous amount of either: those digits are blank, not extreme, and flagging an empty rock for anarchy is warning travellers about nobody. Its atmosphere is still its atmosphere, and that is a hazard whoever is or is not there.
 
-3.6.3 The user can set any zone on any world, including Red. That is an edit under 5.3.
+3.6.2 Being in the running is not being flagged. Half a subsector qualifies on paper — twenty of its forty worlds — and a chart where half the hexes carry a warning is a chart where the warning means nothing. So a trigger buys a chance, and the chance is small: about one in fourteen for a world with one thing wrong with it, one in five with two, and two in five with all three.
+
+3.6.2.1 Weighted by how many triggers a world has, rather than flat, because a corrosive world with no law and no government is genuinely more likely to have had somebody file a warning about it than a world whose only fault is a fussy customs service.
+
+3.6.2.2 This comes out at two or three Amber zones per subsector, which is what a referee wants: few enough that one on the chart means something, common enough that a subsector usually has some.
+
+3.6.3 The chance is drawn from the world's own seed, so it is the same world every time the chart is generated and does not move when the density changes.
+
+Nothing is marked Red by generation.
+
+3.6.4 Amber is a description of a profile, so it can be derived. Red is a referee's decision about their own campaign — it says something has gone wrong here that the players should not walk into — and nothing in a profile knows that. Generating Red would be the geology-costume problem of the planet spec 8.3.3 in a different hat.
+
+3.6.5 The user can set any zone on any world, including Red. That is an edit under 5.3.
 
 ### 3.7 The stars
 

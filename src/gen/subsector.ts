@@ -183,7 +183,7 @@ export function chartWorld(
     pbg: pbgFor(worldSeed, uwp),
     stars: starsFor(systemSeed),
     bases: basesFor(worldSeed, profile),
-    zone: zoneFor(profile),
+    zone: zoneFor(worldSeed, profile),
   };
 }
 
