@@ -127,11 +127,14 @@ describe("what the chart holds", () => {
         if (world.zone !== "A") continue;
         amber++;
         const { atmosphere, government, law, population } = world.profile;
-        const lived = population > 0;
+        expect(population, world.uwp).toBeGreaterThan(0);
         const wrong =
           atmosphere >= 10 ||
-          (lived && (government === 0 || government === 7 || government === 10)) ||
-          (lived && (law === 0 || law >= 9));
+          government === 0 ||
+          government === 7 ||
+          government === 10 ||
+          law === 0 ||
+          law >= 9;
         expect(wrong, world.uwp).toBe(true);
       }
     }
@@ -152,13 +155,13 @@ describe("what the chart holds", () => {
     expect(Math.max(...counts)).toBeLessThan(10);
   });
 
-  it("flags nobody's rock for its air and never for its politics", () => {
-    // 3.6.1.1: an empty world has no government and no law rather than a
-    // dangerous amount of either.
+  it("never flags a world nobody lives on", () => {
+    // 3.6.1.1: a zone is a warning posted about somewhere people go, and most
+    // of a subsector is rock nobody has been to.
     for (const seed of SEEDS) {
       for (const world of generateSubsector(seed, "A").worlds) {
-        if (world.profile.population > 0 || world.zone !== "A") continue;
-        expect(world.profile.atmosphere, world.uwp).toBeGreaterThanOrEqual(10);
+        if (world.profile.population > 0) continue;
+        expect(world.zone, world.uwp).toBe("");
       }
     }
   });

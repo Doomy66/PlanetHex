@@ -69,14 +69,16 @@ const AMBER_CHANCE = [0, 0.07, 0.18, 0.4] as const;
  * SubSectorSpec 3.6.1.
  */
 function amberTriggers(profile: Uwp): number {
-  // A world nobody is on has no government and no law rather than a dangerous
-  // amount of either: those digits are blank, not extreme, and flagging an
-  // empty rock for anarchy would be warning travellers about nobody. Its air is
-  // still its air, though, and that is a hazard whoever is or is not there.
-  const lived = profile.population > 0;
+  // A world nobody lives on is never flagged. A zone is a warning posted about
+  // somewhere people go, and most of a subsector is rock nobody has been to: a
+  // warning on every one of them is a chart of warnings. Its government and law
+  // digits are blank rather than extreme for the same reason - there is nobody
+  // there to have no government.
+  if (profile.population === 0) return 0;
   const air = profile.atmosphere >= 10;
-  const rule = lived && (profile.government === 0 || profile.government === 7 || profile.government === 10);
-  const law = lived && (profile.law === 0 || profile.law >= 9);
+  const rule =
+    profile.government === 0 || profile.government === 7 || profile.government === 10;
+  const law = profile.law === 0 || profile.law >= 9;
   return Number(air) + Number(rule) + Number(law);
 }
 

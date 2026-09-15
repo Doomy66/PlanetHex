@@ -110,7 +110,7 @@ This document is the companion to [PlanetSpec.md](PlanetSpec.md) and is numbered
 
 3.6.1 Three things put a world in the running for an Amber zone. Its atmosphere is 10 or above — exotic, corrosive or insidious, so a landing party needs a suit and the suit may not last. Its government is 0, 7 or 10 — nobody to deal with, a dozen rival states none of whose permits the others honour, or one person whose mood is the law. Or its law level is 0 or 9 and above — no law at all, or so much of it that a crew will fall foul of something they did not know was a crime.
 
-3.6.1.1 A world nobody lives on qualifies on its air alone. It has no government and no law rather than a dangerous amount of either: those digits are blank, not extreme, and flagging an empty rock for anarchy is warning travellers about nobody. Its atmosphere is still its atmosphere, and that is a hazard whoever is or is not there.
+3.6.1.1 A world nobody lives on is never flagged, whatever its air. A zone is a warning posted about somewhere people go, and most of a subsector is rock nobody has been to — a warning on every one of them is a chart of warnings and nothing else. Its government and law digits are blank rather than extreme for the same reason: there is nobody there to have no government.
 
 3.6.2 Being in the running is not being flagged. Half a subsector qualifies on paper — twenty of its forty worlds — and a chart where half the hexes carry a warning is a chart where the warning means nothing. So a trigger buys a chance, and the chance is small: about one in fourteen for a world with one thing wrong with it, one in five with two, and two in five with all three.
 
