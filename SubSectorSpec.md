@@ -240,7 +240,7 @@ Nothing is marked Red by generation.
 
 5.6 Unsaved edits are tracked and warned about, as the planet spec 6.4.4 does. An edit is any change to a stored field of 5.1, the seed and density included.
 
-5.7 A subsector save holds the systems the referee has worked up, and the worlds worked up inside those, each in the folder the app spec 4.4 gives it. Only those: a hex nobody has opened is its seed, and eighty folders describing what the seed already describes is eighty folders of nothing.
+5.7 A subsector save holds the systems the referee has worked up, and the worlds worked up inside those, carried in the document itself under the app spec 4.1.2. Only those: a hex nobody has opened is its seed, and eighty folders describing what the seed already describes is eighty folders of nothing.
 
 5.7.1 Eighty planet files, each with its images, is a directory of tens of megabytes describing worlds nobody has looked at. A seed is twelve bytes and produces the same thing. What makes a system or a world worth a file is that somebody went into it and changed something.
 
@@ -248,7 +248,7 @@ Nothing is marked Red by generation.
 
 5.7.2.1 Held by seed rather than by name or designation, since both of those move: rename a system and every world in it is designated something else, and a world put down under the old name would be looked for under the new one and not found. The seed is the world, which is 5.3.3 again.
 
-5.7.2.2 Held while the application is open; written when the referee saves. Moving between levels is not saving, and nothing is written to disk until Save is pressed — but nothing is lost on the way between them either.
+5.7.2.2 Held while the application is open; written when the referee saves. Moving between levels is not saving, and nothing is written to disk until Save is pressed — but nothing is lost on the way between them either, and nothing asks about it. The app spec 4.10 has one Save for the chain, at the level that owns the document.
 
 ## 6. Exporting the subsector
 

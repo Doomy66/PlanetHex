@@ -12,7 +12,7 @@
  */
 
 import { parseSectorHex, subsectorLetter } from "./location";
-import { rollUwp } from "./planet";
+import { parsePlanet, rollUwp, type Planet } from "./planet";
 import { generateSystem, mainWorldSeed, type StarSystem } from "./gen/system";
 
 /**
@@ -43,6 +43,17 @@ export interface SystemDoc {
   /** The profile of 5.1, written down so the document stands alone. */
   mainWorldUwp: string;
   overrides: OrbitOverride[];
+  /**
+   * The worlds of this system that somebody has worked on, whole. SystemSpec
+   * 9.5.
+   *
+   * Carried rather than kept beside, because a level's save is one document: a
+   * referee who has named a world and written on it should not have to think
+   * about where that world's file went. Only the ones worked on - a world is
+   * its seed until somebody changes something, and a system of eight worlds
+   * nobody has opened carries none of them.
+   */
+  worlds: Planet[];
 }
 
 export function newSystemDoc(seed: string, name: string): SystemDoc {
@@ -55,7 +66,25 @@ export function newSystemDoc(seed: string, name: string): SystemDoc {
     seed,
     mainWorldUwp: rollUwp(mainWorldSeed(seed)),
     overrides: [],
+    worlds: [],
   };
+}
+
+/** The worked up world of a seed, or undefined where nobody has touched it. */
+export function savedWorld(doc: SystemDoc, seed: string): Planet | undefined {
+  return doc.worlds.find((held) => held.seed === seed);
+}
+
+/**
+ * Put a world into the system, replacing whatever was there for that seed.
+ *
+ * By seed rather than by designation, because a designation moves: rename the
+ * system and every world in it is called something else, and a world put down
+ * as Sol-3 would be looked for as Alpha-3 and not found. The seed is the world.
+ */
+export function keepWorld(doc: SystemDoc, planet: Planet): void {
+  const rest = doc.worlds.filter((held) => held.seed !== planet.seed);
+  doc.worlds = [...rest, planet].sort((a, b) => a.seed.localeCompare(b.seed));
 }
 
 /** The subsector letter its hex falls in, or "" where the hex is not a square. */
@@ -152,7 +181,26 @@ export function parseSystemDoc(text: string): SystemDoc {
         ? r["mainWorldUwp"]
         : rollUwp(mainWorldSeed(seed)),
     overrides: parseOverrides(r["overrides"]),
+    worlds: parseWorlds(r["worlds"]),
   };
+}
+
+/**
+ * The worlds carried in a system document. A world that cannot be read is left
+ * out rather than taking the system down with it: the rest of the system is
+ * still the system, and the world is rebuildable from its seed.
+ */
+function parseWorlds(raw: unknown): Planet[] {
+  if (!Array.isArray(raw)) return [];
+  const out: Planet[] = [];
+  for (const entry of raw) {
+    try {
+      out.push(parsePlanet(JSON.stringify(entry)));
+    } catch {
+      // Left out.
+    }
+  }
+  return out;
 }
 
 /** What a file says it is, for the complaint in parseSystemDoc. */

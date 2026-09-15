@@ -78,7 +78,7 @@ describe("saving a planet to a folder", () => {
       "Regina-48.png",
       "Regina-6.png",
       "Regina-96.png",
-      "Regina.json",
+      "Regina.planet",
     ]);
   });
 
@@ -90,7 +90,7 @@ describe("saving a planet to a folder", () => {
 
     await saveTo(handle, saveOf(planet));
 
-    expect([...written.keys()]).toEqual(["Regina.json"]);
+    expect([...written.keys()]).toEqual(["Regina.planet"]);
   });
 
   it("writes the planet as the JSON a load can read back", async () => {
@@ -99,7 +99,7 @@ describe("saving a planet to a folder", () => {
 
     await saveTo(handle, saveOf(planet));
 
-    expect(JSON.parse(written.get("Regina.json") as string)).toEqual(planet);
+    expect(JSON.parse(written.get("Regina.planet") as string)).toEqual(planet);
   });
 
   // A format writes text, and text has to arrive as the bytes it was written as.
@@ -132,7 +132,7 @@ describe("saving a planet as an archive", () => {
       "Regina-48.png",
       "Regina-6.png",
       "Regina-96.png",
-      "Regina.json",
+      "Regina.planet",
     ]);
   });
 
@@ -140,7 +140,7 @@ describe("saving a planet as an archive", () => {
     const planet = { ...newPlanet(), name: "Regina", narrative: "A world." };
 
     const entries = await entriesOf(saveOf(planet));
-    const json = entries.find((entry) => entry.name === "Regina.json");
+    const json = entries.find((entry) => entry.name === "Regina.planet");
 
     expect(JSON.parse(new TextDecoder().decode(json!.data))).toEqual(planet);
   });

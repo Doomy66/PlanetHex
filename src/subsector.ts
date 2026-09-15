@@ -19,6 +19,7 @@ import {
   type Subsector,
 } from "./gen/subsector";
 import { systemSeedFor } from "./gen/subsector";
+import { parseSystemDoc, type SystemDoc } from "./system";
 import { formatSectorHex, parseSectorHex, subsectorHexes } from "./location";
 import { parseUwp } from "./planet";
 import { tradeCodes } from "./gen/trade";
@@ -73,6 +74,20 @@ export interface SubsectorDoc {
   seed: string;
   density: Density;
   overrides: HexOverride[];
+  /**
+   * The systems under this chart that somebody has worked on, by hex, each
+   * carrying its own worked up worlds. SubSectorSpec 5.7.
+   *
+   * One document for the level you opened. A referee working down from a chart
+   * should press Save once and have everything they touched kept, rather than
+   * saving three times at three levels and keeping track of which folder each
+   * of them went into.
+   *
+   * Only what was worked on. A hex nobody has opened is its seed, and eighty
+   * systems describing what the seed already describes is eighty systems of
+   * nothing.
+   */
+  systems: { at: string; doc: SystemDoc }[];
 }
 
 export function newSubsectorDoc(
@@ -90,7 +105,24 @@ export function newSubsectorDoc(
     seed,
     density,
     overrides: [],
+    systems: [],
   };
+}
+
+/** The worked up system in a hex, or undefined where nobody has been in. */
+export function savedSystem(doc: SubsectorDoc, at: string): SystemDoc | undefined {
+  return doc.systems.find((held) => held.at === at)?.doc;
+}
+
+/** Put a system into a hex, replacing whatever was there. */
+export function keepSystem(doc: SubsectorDoc, at: string, system: SystemDoc): void {
+  const rest = doc.systems.filter((held) => held.at !== at);
+  doc.systems = [...rest, { at, doc: system }].sort((a, b) => a.at.localeCompare(b.at));
+}
+
+/** Forget a hex's system, when a different one has been rolled into it. */
+export function dropSystem(doc: SubsectorDoc, at: string): void {
+  doc.systems = doc.systems.filter((held) => held.at !== at);
 }
 
 /** What the referee wrote about one hex, or undefined where they wrote nothing. */
@@ -259,7 +291,30 @@ export function parseSubsectorDoc(text: string): SubsectorDoc {
     density:
       typeof density === "string" && density in DENSITIES ? (density as Density) : DEFAULT_DENSITY,
     overrides: parseOverrides(r["overrides"]),
+    systems: parseSystems(r["systems"]),
   };
+}
+
+/**
+ * The systems carried in a subsector document. One that cannot be read is left
+ * out rather than taking the chart down with it: the hex still has a seed, and
+ * the seed still makes a system.
+ */
+function parseSystems(raw: unknown): { at: string; doc: SystemDoc }[] {
+  if (!Array.isArray(raw)) return [];
+  const out: { at: string; doc: SystemDoc }[] = [];
+  for (const entry of raw) {
+    if (typeof entry !== "object" || entry === null) continue;
+    const r = entry as Record<string, unknown>;
+    const at = r["at"];
+    if (typeof at !== "string" || parseSectorHex(at) === null) continue;
+    try {
+      out.push({ at, doc: parseSystemDoc(JSON.stringify(r["doc"])) });
+    } catch {
+      // Left out.
+    }
+  }
+  return out.sort((a, b) => a.at.localeCompare(b.at));
 }
 
 /** What a file says it is, for the complaint in parseSubsectorDoc. */

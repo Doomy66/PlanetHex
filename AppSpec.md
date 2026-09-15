@@ -73,9 +73,21 @@ This document is the shell. [PlanetSpec.md](PlanetSpec.md) specifies a planet, [
 
 ## 4. What a folder holds
 
-4.1 Every document's JSON carries the level it is, alongside the version the planet spec 6.4.2 requires. A loader that opens a folder is looking for a document of a stated level, and a document that says what it is can be checked rather than guessed at from its shape.
+4.1 Every document carries the level it is, alongside the version the planet spec 6.4.2 requires. A loader that opens a folder is looking for a document of a stated level, and a document that says what it is can be checked rather than guessed at from its shape.
 
-4.2 **A planet is files, not a folder.** Its JSON and whatever images and exports were asked for, all named on one stem, written into the folder of the system it belongs to.
+4.1.1 It also says so in its name. JSON inside, but `.planet`, `.system`, `.subsector` and `.sector` outside, so a folder says at a glance which file is the chart and which are the worlds. A referee looking for their subsector should not have to open three files called something.json to find out which one it is. Documents written before this are `.json` and are still read.
+
+4.1.2 **A level's save is one document, carrying the levels below it that somebody has worked on.** A subsector document holds the systems worked up under it; each of those holds the worlds worked up under it. One Save, at the level you opened, and one file.
+
+4.1.2.1 This is affordable because of 1.3: nothing generated is stored. A world carries its name, its profile and what the referee wrote on it, not its surface — so a subsector with twenty systems and a dozen annotated worlds is a few hundred kilobytes of text. What would make embedding expensive is the one thing this application never stores.
+
+4.1.2.2 It was a folder of files per level first, one document each. That is a defensible shape on disk and it was the wrong shape to use: three levels meant three Save buttons, three unsaved marks, and a referee working down a chain being asked to save at every step and to remember which folder each step went into. The saving was harder than the work.
+
+4.1.2.3 What it costs is handing somebody a single system out of a subsector. That is an export rather than a reason to shape the save format, and section 6 is where exports live.
+
+4.1.2.4 A planet opened on its own is unchanged: its own document, its own Save, its own folder. That is the level this application began at, and a world of a system is the same document with a place in one.
+
+4.2 **A planet is files, not a folder.** Its document and whatever images and exports were asked for, all named on one stem. A planet opened on its own is saved into a folder the user picks; a world of a system is carried by that system under 4.1.2 and needs no file of its own until somebody exports one.
 
 4.2.1 The stem is the system's name and the world's orbit, under the system spec 7.2: the third world of Sol is `Sol-3.json`, with `Sol-3` on every image and export beside it.
 
@@ -95,23 +107,29 @@ This document is the shell. [PlanetSpec.md](PlanetSpec.md) specifies a planet, [
 
 4.2.4.2 A save written before designations existed reads as a planet of its own, since that is what every planet was when it was written.
 
-4.3 **A system folder** is the lowest folder there is. It holds the system's JSON, the files of 4.2 for each world the user has worked up and saved, and the system's own exports.
+4.3 **A system folder** is the lowest folder there is. It holds the system's document — worlds and all, under 4.1.2 — and the system's own exports.
 
-4.4 **A subsector folder** holds the subsector's JSON, the exports of the subsector spec section 6 that were asked for, and a system folder for each system the user has worked up and saved, named for the world and its hex.
+4.4 **A subsector folder** holds the subsector's document — systems and their worlds and all, under 4.1.2 — and the exports of the subsector spec section 6 that were asked for.
 
-4.4.1 The children sit in the folder itself rather than in a `Systems` folder inside it, which is what 4.5 does one level up and what 4.3 does one level down. A level holds its own document, its own exports, and its saved children beside them, at every level. A folder that sorted its children into a subfolder at one level and not the others would be a rule a reader has to learn instead of a shape they can see.
+4.4.1 So a folder at any level holds one document and whatever exports were asked for beside it. The same shape everywhere, and a shape a reader can see rather than a rule they have to learn.
 
 4.5 **A sector folder** holds the sector's JSON and a folder for each subsector that has been saved, named for its letter and its name. Each of those is an ordinary subsector folder under 4.4.
 
-4.6 At every level, only what was actually saved. The subsector spec 5.7.1 refuses to write eighty folders for systems nobody has looked at, and that reasoning runs the whole way up: a system is its seed until somebody does something to it, and so is a subsector. A sector whose sixteen are all still as generated is one JSON file in an otherwise empty folder, and that is a complete sector.
+4.6 At every level, only what was actually worked on. The subsector spec 5.7.1 refuses to carry eighty systems nobody has looked at, and that reasoning runs the whole way up: a system is its seed until somebody does something to it, and so is a subsector. A sector whose sixteen are all still as generated is one file in an otherwise empty folder, and that is a complete sector.
 
-4.7 Every folder at every level is an ordinary folder of its own level, and opens on its own. A system folder copied out of a subsector opens as a system, and a planet file copied out of one opens as a planet through the picker of 3.2, with no system anywhere near it.
+4.7 Every folder at every level is an ordinary folder of its own level, and opens on its own. A planet file copied anywhere opens as a planet through the picker of 3.2, with no system anywhere near it.
 
 4.8 A document saved inside a parent is written with its derived seed spelled out, not with a note saying which parent to ask.
 
 4.8.1 This is what makes 1.3's chain a convenience rather than a dependency. The chain fixes what a document starts as; once written, the document stands by itself.
 
 4.9 A folder at any level may hold anything else the user has put in it. Nothing is deleted, and nothing unrecognised is complained about. A referee's own notes, maps, and handouts belong in the folder with the thing they are about.
+
+4.10 **One Save per chain.** The level you opened owns the document, and the levels below it do not offer a Save of their own — a world reached through a system and a chart is saved by that chart.
+
+4.10.1 Nor an unsaved mark of their own. Work done at any level marks the level that will save it, so there is one place to look and one thing to press.
+
+4.10.2 And moving up the chain asks nothing. Going from a world to its system loses nothing, because the system carries the world, so a dialogue warning that the work will be lost would be telling the user something untrue to make them press a button they did not need. Only leaving the levels altogether can lose anything, and that is where the question belongs.
 
 ## 5. Loading a folder
 

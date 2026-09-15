@@ -47,8 +47,36 @@ interface PickerWindow {
   showOpenFilePicker?(options: unknown): Promise<FileHandle[]>;
 }
 
+/**
+ * What each level's document is called on disk. AppSpec 4.1.1.
+ *
+ * JSON inside, but named for what it is: a folder of saves says at a glance
+ * which file is the chart and which are the worlds, and a referee looking for
+ * their subsector does not have to open three files called something.json to
+ * find out which one it is.
+ */
+export const LEVEL_SUFFIX = {
+  planet: ".planet",
+  system: ".system",
+  subsector: ".subsector",
+  sector: ".sector",
+} as const;
+
+/** Every suffix a document of this application can wear, including the old one. */
+const DOCUMENT_SUFFIXES = [...Object.values(LEVEL_SUFFIX), ".json"];
+
+/** Whether a file is one of this application's documents. */
+export function isDocument(name: string): boolean {
+  return DOCUMENT_SUFFIXES.some((suffix) => name.toLowerCase().endsWith(suffix));
+}
+
 const PICKER_OPTIONS = {
-  types: [{ description: "Planet", accept: { "application/json": [".json"] } }],
+  types: [
+    {
+      description: "PlanetHex document",
+      accept: { "application/json": DOCUMENT_SUFFIXES },
+    },
+  ],
 };
 
 export function isSupported(): boolean {
@@ -115,9 +143,12 @@ export function stemFor(planet: Planet): string {
   return token === "" ? sanitise(planet.name) : token;
 }
 
-/** The planet's own JSON, which every save writes whatever else it does. */
+/** The planet's own document, which every save writes whatever else it does. */
 export function planetFile(planet: Planet): SaveFile {
-  return { name: `${stemFor(planet)}.json`, data: JSON.stringify(planet, null, 2) };
+  return {
+    name: `${stemFor(planet)}${LEVEL_SUFFIX.planet}`,
+    data: JSON.stringify(planet, null, 2),
+  };
 }
 
 /**
@@ -144,28 +175,6 @@ async function folderIn(dir: DirectoryHandle, name: string): Promise<DirectoryHa
   return dir.getDirectoryHandle(name, { create: true });
 }
 
-/**
- * The documents in a folder and in the folders under it, one level down.
- *
- * A level's own folder holds its saved children beside it under the app spec
- * 4.4.1, so loading a subsector means reading what is in the folders as well as
- * what is in the folder.
- */
-export async function readNestedFolders(
-  dir: DirectoryHandle,
-): Promise<{ folder: string; name: string; text: string }[]> {
-  if (!dir.values) return [];
-  const out: { folder: string; name: string; text: string }[] = [];
-  for await (const entry of dir.values()) {
-    const held = entry as DirectoryHandle;
-    if (typeof (entry as FileHandle).getFile === "function" || !held.values) continue;
-    for (const file of await readFolder(held)) {
-      out.push({ folder: held.name, name: file.name, text: file.text });
-    }
-  }
-  return out;
-}
-
 async function write(dir: DirectoryHandle, name: string, data: string | Blob): Promise<void> {
   const handle = await dir.getFileHandle(name, { create: true });
   const writable = await handle.createWritable();
@@ -189,9 +198,9 @@ export async function load(): Promise<{ planet: Planet; name: string }> {
 }
 
 /**
- * Every JSON file sitting in a folder, with its text. Shallow: a system folder
- * holds its own document and the files of its worlds under the app spec 4.3, and
- * the levels below are reached by opening those, not by scanning past them.
+ * Every document sitting in a folder, with its text. Shallow: a level's save is
+ * one document under the app spec 4.1.2, so what is in the folder is what there
+ * is to read, and the levels below are reached by opening what is in it.
  */
 export async function readFolder(dir: DirectoryHandle): Promise<{ name: string; text: string }[]> {
   if (!dir.values) throw new Error("This browser cannot read a folder.");
@@ -199,7 +208,7 @@ export async function readFolder(dir: DirectoryHandle): Promise<{ name: string; 
   for await (const entry of dir.values()) {
     const handle = entry as FileHandle;
     if (typeof handle.getFile !== "function") continue;
-    if (!/\.json$/i.test(handle.name)) continue;
+    if (!isDocument(handle.name)) continue;
     out.push({ name: handle.name, text: await (await handle.getFile()).text() });
   }
   return out.sort((a, b) => a.name.localeCompare(b.name));
