@@ -150,7 +150,6 @@ import {
   type HexField,
   type SubsectorDoc,
 } from "./subsector";
-import { SUBSECTOR_LETTERS } from "./location";
 import { liveGlobe, worldImage } from "./ui/worldimage";
 import { giantImage } from "./ui/giant";
 import { basesLabel, zoneLabel } from "./gen/base";
@@ -2493,8 +2492,8 @@ function setSystemParent(parent: "landing" | "subsector"): void {
   openLevels.planet = false;
   openLevels.subsector = parent === "subsector";
   const button = el("sys-home");
-  button.textContent = parent === "subsector" ? "Chart" : "Levels";
-  button.title = parent === "subsector" ? "Back to the subsector chart" : "Back to the levels";
+  button.textContent = parent === "subsector" ? "Subsector" : "Levels";
+  button.title = parent === "subsector" ? "Back to the subsector" : "Back to the levels";
 }
 
 el("sys-home").addEventListener("click", () => {
@@ -3095,13 +3094,6 @@ let subParent: "landing" | "sector" = "landing";
 /** Which chart the view was last framed on, so an edit does not move it. */
 let drawnChart = "";
 
-for (const letter of SUBSECTOR_LETTERS) {
-  const option = document.createElement("option");
-  option.value = letter;
-  option.textContent = letter;
-  el("sub-letter").append(option);
-}
-
 function subSay(message: string, isError = false): void {
   const status = el("sub-status");
   status.textContent = message;
@@ -3127,7 +3119,10 @@ function confirmSubDiscard(action: string): boolean {
 
 function startNewSubsector(): void {
   if (!confirmSubDiscard("Roll another subsector")) return;
-  const letter = el<HTMLSelectElement>("sub-letter").value || "A";
+  // Which of the sixteen this is comes from what was already open, since a
+  // subsector rolled from the landing page is a subsector and its letter only
+  // says where in a sector it would sit.
+  const letter = subDoc?.letter ?? "A";
   const density = (el<HTMLSelectElement>("sub-density").value || "standard") as Density;
   const held = newSubsectorDoc(randomSeed(), letter, density, `Subsector ${letter}`);
   subFolder = null;
@@ -3149,7 +3144,6 @@ function openSubsector(next: SubsectorDoc, parent: "landing" | "sector" = "landi
   setAppView("subsector");
   el<HTMLInputElement>("sub-name").value = next.name;
   el<HTMLInputElement>("sub-sector").value = next.sector;
-  el<HTMLSelectElement>("sub-letter").value = next.letter;
   el<HTMLSelectElement>("sub-density").value = next.density;
   el<HTMLInputElement>("sub-people").value = String(next.shifts.population);
   el<HTMLInputElement>("sub-tech").value = String(next.shifts.tech);
@@ -3614,10 +3608,9 @@ el("sub-mains").addEventListener("change", () => {
 el("sub-roll").addEventListener("click", startNewSubsector);
 
 // Every stored field of 5.1, and every one of them makes the document dirty.
-for (const id of ["sub-letter", "sub-density", "sub-people", "sub-tech"]) {
+for (const id of ["sub-density", "sub-people", "sub-tech"]) {
   el(id).addEventListener("change", () => {
     if (subDoc === null) return;
-    subDoc.letter = el<HTMLSelectElement>("sub-letter").value;
     subDoc.density = el<HTMLSelectElement>("sub-density").value as Density;
     // A lean is a modifier on the dice, so it is held to what a modifier on 2D
     // can sensibly be. SubSectorSpec 3.11.1.
@@ -3766,7 +3759,12 @@ function goToLevel(level: Level): void {
       refreshChart();
     }
   }
-  if (view === "subsector" && level === "sector") keepSubsectorForSector();
+  // Put the subsector down against its letter and draw the sector again with it:
+  // a name typed in down there is the subsector's name up here as well.
+  if (view === "subsector" && level === "sector") {
+    keepSubsectorForSector();
+    refreshSector();
+  }
   if (level === "sector" && openLevels.sector) setAppView("sector");
   else if (level === "subsector" && openLevels.subsector) setAppView("subsector");
   else if (level === "system" && openLevels.system) setAppView("system");
@@ -3841,7 +3839,7 @@ function openSector(next: SectorDoc): void {
 function drawSector(): void {
   if (sectorDoc === null) return;
   sector = sectorOf(sectorDoc);
-  sectorMap.render(sector);
+  sectorMap.render(sector, subsectorNames());
   showSectorAbout();
   showSectorList();
 }
@@ -3875,9 +3873,35 @@ function showSectorAbout(): void {
     fact("Longest Main", `${longest.name}, ${longest.hexes.length} worlds`);
   }
   const worked = sectorDoc.subsectors.length;
-  if (worked > 0) fact("Worked up", worked === 1 ? "one chart" : `${worked} charts`);
+  if (worked > 0) {
+    fact("Worked up", worked === 1 ? "one subsector" : `${worked} subsectors`);
+  }
   fact("Seed", sector.seed);
   el("sec-counts").textContent = `${sector.worlds.length} worlds · seed ${sector.seed}`;
+}
+
+/**
+ * What a subsector of the open sector is called. SectorSpec 5.3.
+ *
+ * The referee's name where they have been in and given it one, and its letter
+ * where they have not. A subsector renamed one level down is renamed here: the
+ * name is the subsector's own, and the sector carries the subsector.
+ */
+function subsectorName(letter: string): string {
+  const written = sectorDoc === null ? undefined : savedSubsector(sectorDoc, letter);
+  const name = written?.name.trim() ?? "";
+  return name === "" ? `Subsector ${letter}` : name;
+}
+
+/** What the sixteen are called, for anything that has to show all of them. */
+function subsectorNames(): Map<string, string> {
+  const names = new Map<string, string>();
+  if (sectorDoc === null) return names;
+  for (const held of sectorDoc.subsectors) {
+    const name = held.doc.name.trim();
+    if (name !== "") names.set(held.letter.toUpperCase(), name);
+  }
+  return names;
 }
 
 /** The sixteen down the left, each with what is in it. */
@@ -3891,8 +3915,7 @@ function showSectorList(): void {
     button.type = "button";
     button.dataset["letter"] = held.letter;
     const name = document.createElement("span");
-    const written = sectorDoc === null ? undefined : savedSubsector(sectorDoc, held.letter);
-    name.textContent = written?.name ?? `Subsector ${held.letter}`;
+    name.textContent = subsectorName(held.letter);
     const count = document.createElement("span");
     count.className = "tree-what";
     count.textContent = `${held.worlds.length} worlds`;
@@ -3956,7 +3979,7 @@ function showSectorPanel(): void {
   if (world !== undefined) {
     el("sec-what").textContent = `${world.name} — ${world.at}`;
     row("Profile", world.uwp);
-    row("Subsector", letterShown);
+    row("Subsector", subsectorName(letterShown));
     row("Bases", basesLabel(world.bases));
     row("Zone", zoneLabel(world.zone));
     row("PBG", `${world.pbg.multiplier}${world.pbg.belts}${world.pbg.gasGiants}`);
@@ -3965,13 +3988,13 @@ function showSectorPanel(): void {
       row("Trade", world.trade.map((code) => `${code.code} ${code.label}`).join(", "));
     }
     el("sec-note").textContent = describeUwp(world.uwp, planetDetail(world.seed, world.uwp)) ?? "";
-    open.textContent = "Open the chart";
+    open.textContent = "Open the subsector";
     return;
   }
 
   const held = sector.subsectors.find((one) => one.letter === letterShown)!;
   const inhabited = held.worlds.filter((one) => one.profile.population > 0).length;
-  el("sec-what").textContent = `Subsector ${letterShown}`;
+  el("sec-what").textContent = subsectorName(letterShown);
   row("Worlds", `${held.worlds.length} of 80`);
   row("Inhabited", String(inhabited));
   if (held.mains.length > 0) row("Mains", String(held.mains.length));
@@ -3980,7 +4003,7 @@ function showSectorPanel(): void {
     (a, b) => b.profile.population - a.profile.population,
   )[0];
   if (busiest !== undefined) row("Busiest", `${busiest.name}, ${busiest.uwp}`);
-  open.textContent = "Open the chart";
+  open.textContent = "Open the subsector";
 }
 
 /** Down a level, into one of the sixteen. SectorSpec section 7. */
@@ -4088,7 +4111,10 @@ async function loadSector(): Promise<void> {
     openSector(first.doc);
     markSectorClean();
     const worked = first.doc.subsectors.length;
-    const also = worked === 0 ? "" : ` ${worked === 1 ? "One chart" : `${worked} charts`} worked up.`;
+    const also =
+      worked === 0
+        ? ""
+        : ` ${worked === 1 ? "One subsector" : `${worked} subsectors`} worked up.`;
     secSay(`Loaded ${first.name} from ${dir.name}.${also}`);
   } catch (error) {
     if (error instanceof PickerCancelled) return;

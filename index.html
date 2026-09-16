@@ -33,10 +33,10 @@
         <header class="landing-head">
           <img class="landing-logo" src="./icon.svg" alt="" width="72" height="72" />
           <h1>PlanetHex</h1>
-          <p class="landing-lead">A world, a system, a chart, a sector.<br />Start where you meant to.</p>
+          <p class="landing-lead">A world, a system, a subsector, a sector.<br />Start where you meant to.</p>
           <p class="landing-what">
             A Traveller generator that works at four levels and keeps them in
-            step. Everything comes from a seed, so a world found on a chart is
+            step. Everything comes from a seed, so a world found on a subsector is
             the same world opened on its own — the surface is rebuilt rather than
             stored, and what you write over it is all that is kept.
           </p>
@@ -69,7 +69,7 @@
             <svg class="level-icon" viewBox="0 0 48 48" aria-hidden="true"><path d="M8 17l7-4 7 4v8l-7 4-7-4z" class="ic-hex" /><path d="M22 9l7-4 7 4v8l-7 4-7-4z" class="ic-hex" /><path d="M22 25l7-4 7 4v8l-7 4-7-4z" class="ic-hex" /><circle cx="15" cy="21" r="2.4" class="ic-body" /><circle cx="29" cy="13" r="2" class="ic-body" /><circle cx="29" cy="29" r="2.8" class="ic-body" /></svg>
             <div class="level-what">
               <h2>Subsector</h2>
-              <p>Eighty hexes of star systems, drawn as a chart.</p>
+              <p>Eighty hexes of star systems, drawn as a map.</p>
             </div>
             <div class="actions">
               <button id="landing-sub-new" type="button">New</button>
@@ -189,15 +189,14 @@
         <h2>Subsector</h2>
         <dl id="sub-about" class="sys-facts"></dl>
 
-        <!-- What the chart is generated from. Here rather than in the header
-             because these are settings rather than actions: where the chart
-             sits, how thickly it is settled, and which way it leans. -->
+        <!-- What the subsector is generated from. Here rather than in the
+             header because these are settings rather than actions: how thickly
+             it is settled, and which way it leans. The letter is not among them:
+             which of the sixteen this is comes from the sector it was opened
+             out of, or from the seed it was rolled with. -->
         <details class="chart-legend" id="sub-generation" open>
           <summary>Generation</summary>
           <div class="sub-settings">
-          <label>Subsector
-            <select id="sub-letter"></select>
-          </label>
           <label>Density
             <select id="sub-density">
               <option value="rift">Rift</option>
@@ -235,8 +234,8 @@
           <summary>Files to save</summary>
           <ul class="chart-key sub-choices">
             <li><label><input id="sub-want-sec" type="checkbox" checked /> Sector file, for a map</label></li>
-            <li><label><input id="sub-want-png" type="checkbox" checked /> Chart as a PNG</label></li>
-            <li><label><input id="sub-want-svg" type="checkbox" /> Chart as an SVG</label></li>
+            <li><label><input id="sub-want-png" type="checkbox" checked /> Subsector as a PNG</label></li>
+            <li><label><input id="sub-want-svg" type="checkbox" /> Subsector as an SVG</label></li>
             <li><label><input id="sub-want-csv" type="checkbox" /> Table as a CSV</label></li>
             <li><label><input id="sub-want-md" type="checkbox" /> Sheet, Markdown</label></li>
             <li><label><input id="sub-want-html" type="checkbox" /> Sheet, HTML</label></li>
@@ -938,7 +937,7 @@
           <dd>
             The world as one line of a sector file, tab separated, with the trade
             codes worked out from the profile. Paste it into a sector file among
-            its neighbours and the world appears on the chart. Bases, travel zone,
+            its neighbours and the world appears on the map. Bases, travel zone,
             and stars are left blank, because PlanetHex describes the world and not
             the system; the population multiplier, belts, and gas giants are rolled
             from the seed.

@@ -21,7 +21,7 @@ export async function svgToPng(svg: string, scale = 2): Promise<Blob> {
     image.height = height;
     await new Promise<void>((done, fail) => {
       image.addEventListener("load", () => done());
-      image.addEventListener("error", () => fail(new Error("The chart could not be drawn.")));
+      image.addEventListener("error", () => fail(new Error("The map could not be drawn.")));
       image.src = url;
     });
     const canvas = document.createElement("canvas");
@@ -32,7 +32,7 @@ export async function svgToPng(svg: string, scale = 2): Promise<Blob> {
     paper.drawImage(image, 0, 0, width, height);
     return await new Promise<Blob>((done, fail) => {
       canvas.toBlob((blob) => {
-        if (blob === null) fail(new Error("The chart could not be written as a PNG."));
+        if (blob === null) fail(new Error("The map could not be written as a PNG."));
         else done(blob);
       }, "image/png");
     });

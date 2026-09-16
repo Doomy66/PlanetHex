@@ -305,7 +305,7 @@ export function parseSubsectorDoc(text: string): SubsectorDoc {
     throw new Error(`Save version ${String(r["version"])} is not one this build understands.`);
   }
   if (typeof r["seed"] !== "string" || r["seed"] === "") {
-    throw new Error("The save has no seed, so its chart cannot be rebuilt.");
+    throw new Error("The save has no seed, so its subsector cannot be rebuilt.");
   }
   const letter = typeof r["letter"] === "string" ? r["letter"].toUpperCase() : "";
   if (!"ABCDEFGHIJKLMNOP".includes(letter) || letter === "") {

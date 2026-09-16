@@ -67,7 +67,12 @@ function worldClass(world: ChartWorld): string {
 
 export interface SectorMap {
   readonly element: SVGSVGElement;
-  render(sector: Sector): void;
+  /**
+   * Draw a sector. `names` is what the referee calls each of the sixteen, by
+   * letter, where they have named one - a subsector they have been into and
+   * renamed is called that here too.
+   */
+  render(sector: Sector, names?: ReadonlyMap<string, string>): void;
   /** Frame the whole sector again. */
   resetView(): void;
   setSelected(letter: string | null, at: string | null): void;
@@ -86,6 +91,8 @@ export function createSectorMap(): SectorMap {
   svg.append(gridLayer, routeLayer, worldLayer, frameLayer, selectLayer);
 
   const pickedSubsector: ((letter: string) => void)[] = [];
+  /** What the referee calls each of the sixteen, where they have named one. */
+  let named: ReadonlyMap<string, string> = new Map();
   const pickedHex: ((at: string) => void)[] = [];
   const places = new Map<string, { x: number; y: number }>();
   let selectedLetter: string | null = null;
@@ -130,8 +137,9 @@ export function createSectorMap(): SectorMap {
     };
   }
 
-  function render(sector: Sector): void {
+  function render(sector: Sector, names: ReadonlyMap<string, string> = new Map()): void {
     shown = sector;
+    named = names;
     gridLayer.replaceChildren();
     routeLayer.replaceChildren();
     worldLayer.replaceChildren();
@@ -207,7 +215,7 @@ export function createSectorMap(): SectorMap {
       const box = frameOf(letter);
       const group = make("g", { class: "sec-frame", tabindex: 0, role: "button" });
       const title = make("title");
-      title.textContent = `Subsector ${letter}`;
+      title.textContent = named.get(letter) ?? `Subsector ${letter}`;
       group.append(title);
       group.append(make("rect", { class: "sec-box", ...box }));
       const mark = make("text", {
