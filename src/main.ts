@@ -2789,36 +2789,8 @@ async function loadSystem(): Promise<void> {
  */
 function showTree(): void {
   const tree = el("sys-tree");
-  const about = el("sys-about");
   tree.replaceChildren();
-  about.replaceChildren();
   if (system === null || doc === null) return;
-
-  const fact = (term: string, value: string) => {
-    const dt = document.createElement("dt");
-    dt.textContent = term;
-    const dd = document.createElement("dd");
-    dd.textContent = value;
-    about.append(dt, dd);
-  };
-  fact("Stars", starsLabel(system.stars));
-  fact("Orbits", String(system.orbits.length));
-  const worlds = worldsOf(system).length;
-  fact("Worlds", String(worlds));
-  fact("Belts", String(system.placed.belts));
-  fact("Gas giants", String(system.placed.gasGiants));
-  if (system.bases.letter !== "") fact("Bases", basesLabel(system.bases.letter));
-  // SystemSpec 4.8: how far out a ship has to be before it can jump, and how
-  // far in an arriving one comes out.
-  const shadowAu = starShadowAu(system);
-  const inside = system.orbits.filter((orbit) => orbit.au < shadowAu).length;
-  fact(
-    "Jump shadow",
-    inside === 0
-      ? `${shadowAu.toFixed(2)} AU`
-      : `${shadowAu.toFixed(2)} AU, over ${inside === 1 ? "one orbit" : `${inside} orbits`}`,
-  );
-  fact("Seed", doc.seed);
 
   const peopleOnly = el<HTMLInputElement>("sys-inhabited").checked;
   for (const orbit of system.orbits) {
@@ -3871,10 +3843,6 @@ function showSectorAbout(): void {
   if (sector.mains.length > 0) {
     const longest = sector.mains[0]!;
     fact("Longest Main", `${longest.name}, ${longest.hexes.length} worlds`);
-  }
-  const worked = sectorDoc.subsectors.length;
-  if (worked > 0) {
-    fact("Worked up", worked === 1 ? "one subsector" : `${worked} subsectors`);
   }
   fact("Seed", sector.seed);
   el("sec-counts").textContent = `${sector.worlds.length} worlds · seed ${sector.seed}`;
