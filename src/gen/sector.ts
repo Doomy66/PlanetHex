@@ -14,7 +14,9 @@
  */
 
 import {
+  hexDistance,
   parseSectorHex,
+  subsectorHexes,
   subsectorLetter,
   SECTOR_COLS,
   SECTOR_ROWS,
@@ -99,6 +101,50 @@ export function generateSector(
     routes: routesBetween(worlds),
     mains: mainsIn(worlds),
   };
+}
+
+/**
+ * How far past its own edge a chart looks. SectorSpec 4.5.
+ *
+ * Two hexes, which is exactly as far as a route reaches: every route that
+ * crosses the edge has its far end inside the border, so a chart never draws a
+ * line running off to somewhere it is not showing.
+ */
+export const BORDER_REACH = 2;
+
+/**
+ * What lies just outside one subsector of a sector. SectorSpec 4.5.
+ *
+ * The worlds within two hexes of its edge, and the routes with one end inside
+ * it and one end out. A chart drawn without them says a subsector's edge is the
+ * edge of the universe, which is the one thing about a subsector that is never
+ * true - it is a square drawn on a sector, and its neighbours are right there.
+ */
+export function aroundSubsector(
+  sector: Sector,
+  letter: string,
+  reach = BORDER_REACH,
+): { worlds: ChartWorld[]; routes: Route[] } {
+  const want = letter.toUpperCase();
+  const inside = new Set(
+    sector.worlds.filter((world) => subsectorLetter(world.hex) === want).map((world) => world.at),
+  );
+  const hexes = subsectorHexes(want);
+  const near = (world: ChartWorld) =>
+    hexes.some((hex) => hexDistance(hex, world.hex) <= reach);
+
+  const worlds = sector.worlds.filter((world) => !inside.has(world.at) && near(world));
+  const shown = new Set(worlds.map((world) => world.at));
+  // A route counts as crossing when one end is in the chart and the other is in
+  // the border being drawn. One that leaves the border as well is a route to
+  // somewhere off the page, and drawing half of it would say less than nothing.
+  const routes = sector.routes.filter((route) => {
+    const from = inside.has(route.from);
+    const to = inside.has(route.to);
+    if (from === to) return false;
+    return shown.has(from ? route.to : route.from);
+  });
+  return { worlds, routes };
 }
 
 /** Which subsector a sector-absolute hex falls in, by its four digits. */

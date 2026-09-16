@@ -109,7 +109,7 @@ import { createOrbitMap } from "./ui/orbitmap";
 import { createChart } from "./ui/chart";
 import { createSectorMap } from "./ui/sectormap";
 import { APP_VERSION, RELEASE_NOTES, suggestionLink } from "./version";
-import { letterAt, SECTOR_HEXES, type Sector } from "./gen/sector";
+import { aroundSubsector, letterAt, SECTOR_HEXES, type Sector } from "./gen/sector";
 import {
   keepSubsector,
   newSectorDoc,
@@ -3172,7 +3172,13 @@ function openSubsector(next: SubsectorDoc, parent: "landing" | "sector" = "landi
 function drawSubsector(): void {
   if (subDoc === null) return;
   subsector = chartOf(subDoc);
-  chart.render(subsector);
+  // What is over the edge, where there is a sector above to ask. A chart opened
+  // on its own has no neighbours to know about. SectorSpec 4.5.
+  const around =
+    subParent === "sector" && sector !== null
+      ? aroundSubsector(sector, subDoc.letter)
+      : undefined;
+  chart.render(subsector, around);
   chart.setMains(el<HTMLInputElement>("sub-mains").checked);
   showSubsectorAbout();
   showSubsectorList();

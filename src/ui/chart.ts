@@ -4,12 +4,14 @@ import {
   chartSize,
   dotFor,
   hexPoints,
+  COLUMN_STEP,
   HEX_HIGH,
   HEX_WIDE,
   MAIN_COLOURS,
   ZONE_R,
 } from "../chartlayout";
-import type { ChartWorld, Subsector } from "../gen/subsector";
+import { BORDER_REACH } from "../gen/sector";
+import type { ChartWorld, Route, Subsector } from "../gen/subsector";
 
 /**
  * The subsector chart: eighty hexes, drawn the way Traveller draws them.
@@ -54,9 +56,18 @@ function worldClass(world: ChartWorld): string {
   return "chart-world chart-airless";
 }
 
+/**
+ * What lies just outside the chart: the worlds within reach of its edge, and the
+ * routes that cross it. SectorSpec 4.5.
+ */
+export interface Around {
+  readonly worlds: readonly ChartWorld[];
+  readonly routes: readonly Route[];
+}
+
 export interface Chart {
   readonly element: SVGSVGElement;
-  render(subsector: Subsector): void;
+  render(subsector: Subsector, around?: Around): void;
   /** Show or hide the Mains overlay. SubSectorSpec 3.10.4. */
   setMains(show: boolean): void;
   setSelected(at: string | null): void;
@@ -65,6 +76,7 @@ export interface Chart {
 
 export function createChart(): Chart {
   const svg = make("svg", { class: "chart" });
+  const aroundLayer = make("g", { class: "chart-around" });
   const mainLayer = make("g");
   const gridLayer = make("g");
   const routeLayer = make("g");
@@ -73,7 +85,9 @@ export function createChart(): Chart {
   // The routes go under the worlds and over the grid: they are the thing a hex is
   // read in the context of, not a thing drawn on top of it.
   // Under everything: a Main is the ground the rest of the chart sits on.
-  svg.append(mainLayer, gridLayer, routeLayer, worldLayer, selectLayer);
+  // The neighbours go under everything: they are context, and the chart is what
+  // is being read.
+  svg.append(aroundLayer, mainLayer, gridLayer, routeLayer, worldLayer, selectLayer);
 
   const handlers: ((at: string) => void)[] = [];
   const places = new Map<string, { x: number; y: number }>();
@@ -89,11 +103,12 @@ export function createChart(): Chart {
     selectLayer.append(make("polygon", { class: "chart-select", points: hexPoints(at.x, at.y) }));
   }
 
-  function render(subsector: Subsector): void {
+  function render(subsector: Subsector, around?: Around): void {
     shown = subsector;
     gridLayer.replaceChildren();
     routeLayer.replaceChildren();
     worldLayer.replaceChildren();
+    aroundLayer.replaceChildren();
     places.clear();
 
     const worlds = new Map(subsector.worlds.map((world) => [world.at, world]));
@@ -102,6 +117,8 @@ export function createChart(): Chart {
     const first = subsector.worlds[0]?.hex;
     const acrossFrom = first === undefined ? 0 : Math.floor((first.col - 1) / SUB_COLS) * SUB_COLS;
     const downFrom = first === undefined ? 0 : Math.floor((first.row - 1) / SUB_ROWS) * SUB_ROWS;
+    // The border is drawn in the same frame, so a hex two columns outside is at
+    // local column minus one and the arithmetic does not have to know it.
 
     for (let row = 1; row <= SUB_ROWS; row++) {
       for (let col = 1; col <= SUB_COLS; col++) {
@@ -127,10 +144,89 @@ export function createChart(): Chart {
       );
     }
 
+    // What is outside, and the room to draw it in. Without a sector above there
+    // is no outside to know about, and the chart is framed on itself as before.
     const { width, height } = chartSize();
-    svg.setAttribute("viewBox", `0 0 ${width} ${height}`);
+    const margin = around === undefined ? 0 : 1;
+    const outX = margin * BORDER_REACH * COLUMN_STEP;
+    const outY = margin * BORDER_REACH * HEX_HIGH;
+    if (around !== undefined) drawAround(around, acrossFrom, downFrom);
+    svg.setAttribute(
+      "viewBox",
+      `${-outX} ${-outY} ${width + outX * 2} ${height + outY * 2}`,
+    );
     drawMains();
     drawSelection();
+  }
+
+  /**
+   * The neighbours, lowlighted. SectorSpec 4.5.
+   *
+   * Drawn faint and unclickable: they are there to say the chart has edges
+   * rather than ends, and a referee who wants one of them opens that subsector.
+   * A route crossing the edge is drawn whole, both ends visible, because half a
+   * line pointing off the page says less than no line at all.
+   */
+  function drawAround(around: Around, acrossFrom: number, downFrom: number): void {
+    // The grid first, across the whole border, so the edge reads as a chart
+    // continuing rather than as a handful of dots floating beside one.
+    for (let row = 1 - BORDER_REACH; row <= SUB_ROWS + BORDER_REACH; row++) {
+      for (let col = 1 - BORDER_REACH; col <= SUB_COLS + BORDER_REACH; col++) {
+        const own = col >= 1 && col <= SUB_COLS && row >= 1 && row <= SUB_ROWS;
+        if (own) continue;
+        const { x, y } = centreOf(col, row);
+        aroundLayer.append(
+          make("polygon", { class: "chart-cell chart-faint", points: hexPoints(x, y) }),
+        );
+      }
+    }
+
+    const outside = new Map<string, { x: number; y: number }>();
+    for (const world of around.worlds) {
+      const where = centreOf(world.hex.col - acrossFrom, world.hex.row - downFrom);
+      outside.set(world.at, where);
+      const group = make("g");
+      const title = make("title");
+      title.textContent = `${world.at} ${world.name} ${world.uwp}`;
+      group.append(title);
+      group.append(
+        make("circle", {
+          class: `${worldClass(world)} chart-faint`,
+          cx: where.x,
+          cy: where.y,
+          r: dotFor(world.profile.population),
+        }),
+      );
+      // A name, small, on the ones big enough to be why the neighbour matters.
+      if (world.profile.population >= 9) {
+        const name = make("text", {
+          class: "chart-name",
+          x: where.x,
+          y: where.y + HEX_HIGH * 0.33,
+        });
+        name.textContent = world.name;
+        group.append(name);
+      }
+      aroundLayer.append(group);
+    }
+    const at = (hex: string) => places.get(hex) ?? outside.get(hex);
+    for (const route of around.routes) {
+      const from = at(route.from);
+      const to = at(route.to);
+      if (from === undefined || to === undefined) continue;
+      aroundLayer.append(
+        make("line", {
+          class:
+            route.kind === "xboat"
+              ? "chart-route chart-xboat chart-faint"
+              : "chart-route chart-faint",
+          x1: from.x,
+          y1: from.y,
+          x2: to.x,
+          y2: to.y,
+        }),
+      );
+    }
   }
 
   /**

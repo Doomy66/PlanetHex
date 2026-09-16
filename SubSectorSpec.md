@@ -234,6 +234,18 @@ Nothing is marked Red by generation.
 
 4.5 The subsector's own settings — name, sector, letter, seed, density — sit above the chart in the left panel, and the seed has the same reroll-and-regenerate behaviour the planet's does.
 
+4.5 A chart opened from a sector shows what is over its edge: the worlds within two hexes of it, lowlighted, and the routes that cross.
+
+4.5.1 A chart drawn without them says a subsector's edge is the edge of the universe, which is the one thing about a subsector that is never true — it is a square drawn on a sector, and the neighbours are right there.
+
+4.5.2 Two hexes is exactly as far as a route reaches under 3.9, so every route crossing the edge has its far end in view. Half a line pointing off the page says less than no line at all.
+
+4.5.3 Lowlighted and unclickable. They are there to say the chart has edges rather than ends; a referee who wants one of them opens that subsector, and the way to do that is one level up.
+
+4.5.4 The grid is drawn across the whole border, not only where a world sits, so the edge reads as a chart continuing rather than as dots floating beside one.
+
+4.5.5 A chart opened on its own has no neighbours to know about, and is framed on itself. Nothing is missing: there is no sector to ask.
+
 4.6 Colour is the map's convention rather than the planet's: the chart is a document, not a picture of a place. It reads in both light and dark.
 
 ## 5. Subsector data and persistence

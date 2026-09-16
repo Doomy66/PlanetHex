@@ -1020,6 +1020,11 @@ body[data-view="system"] .subsector { display: none; }
 .sub-choices { border-top: 0; padding-top: 0; }
 .sub-choices label { display: flex; align-items: center; gap: 6px; cursor: pointer; }
 
+/* What is just outside the chart: there to say the edge is an edge rather than
+   an end, and quiet enough that the chart is still what is being read. */
+.chart-around { opacity: 0.32; pointer-events: none; }
+.chart-faint { filter: saturate(0.5); }
+
 /* A Main washed behind the hexes it runs through. Low enough to read the chart
    through, distinct enough to follow across it. */
 .chart-main > * { stroke: none; }
