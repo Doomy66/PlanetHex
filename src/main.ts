@@ -1875,7 +1875,6 @@ function openHelp(): void {
 }
 
 el("help").addEventListener("click", openHelp);
-el("landing-help").addEventListener("click", openHelp);
 
 /* What this is, and how to say something about it. AppSpec 2.6 ----------- */
 
