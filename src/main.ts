@@ -107,6 +107,17 @@ import {
 } from "./gen/star";
 import { createOrbitMap } from "./ui/orbitmap";
 import { createChart } from "./ui/chart";
+import { createSectorMap } from "./ui/sectormap";
+import { letterAt, SECTOR_HEXES, type Sector } from "./gen/sector";
+import {
+  keepSubsector,
+  newSectorDoc,
+  parseSectorDoc,
+  savedSubsector,
+  sectorOf,
+  subsectorIn,
+  type SectorDoc,
+} from "./sector";
 import { createCrumbs, type Level, type Trail } from "./ui/crumbs";
 import {
   generateSubsector,
@@ -115,7 +126,7 @@ import {
   type Density,
   type Subsector,
 } from "./gen/subsector";
-import { subsectorFile } from "./io/export/subsector";
+import { sectorFile, subsectorFile } from "./io/export/subsector";
 import {
   chartSvg,
   subsectorCsv,
@@ -141,7 +152,7 @@ import {
 import { SUBSECTOR_LETTERS } from "./location";
 import { liveGlobe, worldImage } from "./ui/worldimage";
 import { giantImage } from "./ui/giant";
-import { basesLabel } from "./gen/base";
+import { basesLabel, zoneLabel } from "./gen/base";
 import { crossingLabel, hoursAt1g, jumpShadowKm, kmLabel } from "./gen/jump";
 import {
   auToKm,
@@ -3050,6 +3061,7 @@ let subsector: Subsector | null = null;
 let subFolder: DirectoryHandle | null = null;
 let hexShown: string | null = null;
 let subDirty = false;
+let subParent: "landing" | "sector" = "landing";
 
 for (const letter of SUBSECTOR_LETTERS) {
   const option = document.createElement("option");
@@ -3066,7 +3078,8 @@ function subSay(message: string, isError = false): void {
 
 function markSubDirty(): void {
   subDirty = true;
-  el("sub-dirty").hidden = false;
+  el("sub-dirty").hidden = subParent === "sector";
+  if (subParent === "sector") markSectorDirty();
 }
 
 function markSubClean(): void {
@@ -3091,8 +3104,15 @@ function startNewSubsector(): void {
 }
 
 /** Put a document on screen, and the chart it describes with it. */
-function openSubsector(next: SubsectorDoc): void {
+function openSubsector(next: SubsectorDoc, parent: "landing" | "sector" = "landing"): void {
   subDoc = next;
+  subParent = parent;
+  el("sub-home").textContent = parent === "sector" ? "Sector" : "Levels";
+  // A chart under a sector is saved by that sector, the way a system under a
+  // chart is saved by the chart. AppSpec 4.10.
+  el("sub-save").hidden = parent === "sector";
+  el("sub-dirty").hidden = parent === "sector" || !subDirty;
+  openLevels.sector = parent === "sector";
 
   setAppView("subsector");
   el<HTMLInputElement>("sub-name").value = next.name;
@@ -3579,6 +3599,13 @@ el("sub-sector").addEventListener("input", () => {
 });
 
 el("sub-home").addEventListener("click", () => {
+  // Up to the sector loses nothing, because the sector carries the chart.
+  if (subParent === "sector" && sectorDoc !== null) {
+    keepSubsectorForSector();
+    refreshSector();
+    setAppView("sector");
+    return;
+  }
   if (!confirmSubDiscard("Leave this subsector")) return;
   setAppView("landing");
   landingSay("");
@@ -3649,12 +3676,13 @@ function keepSystemForChart(): void {
  * and can be gone back into, but choosing another hex closes it, because it is
  * no longer the system that hex holds.
  */
-const openLevels = { subsector: false, system: false, planet: false };
+const openLevels = { sector: false, subsector: false, system: false, planet: false };
 
 const crumbBars = [
   { at: "crumbs-planet", bar: createCrumbs() },
   { at: "crumbs-system", bar: createCrumbs() },
   { at: "crumbs-sub", bar: createCrumbs() },
+  { at: "crumbs-sector", bar: createCrumbs() },
 ];
 for (const { at, bar } of crumbBars) {
   el(at).append(bar.element);
@@ -3663,15 +3691,14 @@ for (const { at, bar } of crumbBars) {
 
 function showCrumbs(): void {
   const trail: Trail = {};
-  // The sector level is not built yet, so it is always the greyed first step.
+  if (openLevels.sector) trail.sector = el<HTMLInputElement>("sec-name").value.trim() || "Sector";
   if (openLevels.subsector) {
     trail.subsector = el<HTMLInputElement>("sub-name").value.trim() || "Subsector";
   }
   if (openLevels.system) trail.system = doc?.name.trim() || "System";
   if (openLevels.planet) trail.planet = state.planet.name.trim() || "Planet";
   const view = currentAppView();
-  const here: Level | null =
-    view === "planet" || view === "system" || view === "subsector" ? view : null;
+  const here: Level | null = view === "landing" ? null : view;
   for (const { bar } of crumbBars) bar.render(trail, here);
 }
 
@@ -3691,10 +3718,335 @@ function goToLevel(level: Level): void {
       refreshChart();
     }
   }
-  if (level === "subsector" && openLevels.subsector) setAppView("subsector");
+  if (view === "subsector" && level === "sector") keepSubsectorForSector();
+  if (level === "sector" && openLevels.sector) setAppView("sector");
+  else if (level === "subsector" && openLevels.subsector) setAppView("subsector");
   else if (level === "system" && openLevels.system) setAppView("system");
   else if (level === "planet" && openLevels.planet) setAppView("planet");
   showCrumbs();
+}
+
+/* The sector. SectorSpec section 4 --------------------------------------- */
+
+// Sixteen charts at once: the map in the middle, the letters down the left, and
+// whatever hex is selected on the right. The way down is a subsector.
+
+const sectorMap = createSectorMap();
+el("sec-map").append(sectorMap.element);
+
+let sectorDoc: SectorDoc | null = null;
+let sector: Sector | null = null;
+let sectorFolder: DirectoryHandle | null = null;
+let sectorDirty = false;
+let letterShown: string | null = null;
+let sectorHexShown: string | null = null;
+
+function secSay(message: string, isError = false): void {
+  const status = el("sec-status");
+  status.textContent = message;
+  status.classList.toggle("error", isError);
+}
+
+function markSectorDirty(): void {
+  sectorDirty = true;
+  el("sec-dirty").hidden = false;
+}
+
+function markSectorClean(): void {
+  sectorDirty = false;
+  el("sec-dirty").hidden = true;
+}
+
+/** What a save would lose, asked before anything discards it. */
+function confirmSectorDiscard(action: string): boolean {
+  if (sectorDoc === null || !sectorDirty) return true;
+  return confirm(`${sectorDoc.name || "This sector"} has unsaved changes. ${action} and lose them?`);
+}
+
+function startNewSector(): void {
+  if (!confirmSectorDiscard("Roll another sector")) return;
+  sectorFolder = null;
+  openSector(newSectorDoc(randomSeed(), "New Sector"));
+  markSectorClean();
+}
+
+/** Put a document on screen, and the sector it describes with it. */
+function openSector(next: SectorDoc): void {
+  sectorDoc = next;
+  setAppView("sector");
+  el<HTMLInputElement>("sec-name").value = next.name;
+  el<HTMLSelectElement>("sec-density").value = next.density;
+  el<HTMLInputElement>("sec-people").value = String(next.shifts.population);
+  el<HTMLInputElement>("sec-tech").value = String(next.shifts.tech);
+  openLevels.sector = true;
+  openLevels.subsector = false;
+  openLevels.system = false;
+  openLevels.planet = false;
+  drawSector();
+  showCrumbs();
+  selectLetter(null);
+  secSay(`${sector?.worlds.length ?? 0} worlds in sixteen subsectors.`);
+}
+
+/** Rebuild the sector from its document and draw it. SectorSpec 5.2. */
+function drawSector(): void {
+  if (sectorDoc === null) return;
+  sector = sectorOf(sectorDoc);
+  sectorMap.render(sector);
+  showSectorAbout();
+  showSectorList();
+}
+
+function refreshSector(): void {
+  if (sectorDoc === null) return;
+  drawSector();
+  sectorMap.setSelected(letterShown, sectorHexShown);
+  showCrumbs();
+}
+
+function showSectorAbout(): void {
+  const about = el("sec-about");
+  about.replaceChildren();
+  if (sector === null || sectorDoc === null) return;
+  const fact = (term: string, value: string) => {
+    const dt = document.createElement("dt");
+    dt.textContent = term;
+    const dd = document.createElement("dd");
+    dd.textContent = value;
+    about.append(dt, dd);
+  };
+  const inhabited = sector.worlds.filter((world) => world.profile.population > 0).length;
+  fact("Worlds", `${sector.worlds.length} of ${SECTOR_HEXES}`);
+  fact("Inhabited", String(inhabited));
+  fact("Density", sector.density);
+  // What only this level can see. SectorSpec 3.3 and 3.4.
+  fact("Routes", String(sector.routes.length));
+  if (sector.mains.length > 0) {
+    const longest = sector.mains[0]!;
+    fact("Longest Main", `${longest.name}, ${longest.hexes.length} worlds`);
+  }
+  const worked = sectorDoc.subsectors.length;
+  if (worked > 0) fact("Worked up", worked === 1 ? "one chart" : `${worked} charts`);
+  fact("Seed", sector.seed);
+  el("sec-counts").textContent = `${sector.worlds.length} worlds · seed ${sector.seed}`;
+}
+
+/** The sixteen down the left, each with what is in it. */
+function showSectorList(): void {
+  const list = el("sec-list");
+  list.replaceChildren();
+  if (sector === null) return;
+  for (const held of sector.subsectors) {
+    const row = document.createElement("li");
+    const button = document.createElement("button");
+    button.type = "button";
+    button.dataset["letter"] = held.letter;
+    const name = document.createElement("span");
+    const written = sectorDoc === null ? undefined : savedSubsector(sectorDoc, held.letter);
+    name.textContent = written?.name ?? `Subsector ${held.letter}`;
+    const count = document.createElement("span");
+    count.className = "tree-what";
+    count.textContent = `${held.worlds.length} worlds`;
+    button.append(name, count);
+    button.addEventListener("click", () => selectLetter(held.letter));
+    button.addEventListener("dblclick", () => openSubsectorOf(held.letter));
+    row.append(button);
+    list.append(row);
+  }
+  markSectorList();
+}
+
+function markSectorList(): void {
+  for (const button of el("sec-list").querySelectorAll("button")) {
+    if (button.dataset["letter"] === letterShown) button.setAttribute("aria-current", "true");
+    else button.removeAttribute("aria-current");
+  }
+}
+
+/** Choose a subsector: the map, the list and the panel all follow. */
+function selectLetter(letter: string | null): void {
+  letterShown = letter;
+  sectorHexShown = null;
+  sectorMap.setSelected(letter, null);
+  markSectorList();
+  showSectorPanel();
+}
+
+/** Choose one hex of the sector, which is one world. */
+function selectSectorHex(at: string): void {
+  sectorHexShown = at;
+  letterShown = letterAt(at);
+  sectorMap.setSelected(letterShown, at);
+  markSectorList();
+  showSectorPanel();
+}
+
+/** What is selected, whether that is a subsector or one world in it. */
+function showSectorPanel(): void {
+  const facts = el("sec-facts");
+  const open = el<HTMLButtonElement>("sec-open");
+  facts.replaceChildren();
+  el("sec-note").textContent = "";
+  open.hidden = letterShown === null;
+  if (sector === null || letterShown === null) {
+    el("sec-what").textContent = "Select a subsector";
+    return;
+  }
+  const row = (term: string, value: string) => {
+    const dt = document.createElement("dt");
+    dt.textContent = term;
+    const dd = document.createElement("dd");
+    dd.textContent = value;
+    facts.append(dt, dd);
+  };
+
+  const world =
+    sectorHexShown === null
+      ? undefined
+      : sector.worlds.find((held) => held.at === sectorHexShown);
+  if (world !== undefined) {
+    el("sec-what").textContent = `${world.name} — ${world.at}`;
+    row("Profile", world.uwp);
+    row("Subsector", letterShown);
+    row("Bases", basesLabel(world.bases));
+    row("Zone", zoneLabel(world.zone));
+    row("PBG", `${world.pbg.multiplier}${world.pbg.belts}${world.pbg.gasGiants}`);
+    row("Stars", starsLabel(world.stars));
+    if (world.trade.length > 0) {
+      row("Trade", world.trade.map((code) => `${code.code} ${code.label}`).join(", "));
+    }
+    el("sec-note").textContent = describeUwp(world.uwp, planetDetail(world.seed, world.uwp)) ?? "";
+    open.textContent = "Open the chart";
+    return;
+  }
+
+  const held = sector.subsectors.find((one) => one.letter === letterShown)!;
+  const inhabited = held.worlds.filter((one) => one.profile.population > 0).length;
+  el("sec-what").textContent = `Subsector ${letterShown}`;
+  row("Worlds", `${held.worlds.length} of 80`);
+  row("Inhabited", String(inhabited));
+  if (held.mains.length > 0) row("Mains", String(held.mains.length));
+  row("Seed", held.seed);
+  const busiest = [...held.worlds].sort(
+    (a, b) => b.profile.population - a.profile.population,
+  )[0];
+  if (busiest !== undefined) row("Busiest", `${busiest.name}, ${busiest.uwp}`);
+  open.textContent = "Open the chart";
+}
+
+/** Down a level, into one of the sixteen. SectorSpec section 7. */
+function openSubsectorOf(letter: string): void {
+  if (sectorDoc === null) return;
+  letterShown = letter;
+  openSubsector(subsectorIn(sectorDoc, letter), "sector");
+  markSubClean();
+}
+
+/** Keep the open chart against its letter, so the sector carries it. */
+function keepSubsectorForSector(): void {
+  if (subDoc === null || subParent !== "sector" || sectorDoc === null) return;
+  const letter = subDoc.letter;
+  const had = savedSubsector(sectorDoc, letter);
+  keepSystemForChart();
+  keepSubsector(sectorDoc, letter, subDoc);
+  if (had !== subDoc) markSectorDirty();
+}
+
+sectorMap.onPickHex(selectSectorHex);
+sectorMap.onPickSubsector(openSubsectorOf);
+el("sec-open").addEventListener("click", () => {
+  if (letterShown !== null) openSubsectorOf(letterShown);
+});
+el("sec-roll").addEventListener("click", startNewSector);
+el("sec-name").addEventListener("input", () => {
+  if (sectorDoc === null) return;
+  sectorDoc.name = el<HTMLInputElement>("sec-name").value;
+  markSectorDirty();
+  showCrumbs();
+});
+for (const id of ["sec-density", "sec-people", "sec-tech"]) {
+  el(id).addEventListener("change", () => {
+    if (sectorDoc === null) return;
+    const lean = (field: string) => {
+      const typed = Math.round(Number(el<HTMLInputElement>(field).value) || 0);
+      const held = Math.max(-SHIFT_LIMIT, Math.min(SHIFT_LIMIT, typed));
+      el<HTMLInputElement>(field).value = String(held);
+      return held;
+    };
+    sectorDoc.density = el<HTMLSelectElement>("sec-density").value as Density;
+    sectorDoc.shifts = { population: lean("sec-people"), tech: lean("sec-tech") };
+    markSectorDirty();
+    refreshSector();
+  });
+}
+el("sec-home").addEventListener("click", () => {
+  if (!confirmSectorDiscard("Leave this sector")) return;
+  setAppView("landing");
+  landingSay("");
+});
+
+/* Saving and loading a sector. AppSpec 4.1.2 ----------------------------- */
+
+function sectorFileFor(open: SectorDoc): SaveFile {
+  const stem = open.name.replace(/[^A-Za-z0-9 _-]/g, "").trim() || "Sector";
+  return { name: `${stem}${LEVEL_SUFFIX.sector}`, data: JSON.stringify(open, null, 2) };
+}
+
+el("sec-save").addEventListener("click", async () => {
+  if (sectorDoc === null) return;
+  const held = sectorDoc;
+  try {
+    keepSubsectorForSector();
+    const files: SaveFile[] = [sectorFileFor(held)];
+    if (sector !== null) {
+      const stem = sectorFileFor(held).name.replace(/\.[a-z]+$/, "");
+      // The whole sector as one file a map can read, which is the export this
+      // level exists to make possible. SectorSpec 6.1.
+      files.push({ name: `${stem}.sec`, data: sectorFile(sector, held.name) });
+    }
+    if (isSupported()) {
+      sectorFolder ??= await pickFolder();
+      await saveTo(sectorFolder, files);
+      markSectorClean();
+      secSay(`Saved ${files[0]!.name} into ${sectorFolder.name}.`);
+      return;
+    }
+    const stem = sectorFileFor(held).name.replace(/\.[a-z]+$/, "");
+    download(await zipSave(files), `${stem}.zip`);
+    markSectorClean();
+    secSay(`Saved ${stem}.zip.`);
+  } catch (error) {
+    if (error instanceof PickerCancelled) return;
+    secSay(error instanceof Error ? error.message : String(error), true);
+  }
+});
+
+async function loadSector(): Promise<void> {
+  if (!confirmSectorDiscard("Load another sector")) return;
+  try {
+    const { dir, files } = await loadFolder();
+    const found: { name: string; doc: SectorDoc }[] = [];
+    for (const file of files) {
+      try {
+        found.push({ name: file.name, doc: parseSectorDoc(file.text) });
+      } catch {
+        // Not a sector. Something else in the folder, and AppSpec 4.9 leaves it.
+      }
+    }
+    if (found.length === 0) throw new Error(`No sector in ${dir.name}.`);
+    const first = found[0]!;
+    sectorFolder = dir;
+    openSector(first.doc);
+    markSectorClean();
+    const worked = first.doc.subsectors.length;
+    const also = worked === 0 ? "" : ` ${worked === 1 ? "One chart" : `${worked} charts`} worked up.`;
+    secSay(`Loaded ${first.name} from ${dir.name}.${also}`);
+  } catch (error) {
+    if (error instanceof PickerCancelled) return;
+    const message = error instanceof Error ? error.message : String(error);
+    if (currentAppView() === "landing") landingSay(message, true);
+    else secSay(message, true);
+  }
 }
 
 wireLanding({
@@ -3704,6 +4056,8 @@ wireLanding({
   systemLoad: loadSystem,
   subsectorNew: startNewSubsector,
   subsectorLoad: loadSubsector,
+  sectorNew: startNewSector,
+  sectorLoad: loadSector,
 });
 
 /* Start ------------------------------------------------------------------ */

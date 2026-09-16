@@ -775,6 +775,80 @@ body[data-view="planet"] .landing { display: none; }
 .crumb[aria-current="true"] { font-weight: 600; color: var(--select); }
 .crumb-tick { color: var(--muted); font-size: 0.85em; }
 
+/* The sector map. SectorSpec section 4 ----------------------------------- */
+
+body[data-view="sector"] .layout,
+body[data-view="sector"] .landing,
+body[data-view="sector"] .system,
+body[data-view="sector"] .subsector { display: none; }
+body[data-view="landing"] .sector,
+body[data-view="planet"] .sector,
+body[data-view="system"] .sector,
+body[data-view="subsector"] .sector { display: none; }
+
+.sector {
+  height: 100vh;
+  display: grid;
+  grid-template-columns: 240px minmax(0, 1fr) 330px;
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  grid-template-areas:
+    "head head head"
+    "tree map  side"
+    "strip strip strip";
+  gap: 10px;
+  padding: 10px 14px 12px;
+  overflow: hidden;
+}
+
+.sec-map {
+  grid-area: map;
+  min-height: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #0a0c10;
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  padding: 6px;
+  overflow: auto;
+}
+.sectormap { width: auto; height: 100%; max-width: 100%; display: block; }
+
+/* A thousand hexes at once, so the grid is barely there and the worlds carry
+   the map. SectorSpec 4.2. */
+.sec-cell {
+  fill: none;
+  stroke: #262c36;
+  stroke-width: 0.6;
+  vector-effect: non-scaling-stroke;
+}
+.sec-wet { fill: #3f7fc4; }
+.sec-dusty { fill: #b08b5e; }
+.sec-airless { fill: #8d96a2; }
+.sec-empty { fill: none; stroke: #6d7784; stroke-width: 1.2; }
+.sec-name { fill: #dfe3ea; font-size: 15px; text-anchor: middle; }
+.sec-route { stroke: #35608f; stroke-width: 1.6; opacity: 0.5; }
+.sec-xboat { stroke: #6aa6e8; stroke-width: 3; opacity: 0.85; }
+.sec-hex { cursor: pointer; }
+.sec-hex:hover .sec-world { stroke: var(--accent); stroke-width: 2.5; }
+
+/* The sixteen, marked out and lettered. A double click opens one. */
+.sec-frame { cursor: pointer; }
+.sec-box { fill: transparent; stroke: #454d5c; stroke-width: 1.6; vector-effect: non-scaling-stroke; }
+.sec-frame:hover .sec-box,
+.sec-frame:focus .sec-box { stroke: var(--accent); fill: rgba(224, 179, 65, 0.05); }
+.sec-frame:focus { outline: none; }
+.sec-letter {
+  fill: rgba(223, 227, 234, 0.16);
+  font-size: 150px;
+  font-weight: 700;
+  text-anchor: middle;
+  dominant-baseline: middle;
+  pointer-events: none;
+}
+.sec-chosen { fill: rgba(224, 179, 65, 0.06); stroke: var(--accent); stroke-width: 2.5; vector-effect: non-scaling-stroke; }
+.sec-pick { fill: none; stroke: var(--select); stroke-width: 3; vector-effect: non-scaling-stroke; }
+
 /* The subsector chart. SubSectorSpec section 4 --------------------------- */
 
 body[data-view="subsector"] .layout,

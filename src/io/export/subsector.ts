@@ -12,6 +12,7 @@
 
 import { newPlanet, type Planet } from "../../planet";
 import { starsOf, pbgOf, type ChartWorld, type Subsector } from "../../gen/subsector";
+import type { Sector } from "../../gen/sector";
 import { sectorHeader, worldLine } from "./sec";
 
 /** The planet a chart world stands for, which is what the line is written from. */
@@ -36,6 +37,35 @@ export function subsectorFile(subsector: Subsector, sector = ""): string {
     }),
   );
   return `${subsectorNotes(subsector, sector)}${sectorHeader()}${lines.join("")}`;
+}
+
+/**
+ * A whole sector as a sector file. SectorSpec 6.1.
+ *
+ * The export the sector level exists to make possible, and the one every tool
+ * that draws sector maps is waiting for: 1,280 hexes under one header, in hex
+ * order, rather than sixteen files to be stitched together by hand.
+ */
+export function sectorFile(sector: Sector, name = ""): string {
+  const inhabited = sector.worlds.filter((world) => world.profile.population > 0).length;
+  const notes = [
+    `# ${name === "" ? "Sector" : name}, exported from PlanetHex`,
+    `# Seed: ${sector.seed}`,
+    `# Density: ${sector.density}`,
+    `# ${sector.worlds.length} systems across sixteen subsectors, ${inhabited} of them inhabited`,
+    "# Allegiance is Na throughout: nothing here has claimed anything.",
+    "",
+  ].join("\n");
+  const lines = sector.worlds.map((world) =>
+    worldLine(planetOf(world), {
+      name: world.name,
+      bases: world.bases,
+      zone: world.zone,
+      stars: starsOf(world),
+      pbg: pbgOf(world),
+    }),
+  );
+  return `${notes}${sectorHeader()}${lines.join("")}`;
 }
 
 /**

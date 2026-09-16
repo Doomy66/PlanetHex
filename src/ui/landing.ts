@@ -14,7 +14,7 @@
  */
 
 /** Which of the levels the window is showing. One attribute, read by the CSS. */
-export type AppView = "landing" | "planet" | "system" | "subsector";
+export type AppView = "landing" | "planet" | "system" | "subsector" | "sector";
 
 export function setAppView(view: AppView): void {
   document.body.dataset.view = view;
@@ -22,7 +22,9 @@ export function setAppView(view: AppView): void {
 
 export function currentAppView(): AppView {
   const view = document.body.dataset.view;
-  return view === "planet" || view === "system" || view === "subsector" ? view : "landing";
+  return view === "planet" || view === "system" || view === "subsector" || view === "sector"
+    ? view
+    : "landing";
 }
 
 /**
@@ -50,6 +52,10 @@ export interface LandingHandlers {
   subsectorNew(): void;
   /** Pick the folder a subsector lives in and open it. AppSpec 3.3. */
   subsectorLoad(): void | Promise<void>;
+  /** Roll a new sector and open its map. SectorSpec section 4. */
+  sectorNew(): void;
+  /** Pick the folder a sector lives in and open it. AppSpec 3.3. */
+  sectorLoad(): void | Promise<void>;
 }
 
 export function wireLanding(handlers: LandingHandlers): void {
@@ -67,4 +73,6 @@ export function wireLanding(handlers: LandingHandlers): void {
   click("landing-system-load", handlers.systemLoad);
   click("landing-sub-new", handlers.subsectorNew);
   click("landing-sub-load", handlers.subsectorLoad);
+  click("landing-sector-new", handlers.sectorNew);
+  click("landing-sector-load", handlers.sectorLoad);
 }
