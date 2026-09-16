@@ -147,6 +147,82 @@ describe("what a referee writes over a hex", () => {
   });
 });
 
+describe("which way a region leans", () => {
+  // SubSectorSpec 3.11. A modifier on the dice every world here is rolled with,
+  // not a number written over the answer afterwards.
+  const leaning = (population: number, tech: number) => {
+    const doc = newSubsectorDoc(SEED, "C", "standard", "Regina");
+    doc.shifts = { population, tech };
+    return subsectorOf(doc);
+  };
+  const average = (
+    chart: ReturnType<typeof leaning>,
+    of: "population" | "tech" | "government" | "law",
+  ) =>
+    chart.worlds.reduce((sum, world) => sum + world.profile[of], 0) / chart.worlds.length;
+
+  it("settles a region when it is leaned towards people", () => {
+    expect(average(leaning(2, 0), "population")).toBeGreaterThan(
+      average(leaning(0, 0), "population") + 1,
+    );
+  });
+
+  it("empties one when it is leaned away", () => {
+    expect(average(leaning(-2, 0), "population")).toBeLessThan(
+      average(leaning(0, 0), "population") - 1,
+    );
+  });
+
+  it("carries a population lean into the government and the law", () => {
+    // 3.11.2: the digits that follow from population follow it here too, which
+    // is what a figure written over the top afterwards would have missed.
+    expect(average(leaning(3, 0), "government")).toBeGreaterThan(average(leaning(0, 0), "government"));
+    expect(average(leaning(3, 0), "law")).toBeGreaterThan(average(leaning(0, 0), "law"));
+  });
+
+  it("raises the tech of a region on its own", () => {
+    const flat = leaning(0, 0);
+    const high = leaning(0, 3);
+    expect(average(high, "tech")).toBeGreaterThan(average(flat, "tech"));
+    // And leaves the people where they were: the two are separate thumbs.
+    expect(average(high, "population")).toBe(average(flat, "population"));
+  });
+
+  it("leaves the worlds where they are", () => {
+    // A lean changes what is on a world, not which hexes hold one: a referee who
+    // has annotated a chart and then settles the region keeps their chart.
+    const flat = leaning(0, 0);
+    const high = leaning(3, 3);
+    expect(high.worlds.map((world) => world.at)).toEqual(flat.worlds.map((world) => world.at));
+    expect(high.worlds.map((world) => world.seed)).toEqual(flat.worlds.map((world) => world.seed));
+  });
+
+  it("carries the lean through a save and back", () => {
+    const doc = newSubsectorDoc(SEED, "C", "standard", "Regina");
+    doc.shifts = { population: -1, tech: 2 };
+    const back = parseSubsectorDoc(JSON.stringify(doc));
+    expect(back.shifts).toEqual({ population: -1, tech: 2 });
+    expect(subsectorOf(back).worlds[0]!.uwp).toBe(subsectorOf(doc).worlds[0]!.uwp);
+  });
+
+  it("holds a lean to what a modifier on two dice can sensibly be", () => {
+    // 3.11.1. Past three the dice have stopped mattering.
+    const doc = JSON.stringify({
+      level: "subsector",
+      version: 1,
+      seed: SEED,
+      letter: "C",
+      shifts: { population: 99, tech: -99 },
+    });
+    expect(parseSubsectorDoc(doc).shifts).toEqual({ population: 3, tech: -3 });
+  });
+
+  it("reads a document written before leaning as level", () => {
+    const doc = JSON.stringify({ level: "subsector", version: 1, seed: SEED, letter: "C" });
+    expect(parseSubsectorDoc(doc).shifts).toEqual({ population: 0, tech: 0 });
+  });
+});
+
 describe("reading a document back", () => {
   it("refuses a file of another level", () => {
     const planet = JSON.stringify({ level: "system", version: 1, seed: "X" });

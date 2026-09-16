@@ -93,6 +93,15 @@
           <label class="sys-where">Subsector
             <select id="sub-letter"></select>
           </label>
+          <!-- Which way the region leans. SubSectorSpec 3.11: a modifier on
+               the dice every world here is rolled with, not a number written
+               over the answer. -->
+          <label class="sys-where">People
+            <input id="sub-people" type="number" min="-3" max="3" step="1" value="0" />
+          </label>
+          <label class="sys-where">Tech
+            <input id="sub-tech" type="number" min="-3" max="3" step="1" value="0" />
+          </label>
           <label class="sys-where">Density
             <select id="sub-density">
               <option value="rift">Rift</option>

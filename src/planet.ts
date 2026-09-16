@@ -194,7 +194,20 @@ const WATERLESS_ATMOSPHERES = new Set([0, 1, 10, 11, 12]);
  * The dice come from the seed rather than Math.random, so the profile is part of
  * what the seed names and a shared seed brings the same world with it.
  */
-export function rollUwp(seed: string): string {
+/**
+ * What a region does to the worlds in it. SubSectorSpec 3.11.
+ *
+ * A modifier on the dice rather than a number written over the answer, so a
+ * settled region rolls settled worlds: a population modifier carries into the
+ * government and the law that follow from it, which is how the rules work and
+ * what a figure written over the top afterwards would miss.
+ */
+export interface UwpShifts {
+  readonly population?: number;
+  readonly tech?: number;
+}
+
+export function rollUwp(seed: string, shifts: UwpShifts = {}): string {
   let die = 0;
   const d6 = () => Math.floor(valueFor(seed + ":uwp", die++) * 6) + 1;
   const roll2 = () => d6() + d6();
@@ -210,7 +223,7 @@ export function rollUwp(seed: string): string {
   const hydrographics =
     size <= 1 ? 0 : clamp(rolls.hydrographics - 7 + size + waterDm, HYDROGRAPHICS_LIMIT);
 
-  const population = clamp(roll2() - 2, POPULATION_LIMIT);
+  const population = clamp(roll2() - 2 + (shifts.population ?? 0), POPULATION_LIMIT);
   const governmentRoll = roll2();
   const lawRoll = roll2();
   const techRoll = d6();
@@ -219,7 +232,8 @@ export function rollUwp(seed: string): string {
   const government = population === 0 ? 0 : clamp(governmentRoll - 7 + population, GOVERNMENT_LIMIT);
   const law = population === 0 ? 0 : clamp(lawRoll - 7 + government, LAW_LIMIT);
   const profile = { starport, size, atmosphere, hydrographics, population, government, law };
-  const tech = population === 0 ? 0 : clamp(techRoll + techLevelDm(profile), TECH_LIMIT);
+  const tech =
+    population === 0 ? 0 : clamp(techRoll + techLevelDm(profile) + (shifts.tech ?? 0), TECH_LIMIT);
 
   const digits = [size, atmosphere, hydrographics, population, government, law];
   return `${starport}${digits.map(hexDigit).join("")}-${hexDigit(tech)}`;

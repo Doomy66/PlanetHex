@@ -190,6 +190,20 @@ Nothing is marked Red by generation.
 
 3.10.5 What a Main looks like stops at the subsector's edge, and the real one does not. A chart is eight hexes by ten and a Main can run the width of a sector; what is drawn here is the part of it in view. The sector level is where that is fixed.
 
+### 3.11 Which way a region leans
+
+3.11.1 A subsector carries two modifiers that every world in it is rolled with: one on population and one on tech level, each from minus three to plus three. A settled region and a frontier are the same rules with a different thumb on them, and that is a property of the region rather than of each world in it.
+
+3.11.1.1 Three either way is already a lot — it moves the average world by half the scale. Past that the dice have stopped mattering and the referee is writing the digits themselves, which is what an override is for.
+
+3.11.2 A modifier on the dice, not a number written over the answer. So a population lean carries into the government and the law that follow from it, which is how the rules work and what writing a figure over the top afterwards would miss: a region full of people is a region full of governments.
+
+3.11.3 It changes what is on the worlds, not which hexes hold one. The density of 3.2 decides where the systems are and the lean decides what is on them, so a referee who has annotated half a chart and then settles the region keeps every world they annotated, in the hex they annotated it in, with the same seed.
+
+3.11.4 The two are separate thumbs. Leaning the tech of a region leaves its people where they were, because a low-technology region full of people and a high-technology empty one are both things a setting has in it.
+
+3.11.5 A world handed down to the system level goes down with the profile the chart drew, not with what its seed alone rolls. The chart is what leaned it, so the chart is what has to say so — [AppSpec.md](AppSpec.md) 1.3.1, a level above filling in what a level below could not have known.
+
 ## 4. Display
 
 4.1 The chart is a panel of eighty hexes with the controls beside it, in the shape the planet view already uses: a left panel of settings, the chart in the middle.
@@ -233,6 +247,7 @@ Nothing is marked Red by generation.
 | Letter | A to P, see 2.2.3. |
 | Seed | Required. Without it the chart cannot be rebuilt. |
 | Density | One of the four of 3.2.2. |
+| Leaning | The population and tech modifiers of 3.11, where the referee has set them. |
 | Overrides | Per hex, only where the user has changed something, see 5.3. |
 
 5.2 A save holds no generated world. Load rebuilds all eighty hexes from the seed and the density, exactly as the planet spec 6.3 rebuilds a surface.

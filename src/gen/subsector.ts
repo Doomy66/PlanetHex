@@ -15,7 +15,7 @@
  */
 
 import { formatSectorHex, hexDistance, subsectorHexes, type SectorHex } from "../location";
-import { parseUwp, rollUwp, seedFrom, type Uwp } from "../planet";
+import { parseUwp, rollUwp, seedFrom, type Uwp, type UwpShifts } from "../planet";
 import { mainWorldSeed } from "./system";
 import { starsFor, starsLabel, systemLuminosity, type Stars } from "./star";
 import { formatPbg, pbgFor, tradeCodes, type Pbg, type TradeCode } from "./trade";
@@ -101,6 +101,8 @@ export interface Subsector {
   readonly seed: string;
   readonly letter: string;
   readonly density: Density;
+  /** Which way this region leans, if the referee has leaned it. 3.11. */
+  readonly shifts: UwpShifts;
   /** The eighty hexes, in reading order, with the worlds among them. */
   readonly worlds: readonly ChartWorld[];
   /** The routes between them, each pair once. 3.9. */
@@ -259,9 +261,10 @@ export function chartWorld(
   hex: SectorHex,
   density: Density,
   regional = flavourFor(`${seed}:flavour`),
+  shifts: UwpShifts = {},
 ): ChartWorld | null {
   if (!holdsSystem(seed, at, density)) return null;
-  return worldAt(seed, at, hex, regional);
+  return worldAt(seed, at, hex, regional, undefined, shifts);
 }
 
 /**
@@ -277,13 +280,14 @@ export function worldAt(
   hex: SectorHex,
   regional = flavourFor(`${seed}:flavour`),
   given?: string,
+  shifts: UwpShifts = {},
 ): ChartWorld | null {
   // The hex's own system unless the referee has put another one there. A reroll
   // from inside the system view is the one thing that can do that, and what it
   // changes is which system is in the hex rather than anything about the hex.
   const systemSeed = given ?? systemSeedFor(seed, at);
   const worldSeed = mainWorldSeed(systemSeed);
-  const uwp = rollUwp(worldSeed);
+  const uwp = rollUwp(worldSeed, shifts);
   const profile = parseUwp(uwp);
   if (profile === null) return null;
   // Most worlds are named the way the region names things, and the rest are
@@ -311,18 +315,20 @@ export function generateSubsector(
   seed: string,
   letter: string,
   density: Density = DEFAULT_DENSITY,
+  shifts: UwpShifts = {},
 ): Subsector {
   const regional = flavourFor(`${seed}:flavour`);
   const worlds: ChartWorld[] = [];
   for (const hex of subsectorHexes(letter)) {
     const at = formatSectorHex(hex);
-    const world = chartWorld(seed, at, hex, density, regional);
+    const world = chartWorld(seed, at, hex, density, regional, shifts);
     if (world !== null) worlds.push(world);
   }
   return {
     seed,
     letter: letter.toUpperCase(),
     density,
+    shifts,
     worlds,
     routes: routesBetween(worlds),
     mains: mainsIn(worlds),

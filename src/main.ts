@@ -123,6 +123,7 @@ import {
   setOverride as setHexOverride,
   setPresence,
   setSystemSeed,
+  SHIFT_LIMIT,
   subsectorOf as chartOf,
   dropSystem,
   keepSystem,
@@ -2424,7 +2425,7 @@ function rerollHexSystem(at: string): void {
   if (world === undefined) return;
   // The chart names what is in a hex, so the new system takes the new name.
   setHexOverride(subDoc, at, "name", "");
-  openHexSystem(at, world.systemSeed, world.name);
+  openHexSystem(at, world.systemSeed, world.name, world.uwp);
   subSay(`Rolled another system into ${at}.`);
 }
 
@@ -3091,6 +3092,8 @@ function openSubsector(next: SubsectorDoc): void {
   el<HTMLInputElement>("sub-sector").value = next.sector;
   el<HTMLSelectElement>("sub-letter").value = next.letter;
   el<HTMLSelectElement>("sub-density").value = next.density;
+  el<HTMLInputElement>("sub-people").value = String(next.shifts.population);
+  el<HTMLInputElement>("sub-tech").value = String(next.shifts.tech);
   openLevels.subsector = true;
   openLevels.system = false;
   openLevels.planet = false;
@@ -3134,6 +3137,15 @@ function showSubsectorAbout(): void {
   fact("Systems", `${subsector.worlds.length} of 80`);
   fact("Inhabited", String(inhabited));
   fact("Density", subsector.density);
+  const lean = [
+    (subDoc?.shifts.population ?? 0) === 0
+      ? ""
+      : `people ${subDoc!.shifts.population > 0 ? "+" : ""}${subDoc!.shifts.population}`,
+    (subDoc?.shifts.tech ?? 0) === 0
+      ? ""
+      : `tech ${subDoc!.shifts.tech > 0 ? "+" : ""}${subDoc!.shifts.tech}`,
+  ].filter((part) => part !== "");
+  if (lean.length > 0) fact("Leaning", lean.join(", "));
   fact("Seed", subsector.seed);
   // The Mains are worth a line of their own when they are being looked at: how
   // many there are, and how far the longest one reaches. SubSectorSpec 3.10.
@@ -3505,11 +3517,20 @@ el("sub-mains").addEventListener("change", () => {
 el("sub-roll").addEventListener("click", startNewSubsector);
 
 // Every stored field of 5.1, and every one of them makes the document dirty.
-for (const id of ["sub-letter", "sub-density"]) {
+for (const id of ["sub-letter", "sub-density", "sub-people", "sub-tech"]) {
   el(id).addEventListener("change", () => {
     if (subDoc === null) return;
     subDoc.letter = el<HTMLSelectElement>("sub-letter").value;
     subDoc.density = el<HTMLSelectElement>("sub-density").value as Density;
+    // A lean is a modifier on the dice, so it is held to what a modifier on 2D
+    // can sensibly be. SubSectorSpec 3.11.1.
+    const lean = (field: string) => {
+      const typed = Math.round(Number(el<HTMLInputElement>(field).value) || 0);
+      const held = Math.max(-SHIFT_LIMIT, Math.min(SHIFT_LIMIT, typed));
+      el<HTMLInputElement>(field).value = String(held);
+      return held;
+    };
+    subDoc.shifts = { population: lean("sub-people"), tech: lean("sub-tech") };
     markSubDirty();
     drawSubsector();
     selectHex(hexShown);
@@ -3543,7 +3564,7 @@ el("sub-open").addEventListener("click", () => {
   if (subsector === null || subDoc === null || hexShown === null) return;
   const world = subsector.worlds.find((held) => held.at === hexShown);
   if (world === undefined) return;
-  openHexSystem(world.at, world.systemSeed, world.name);
+  openHexSystem(world.at, world.systemSeed, world.name, world.uwp);
 });
 
 /**
@@ -3554,9 +3575,13 @@ el("sub-open").addEventListener("click", () => {
  * the system they worked on: the alternative is the level below quietly undoing
  * itself every time somebody looks at the chart.
  */
-function openHexSystem(at: string, seed: string, name: string): void {
+function openHexSystem(at: string, seed: string, name: string, uwp?: string): void {
   if (subDoc === null) return;
   const held = savedSystem(subDoc, at) ?? newSystemDoc(seed, name);
+  // The profile the chart drew, which is not what the seed alone rolls where
+  // the region leans its worlds. AppSpec 1.3.1: the level above fills this in
+  // rather than the level below guessing at it.
+  if (uwp !== undefined && uwp !== "") held.mainWorldUwp = uwp;
   held.sector = el<HTMLInputElement>("sub-sector").value;
   held.hex = at;
   systemFolder = null;

@@ -63,6 +63,15 @@ export interface HexOverride {
   readonly systemSeed?: string;
 }
 
+/**
+ * How far a region can be leaned, either way. SubSectorSpec 3.11.1.
+ *
+ * Three is already a lot: it moves the average world of a subsector by half the
+ * scale, and past that the dice have stopped mattering and the referee is
+ * writing the digits themselves, which is what an override is for.
+ */
+export const SHIFT_LIMIT = 3;
+
 /** The fields of an override that are plain text. */
 export type HexField = "name" | "uwp" | "bases" | "zone" | "note" | "stars";
 
@@ -77,6 +86,14 @@ export interface SubsectorDoc {
   letter: string;
   seed: string;
   density: Density;
+  /**
+   * Which way this region leans, as modifiers on the dice every world in it is
+   * rolled with. SubSectorSpec 3.11.
+   *
+   * A settled region and a frontier are the same rules with a different thumb on
+   * them, and that is a property of the region rather than of each world in it.
+   */
+  shifts: { population: number; tech: number };
   overrides: HexOverride[];
   /**
    * The systems under this chart that somebody has worked on, by hex, each
@@ -108,6 +125,7 @@ export function newSubsectorDoc(
     letter: letter.toUpperCase(),
     seed,
     density,
+    shifts: { population: 0, tech: 0 },
     overrides: [],
     systems: [],
   };
@@ -209,7 +227,7 @@ export function systemSeedIn(doc: SubsectorDoc, at: string): string {
  * on the world that was always in that hex.
  */
 export function subsectorOf(doc: SubsectorDoc): Subsector {
-  const rolled = generateSubsector(doc.seed, doc.letter, doc.density);
+  const rolled = generateSubsector(doc.seed, doc.letter, doc.density, doc.shifts);
   if (doc.overrides.length === 0) return rolled;
 
   const held = new Map(rolled.worlds.map((world) => [world.at, world]));
@@ -223,7 +241,14 @@ export function subsectorOf(doc: SubsectorDoc): Subsector {
     const wanted = override.present === true && !held.has(override.at);
     const replaced = override.systemSeed !== undefined && held.has(override.at);
     if (!wanted && !replaced) continue;
-    const world = worldAt(doc.seed, override.at, hex, undefined, override.systemSeed);
+    const world = worldAt(
+      doc.seed,
+      override.at,
+      hex,
+      undefined,
+      override.systemSeed,
+      doc.shifts,
+    );
     if (world !== null) held.set(override.at, world);
   }
 
@@ -296,6 +321,7 @@ export function parseSubsectorDoc(text: string): SubsectorDoc {
     seed: r["seed"],
     density:
       typeof density === "string" && density in DENSITIES ? (density as Density) : DEFAULT_DENSITY,
+    shifts: parseShifts(r["shifts"]),
     overrides: parseOverrides(r["overrides"]),
     systems: parseSystems(r["systems"]),
   };
@@ -326,6 +352,17 @@ function parseSystems(raw: unknown): { at: string; doc: SystemDoc }[] {
 /** What a file says it is, for the complaint in parseSubsectorDoc. */
 function describeLevel(level: unknown): string {
   return typeof level === "string" && level !== "" ? level : "planet or something else";
+}
+
+/** How far a region leans, held to what a modifier on 2D can sensibly be. */
+function parseShifts(raw: unknown): { population: number; tech: number } {
+  const held = typeof raw === "object" && raw !== null ? (raw as Record<string, unknown>) : {};
+  const one = (key: string) => {
+    const value = held[key];
+    if (typeof value !== "number" || !Number.isFinite(value)) return 0;
+    return Math.max(-SHIFT_LIMIT, Math.min(SHIFT_LIMIT, Math.round(value)));
+  };
+  return { population: one("population"), tech: one("tech") };
 }
 
 function parseOverrides(raw: unknown): HexOverride[] {
