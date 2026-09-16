@@ -752,6 +752,9 @@ body[data-view="system"] .subsector { display: none; }
 .chart-giant { fill: #d7b273; }
 .chart-giant-ring { fill: none; stroke: #d7b273; stroke-width: 1.4; }
 
+.sub-choices { border-top: 0; padding-top: 0; }
+.sub-choices label { display: flex; align-items: center; gap: 6px; cursor: pointer; }
+
 /* A Main washed behind the hexes it runs through. Low enough to read the chart
    through, distinct enough to follow across it. */
 .chart-main > * { stroke: none; }

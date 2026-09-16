@@ -117,6 +117,13 @@ import {
 } from "./gen/subsector";
 import { subsectorFile } from "./io/export/subsector";
 import {
+  chartSvg,
+  subsectorCsv,
+  subsectorSheetHtml,
+  subsectorSheetMarkdown,
+} from "./io/export/chart";
+import { svgToPng } from "./io/export/raster";
+import {
   newSubsectorDoc,
   overrideFor as hexOverride,
   parseSubsectorDoc,
@@ -3410,17 +3417,33 @@ function subsectorFileFor(open: SubsectorDoc): SaveFile {
  * Only what was actually worked on. Eighty folders for eighty hexes nobody has
  * opened would be eighty folders describing what the seed already describes.
  */
-function subsectorFiles(open: SubsectorDoc): SaveFile[] {
+async function subsectorFiles(open: SubsectorDoc): Promise<SaveFile[]> {
   const file = subsectorFileFor(open);
   const stem = file.name.replace(/\.[a-z]+$/, "");
   const files: SaveFile[] = [file];
-  // The sector file beside it, since a chart that cannot be handed to a map is
-  // a chart only this application can read. SubSectorSpec 6.1.
-  if (subsector !== null) {
-    files.push({
-      name: `${stem}.sec`,
-      data: subsectorFile(subsector, el<HTMLInputElement>("sub-sector").value.trim()),
-    });
+  if (subsector === null) return files;
+  const chart = subsector;
+  const sector = el<HTMLInputElement>("sub-sector").value.trim();
+  const wants = (id: string) => el<HTMLInputElement>(id).checked;
+  // What the referee wrote about a hex travels with the hex into the sheet.
+  const noteFor = (at: string) => hexOverride(open, at)?.note ?? "";
+
+  // The sector file, since a chart that cannot be handed to a map is a chart
+  // only this application can read. SubSectorSpec 6.1.
+  if (wants("sub-want-sec")) {
+    files.push({ name: `${stem}.sec`, data: subsectorFile(chart, sector) });
+  }
+  const drawn = () => chartSvg(chart, sector, el<HTMLInputElement>("sub-mains").checked);
+  if (wants("sub-want-svg")) files.push({ name: `${stem}.svg`, data: drawn() });
+  if (wants("sub-want-png")) {
+    files.push({ name: `${stem}.png`, data: await svgToPng(drawn()) });
+  }
+  if (wants("sub-want-csv")) files.push({ name: `${stem}.csv`, data: subsectorCsv(chart) });
+  if (wants("sub-want-md")) {
+    files.push({ name: `${stem}.md`, data: subsectorSheetMarkdown(chart, sector, noteFor) });
+  }
+  if (wants("sub-want-html")) {
+    files.push({ name: `${stem}.html`, data: subsectorSheetHtml(chart, sector, noteFor) });
   }
   return files;
 }
@@ -3430,18 +3453,22 @@ function subsectorSaveNote(open: SubsectorDoc, files: readonly SaveFile[]): stri
   const chart = files[0]!.name;
   const systems = open.systems.length;
   const worlds = open.systems.reduce((count, held) => count + held.doc.worlds.length, 0);
-  if (systems === 0) return chart;
-  const worked = `${systems === 1 ? "one system" : `${systems} systems`}${
-    worlds === 0 ? "" : ` and ${worlds === 1 ? "one world" : `${worlds} worlds`}`
-  }`;
-  return `${chart}, holding ${worked}`;
+  const worked =
+    systems === 0
+      ? ""
+      : `, holding ${systems === 1 ? "one system" : `${systems} systems`}${
+          worlds === 0 ? "" : ` and ${worlds === 1 ? "one world" : `${worlds} worlds`}`
+        }`;
+  const beside = files.length - 1;
+  const also = beside === 0 ? "" : ` with ${beside === 1 ? "one export" : `${beside} exports`}`;
+  return `${chart}${worked}${also}`;
 }
 
 el("sub-save").addEventListener("click", async () => {
   if (subDoc === null) return;
   const held = subDoc;
   try {
-    const files = subsectorFiles(held);
+    const files = await subsectorFiles(held);
     if (isSupported()) {
       // Asked for once: a load or an earlier save has already said where this
       // subsector lives, and AppSpec 3.3.2 has it stay there.

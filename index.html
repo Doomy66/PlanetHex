@@ -130,6 +130,19 @@
         </label>
         <ul id="sub-list" class="sys-tree"></ul>
 
+        <!-- What a save writes beside the document. SubSectorSpec 6.5. -->
+        <details class="chart-legend" id="sub-files">
+          <summary>Files to save</summary>
+          <ul class="chart-key sub-choices">
+            <li><label><input id="sub-want-sec" type="checkbox" checked /> Sector file, for a map</label></li>
+            <li><label><input id="sub-want-png" type="checkbox" checked /> Chart as a PNG</label></li>
+            <li><label><input id="sub-want-svg" type="checkbox" /> Chart as an SVG</label></li>
+            <li><label><input id="sub-want-csv" type="checkbox" /> Table as a CSV</label></li>
+            <li><label><input id="sub-want-md" type="checkbox" /> Sheet, Markdown</label></li>
+            <li><label><input id="sub-want-html" type="checkbox" /> Sheet, HTML</label></li>
+          </ul>
+        </details>
+
         <!-- Foldable, because a key is read once and then known. -->
         <details class="chart-legend" open>
           <summary>Key</summary>

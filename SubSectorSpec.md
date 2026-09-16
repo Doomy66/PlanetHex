@@ -296,13 +296,27 @@ Nothing is marked Red by generation.
 
 6.1.2 Allegiance stays Na for a generated world and is an override field like any other. An unclaimed world is what a chart with no polities on it holds.
 
-6.2 The chart as a PNG, drawn by the same renderer that draws the panel, framed on the whole subsector rather than on wherever the user has scrolled. The planet spec 6.4.5.1 gives the reason.
+6.2 The chart as a picture, framed on the whole subsector rather than on wherever the user has scrolled. The planet spec 6.4.5.1 gives the reason.
 
-6.3 The chart as a CSV, one row per system with every derived figure in its own column, for a referee who wants it in a spreadsheet.
+6.2.1 As SVG and as PNG. The SVG is the drawing itself and scales to a wall; the PNG is what can be pasted into anything, and is drawn at twice the size because a hex number at eleven pixels does not survive being printed.
 
-6.4 A subsector sheet: the eighty systems as a readable document, the way the planet spec 6.19 writes one world up.
+6.2.2 It carries its own styling. A file that had to be paired with the application's stylesheet is a file nobody can open, so the exported chart repeats the colours rather than borrowing them.
 
-6.5 The dialogue of the planet spec 6.23, which asks what a save should write, gains the choices above when a subsector is what is open.
+6.2.2.1 That is a duplication and it is the cheap half of one. The arithmetic is shared — both charts ask the same module where a hex goes — because a hex in the wrong place would be a different chart, while a hex in the wrong blue is the same chart in the wrong blue.
+
+6.2.3 It is titled, with the sector, the count, the density and the seed. A file leaves the application and has to say what it is when it turns up in a downloads folder six months later.
+
+6.2.4 The Mains follow the switch of 3.10.4. What is exported is the chart as the referee has it set up, not a second set of choices to make at the moment of saving.
+
+6.3 The chart as a CSV, one row per system with every derived figure in its own column, for a referee who wants it in a spreadsheet. The sector file packs seven digits into one field because a map reads it; a spreadsheet wants to sort on the population.
+
+6.4 A subsector sheet: the systems as a readable document, the way the planet spec 6.19 writes one world up, in Markdown and in HTML. The Markdown goes into a wiki or a repository; the HTML carries its own styling, for printing and for handing to a player.
+
+6.4.1 It leads with the Mains and the X-boat network, because those are the two things about a region that are not visible one world at a time.
+
+6.4.2 Whatever the referee wrote about a hex under 5.3.2 travels with it. A sheet that left the notes behind would be a sheet of the generated chart rather than of theirs.
+
+6.5 The save asks which of these to write, beside the chart's own document. The sector file and the PNG are on by default, since between them they cover handing the chart to a map and handing it to a person.
 
 ## 7. Where a hex becomes a planet
 
@@ -334,7 +348,7 @@ Nothing is marked Red by generation.
 
 8.6 **Navigation.** Section 7, the route into the planet view and back.
 
-8.7 **The remaining exports.** 6.2 to 6.5.
+8.7 **The remaining exports.** 6.2 to 6.5. Done.
 
 8.8 Steps 8.2 and 8.3 are where the design can still be wrong cheaply. Everything after them is work rather than risk.
 

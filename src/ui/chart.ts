@@ -1,4 +1,14 @@
 import { SUB_COLS, SUB_ROWS } from "../location";
+import {
+  centreOf,
+  chartSize,
+  dotFor,
+  hexPoints,
+  HEX_HIGH,
+  HEX_WIDE,
+  MAIN_COLOURS,
+  ZONE_R,
+} from "../chartlayout";
 import type { ChartWorld, Subsector } from "../gen/subsector";
 
 /**
@@ -22,34 +32,6 @@ import type { ChartWorld, Subsector } from "../gen/subsector";
 
 const SVG_NS = "http://www.w3.org/2000/svg";
 
-/**
- * A hex, in drawing units: HEX_WIDE corner to corner across, and flat topped, so
- * that columns can be offset against each other the way a Traveller chart offsets
- * them. A flat topped hex of that width stands the square root of three quarters
- * of it high, and its columns step three quarters of it apart.
- */
-const HEX_WIDE = 100;
-const HEX_HIGH = (HEX_WIDE * Math.sqrt(3)) / 2;
-const COLUMN_STEP = HEX_WIDE * 0.75;
-const PAD = HEX_WIDE * 0.45;
-
-/**
- * The world itself, and the ring a travel zone puts round it. A world is drawn
- * as a dot, sized by population and coloured by what is on its surface, with the
- * key beside the chart saying which is which. 4.2.2.
- */
-const DOT = { least: 6, most: 12 } as const;
-const ZONE_R = 20;
-
-/** How many colours the Mains are drawn in before they start round again. */
-const MAIN_COLOURS = 5;
-
-/** How big a world's dot is. Population, not size: 4.2.1 says why. */
-function dotFor(population: number): number {
-  const at = Math.min(1, Math.max(0, population / 12));
-  return DOT.least + at * (DOT.most - DOT.least);
-}
-
 function make<K extends keyof SVGElementTagNameMap>(
   tag: K,
   attrs: Record<string, string | number> = {},
@@ -57,39 +39,6 @@ function make<K extends keyof SVGElementTagNameMap>(
   const node = document.createElementNS(SVG_NS, tag);
   for (const [key, value] of Object.entries(attrs)) node.setAttribute(key, String(value));
   return node;
-}
-
-/** The middle of the hex at a column and row of the chart, in drawing units. */
-function centreOf(col: number, row: number): { x: number; y: number } {
-  const x = PAD + (col - 1) * COLUMN_STEP + HEX_WIDE / 2;
-  // Even columns ride half a hex lower, which is what makes a Traveller chart
-  // read as columns of worlds rather than as a grid.
-  const drop = col % 2 === 0 ? HEX_HIGH / 2 : 0;
-  return { x, y: PAD + (row - 1) * HEX_HIGH + HEX_HIGH / 2 + drop };
-}
-
-/**
- * The six corners of a flat-topped hex about a centre.
- *
- * Written out rather than swept round in sixty degree steps, because a circle
- * sampled every sixty degrees and then squashed to the hex's height is not a
- * hexagon: the four slanted corners land short of the full height, and the chart
- * tiles with a gap down every seam. A flat-topped hex has its corners at the
- * ends of the horizontal axis and at a quarter of the width either side of the
- * middle, top and bottom.
- */
-function hexPoints(x: number, y: number): string {
-  const wide = HEX_WIDE / 2;
-  const quarter = HEX_WIDE / 4;
-  const high = HEX_HIGH / 2;
-  return [
-    `${x + wide},${y}`,
-    `${x + quarter},${y + high}`,
-    `${x - quarter},${y + high}`,
-    `${x - wide},${y}`,
-    `${x - quarter},${y - high}`,
-    `${x + quarter},${y - high}`,
-  ].join(" ");
 }
 
 /**
@@ -178,8 +127,7 @@ export function createChart(): Chart {
       );
     }
 
-    const width = PAD * 2 + (SUB_COLS - 1) * COLUMN_STEP + HEX_WIDE;
-    const height = PAD * 2 + SUB_ROWS * HEX_HIGH + HEX_HIGH / 2;
+    const { width, height } = chartSize();
     svg.setAttribute("viewBox", `0 0 ${width} ${height}`);
     drawMains();
     drawSelection();
