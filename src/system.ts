@@ -14,6 +14,7 @@
 import { parseSectorHex, subsectorLetter } from "./location";
 import { parsePlanet, rollUwp, type Planet } from "./planet";
 import { generateSystem, mainWorldSeed, type StarSystem } from "./gen/system";
+import { parseStars, starsFor } from "./gen/star";
 
 /**
  * What the user has written over one orbit. Only what changed, under 9.3: a
@@ -42,6 +43,11 @@ export interface SystemDoc {
   seed: string;
   /** The profile of 5.1, written down so the document stands alone. */
   mainWorldUwp: string;
+  /**
+   * The stars, as the Stars column writes them, where the referee has changed
+   * them. Null for the ones the seed rolled. SystemSpec 2.6.
+   */
+  star: string | null;
   overrides: OrbitOverride[];
   /**
    * The worlds of this system that somebody has worked on, whole. SystemSpec
@@ -65,6 +71,7 @@ export function newSystemDoc(seed: string, name: string): SystemDoc {
     hex: "",
     seed,
     mainWorldUwp: rollUwp(mainWorldSeed(seed)),
+    star: null,
     overrides: [],
     worlds: [],
   };
@@ -129,7 +136,11 @@ export function setOverride(
  * get to change their system under them.
  */
 export function systemOf(doc: SystemDoc): StarSystem {
-  const system = generateSystem(doc.seed);
+  const written = doc.star?.trim() ?? "";
+  const system =
+    written === ""
+      ? generateSystem(doc.seed)
+      : generateSystem(doc.seed, parseStars(written, starsFor(doc.seed)));
   const main = system.mainWorld;
   const stored = doc.mainWorldUwp.trim().toUpperCase();
   const orbits = system.orbits.map((orbit) => {
@@ -180,6 +191,7 @@ export function parseSystemDoc(text: string): SystemDoc {
       typeof r["mainWorldUwp"] === "string" && r["mainWorldUwp"] !== ""
         ? r["mainWorldUwp"]
         : rollUwp(mainWorldSeed(seed)),
+    star: typeof r["star"] === "string" && r["star"].trim() !== "" ? r["star"] : null,
     overrides: parseOverrides(r["overrides"]),
     worlds: parseWorlds(r["worlds"]),
   };

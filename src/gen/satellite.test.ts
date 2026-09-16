@@ -17,7 +17,7 @@ const OTHERS = SEEDS.flatMap((seed) => {
 describe("the other worlds", () => {
   it("puts some in most systems and not in every orbit", () => {
     expect(OTHERS.length).toBeGreaterThan(SEEDS.length);
-    const bare = SEEDS.map(generateSystem).filter((system) =>
+    const bare = SEEDS.map((seed) => generateSystem(seed)).filter((system) =>
       system.orbits.some((orbit) => orbit.content.kind === "empty"),
     );
     expect(bare.length).toBeGreaterThan(SEEDS.length / 3);

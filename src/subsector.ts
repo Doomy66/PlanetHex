@@ -21,6 +21,7 @@ import {
 } from "./gen/subsector";
 import { systemSeedFor } from "./gen/subsector";
 import { parseSystemDoc, type SystemDoc } from "./system";
+import { parseStars } from "./gen/star";
 import { formatSectorHex, parseSectorHex, subsectorHexes } from "./location";
 import { parseUwp } from "./planet";
 import { tradeCodes } from "./gen/trade";
@@ -40,6 +41,8 @@ export interface HexOverride {
   readonly bases?: string;
   /** The Zone column: "A", "R" or "" for green. */
   readonly zone?: string;
+  /** The Stars column, where the system below has been given other stars. */
+  readonly stars?: string;
   /** Free prose about the system. 5.3.2. */
   readonly note?: string;
   /**
@@ -61,7 +64,7 @@ export interface HexOverride {
 }
 
 /** The fields of an override that are plain text. */
-export type HexField = "name" | "uwp" | "bases" | "zone" | "note";
+export type HexField = "name" | "uwp" | "bases" | "zone" | "note" | "stars";
 
 export interface SubsectorDoc {
   /** Which level this document is, under the app spec 4.1. */
@@ -138,6 +141,7 @@ function saysNothing(held: HexOverride): boolean {
     held.uwp === undefined &&
     held.bases === undefined &&
     held.zone === undefined &&
+    held.stars === undefined &&
     held.note === undefined &&
     held.present === undefined &&
     held.systemSeed === undefined
@@ -251,6 +255,7 @@ function wearing(world: ChartWorld, override: HexOverride): ChartWorld {
     trade: profile === null ? world.trade : tradeCodes(changed),
     bases: override.bases ?? world.bases,
     zone: override.zone ?? world.zone,
+    stars: override.stars === undefined ? world.stars : parseStars(override.stars, world.stars),
   };
 }
 
@@ -339,6 +344,7 @@ function parseOverrides(raw: unknown): HexOverride[] {
       ...(text("uwp") === undefined ? {} : { uwp: text("uwp")! }),
       ...(text("bases") === undefined ? {} : { bases: text("bases")! }),
       ...(text("zone") === undefined ? {} : { zone: text("zone")! }),
+      ...(text("stars") === undefined ? {} : { stars: text("stars")! }),
       ...(text("note") === undefined ? {} : { note: text("note")! }),
       ...(present === undefined ? {} : { present }),
       ...(text("systemSeed") === undefined ? {} : { systemSeed: text("systemSeed")! }),

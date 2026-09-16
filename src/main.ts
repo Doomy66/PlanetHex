@@ -98,7 +98,13 @@ import { EXPORT_FORMATS, manifest, type ExportContext } from "./io/export";
 import { shaderFor, surfaceOn } from "./surface";
 import { currentAppView, landingSay, setAppView, wireLanding } from "./ui/landing";
 import { auLabel, contentLabel, createOrbitDiagram } from "./ui/orbits";
-import { parseStar, starLabel, SPECTRAL_CLASSES, STAR_SIZES } from "./gen/star";
+import {
+  parseStar,
+  starLabel,
+  starsFor,
+  SPECTRAL_CLASSES,
+  STAR_SIZES,
+} from "./gen/star";
 import { createOrbitMap } from "./ui/orbitmap";
 import { createChart } from "./ui/chart";
 import { createCrumbs, type Level, type Trail } from "./ui/crumbs";
@@ -2109,6 +2115,7 @@ function openSystem(next: SystemDoc): void {
   el<HTMLInputElement>("sys-name").value = next.name;
   el<HTMLInputElement>("sys-sector").value = next.sector;
   el<HTMLInputElement>("sys-hex").value = next.hex;
+  showSystemStar();
   orbits.render(system);
   model.render(system);
   // The gas giants first, because they cost nothing: a picture of one is bands
@@ -2141,6 +2148,7 @@ function refreshSystem(): void {
   system = systemOf(doc);
   names = namesOf(system, doc.name);
   el<HTMLInputElement>("sys-name").value = doc.name;
+  showSystemStar();
   orbits.render(system);
   model.render(system);
   for (const orbit of system.orbits) {
@@ -2398,6 +2406,10 @@ function tellChartAboutSystem(chart: SubsectorDoc, at: string, open: SystemDoc):
   setHexOverride(chart, at, "name", open.name === rolled.name ? "" : open.name);
   const uwp = held.mainWorld.uwp;
   setHexOverride(chart, at, "uwp", uwp === rolled.uwp ? "" : uwp);
+  // The Stars column is the chart's, so a star changed down here has to reach
+  // it or the two levels describe the same system differently.
+  const stars = starsLabel(held.stars);
+  setHexOverride(chart, at, "stars", stars === starsLabel(rolled.stars) ? "" : stars);
 }
 
 /** Roll a different system into a hex, and tell the chart about it. */
@@ -2543,6 +2555,62 @@ el("sys-travel").addEventListener("click", () => {
 });
 
 el("sys-gees").addEventListener("input", showTravel);
+
+/* The star a system turns round. SystemSpec 2.6 -------------------------- */
+
+for (const [box, values] of [
+  [el<HTMLSelectElement>("sys-star-class"), SPECTRAL_CLASSES],
+  [el<HTMLSelectElement>("sys-star-size"), STAR_SIZES],
+] as const) {
+  for (const value of values) {
+    const option = document.createElement("option");
+    option.value = value;
+    option.textContent = value;
+    box.append(option);
+  }
+}
+
+/** The fields, showing whatever the system's primary is now. */
+function showSystemStar(): void {
+  if (system === null) return;
+  const primary = system.stars.primary;
+  el<HTMLSelectElement>("sys-star-class").value = primary.spectral;
+  el<HTMLSelectElement>("sys-star-size").value = primary.size;
+}
+
+/**
+ * Change the star, and lay the system out again around it.
+ *
+ * Not a repaint: the habitable zone, the snow line and every orbit distance are
+ * worked out from what the star puts out, so a different star is a different
+ * arrangement of the same system. The seed is untouched, so the worlds are the
+ * same worlds - they are somewhere else, under a different sky.
+ *
+ * A companion keeps whatever was rolled. What is being edited is the star the
+ * system is named for; a second star is a second question.
+ */
+function setSystemStar(): void {
+  if (doc === null || system === null) return;
+  const spectral = el<HTMLSelectElement>("sys-star-class").value;
+  const size = el<HTMLSelectElement>("sys-star-size").value;
+  const primary = parseStar(`${spectral}${system.stars.primary.subclass} ${size}`);
+  if (primary === null) return;
+  const held = system.stars.companion;
+  const rolled = starsLabel(starsFor(doc.seed));
+  const wanted = [starLabel(primary), held === null ? "" : starLabel(held)]
+    .filter((part) => part !== "")
+    .join(" ");
+  // Rolled back to what it was, the override goes: the document says only what
+  // the referee changed, the way every other override here does.
+  doc.star = wanted === rolled ? null : wanted;
+  markSystemDirty();
+  refreshSystem();
+  sysSay(`${starsLabel(system.stars)}. The orbits are laid out again around it.`);
+}
+
+for (const id of ["sys-star-class", "sys-star-size"]) {
+  el(id).addEventListener("change", setSystemStar);
+}
 
 /* Saving and loading a system. SystemSpec 9.5, AppSpec 3.3 and 4.3 ------- */
 

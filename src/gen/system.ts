@@ -261,8 +261,11 @@ function shuffled(seed: string, stream: string, of: readonly number[]): number[]
  * habitable zone, then fill the orbits. The main world goes in first because
  * section 5 decides where it belongs and section 4 works around it.
  */
-export function generateSystem(seed: string): StarSystem {
-  const stars = starsFor(seed);
+export function generateSystem(seed: string, given?: Stars): StarSystem {
+  // The stars the seed rolls, unless the referee has said otherwise. A different
+  // star is a different system: it lights different orbits, so everything from
+  // the habitable zone outwards is laid out again rather than patched.
+  const stars = given ?? starsFor(seed);
   // What the orbits are lit by, which is both stars where the companion is
   // inside them all and the primary alone where it is outside them all.
   const luminosity = systemLuminosity(stars);

@@ -215,6 +215,15 @@
         <span class="system-actions">
           <label class="sys-where">Sector<input id="sys-sector" type="text" autocomplete="off" /></label>
           <label class="sys-where">Hex<input id="sys-hex" type="text" autocomplete="off" placeholder="0000" maxlength="5" /></label>
+          <!-- The star the system turns round. SystemSpec 2.6: change it and
+               the orbits are laid out again, because a different star lights
+               them differently. -->
+          <label class="sys-where">Star
+            <select id="sys-star-class"></select>
+          </label>
+          <label class="sys-where">Size
+            <select id="sys-star-size"></select>
+          </label>
           <button id="sys-roll" type="button" title="Another system">Roll</button>
           <button id="sys-save" type="button">Save</button>
           <button id="sys-home" class="home" type="button" title="Back to the levels">Levels</button>

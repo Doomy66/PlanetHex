@@ -80,6 +80,16 @@ This document sits under [SubSectorSpec.md](SubSectorSpec.md) and over [PlanetSp
 
 2.5.2 The size is here for one reason: 4.8 measures a jump shadow from it. Nothing else in this document needs to know how wide a star is.
 
+2.6 The stars can be changed. A referee who wants this system round a red dwarf says so, and the system is laid out again around it.
+
+2.6.1 Laid out again, not repainted. The habitable zone, the snow line and every orbit distance are worked out from what the star puts out, so a different star is a different arrangement of the same system — the seed is untouched and the worlds are the same worlds, somewhere else under a different sky. A K7 changed to an M7 loses an orbit and halves its jump shadow.
+
+2.6.2 The primary only. What is being edited is the star the system is named for; a companion is a second question, and it keeps whatever was rolled, as does where it sits — that is not in the Stars column and so is not in what the referee typed.
+
+2.6.3 Stored as the Stars column writes it, and only where it differs from the roll. Rolled back to what it was, the override goes, which is the rule every override in this document follows.
+
+2.6.4 The chart above is told. The Stars column is the chart's, so a star changed here reaches the hex or the two levels describe one system differently.
+
 ## 3. Orbits
 
 3.1 A system has a numbered sequence of orbits outward from the primary. How many depends on the primary: a large, hot star sweeps and scatters the inner ones, a small one has few that are far enough out to matter.

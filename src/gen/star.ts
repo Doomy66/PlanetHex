@@ -265,6 +265,39 @@ export function parseStar(label: string): Star | null {
   return starOf(spectral, subclass, size);
 }
 
+/**
+ * A system's stars back out of the Stars column. SystemSpec 2.6.1.
+ *
+ * "K5 V M3 V" is a primary and a companion, which is what the column says and
+ * all it says: whether the companion rides close or sits outside every orbit is
+ * not in the column, so that is taken from what was rolled rather than invented.
+ */
+export function parseStars(label: string, rolled: Stars): Stars {
+  const parts = label.trim().split(/\s+/);
+  const stars: Star[] = [];
+  for (let at = 0; at < parts.length; ) {
+    // A size follows its class unless the class is a lone D, which is its own.
+    const twoWords = parseStar(`${parts[at]} ${parts[at + 1] ?? ""}`);
+    const oneWord = parseStar(parts[at] ?? "");
+    if (twoWords !== null && parts[at + 1] !== undefined) {
+      stars.push(twoWords);
+      at += 2;
+    } else if (oneWord !== null) {
+      stars.push(oneWord);
+      at += 1;
+    } else {
+      at += 1;
+    }
+  }
+  if (stars.length === 0) return rolled;
+  return {
+    primary: stars[0]!,
+    companion: stars[1] ?? null,
+    // Where a companion sits is not in the column, so it keeps what it had.
+    companionOrbit: stars[1] === undefined ? null : (rolled.companionOrbit ?? "far"),
+  };
+}
+
 /** A star from its parts, with the output that follows from them. */
 export function starOf(spectral: SpectralClass, subclass: number, size: StarSize): Star {
   return { spectral, subclass, size, luminosity: luminosityOf(spectral, size) };

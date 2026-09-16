@@ -50,7 +50,7 @@ describe("generateSystem", () => {
   it("places every one of them where there are orbits to spare", () => {
     // The shortfall of StarSystem.placed is for the extreme stars only. A system
     // with room must come out holding exactly what the chart says it holds.
-    const roomy = SEEDS.map(generateSystem).filter(
+    const roomy = SEEDS.map((seed) => generateSystem(seed)).filter(
       (system) => system.orbits.length >= system.pbg.belts + system.pbg.gasGiants + 1,
     );
     expect(roomy.length).toBeGreaterThan(SEEDS.length / 2);
@@ -79,7 +79,7 @@ describe("generateSystem", () => {
   it("leaves some orbits empty", () => {
     // SystemSpec 4.3: a system with every slot filled reads as a generator that
     // could not leave anything out.
-    const empty = SEEDS.map(generateSystem).filter((system) =>
+    const empty = SEEDS.map((seed) => generateSystem(seed)).filter((system) =>
       system.orbits.some((orbit) => orbit.content.kind === "empty"),
     );
     expect(empty.length).toBeGreaterThan(SEEDS.length / 2);
@@ -264,7 +264,7 @@ describe("a main world that is a belt", () => {
 describe("the bases", () => {
   // SystemSpec 4.6. The chart draws a mark for them; the system has to know
   // where they are, and the two have to agree without being told.
-  const systems = SEEDS.map(generateSystem);
+  const systems = SEEDS.map((seed) => generateSystem(seed));
 
   it("agrees with the chart about which system has what", () => {
     for (const system of systems) {
@@ -337,7 +337,7 @@ describe("what a body is called", () => {
 
   it("leaves a gap in the numbering where an orbit is empty", () => {
     // The point of slot numbering: Sol-1, Sol-3, Sol-7 says where things are.
-    const gappy = SEEDS.map(generateSystem).filter((system) =>
+    const gappy = SEEDS.map((seed) => generateSystem(seed)).filter((system) =>
       system.orbits.some(
         (orbit, at) => orbit.content.kind === "empty" && at < system.orbits.length - 1,
       ),
