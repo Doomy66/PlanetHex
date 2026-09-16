@@ -21,12 +21,23 @@
          planet, because there are four things a user might have come to do and
          no way to guess which. AppSpec 1.2.1. -->
     <section id="landing" class="landing">
+      <!-- The backdrop. Stars and a planet's limb, drawn in the stylesheet
+           rather than shipped as an image: the application draws worlds, and a
+           landing page that had to download one would be odd. -->
+      <div class="sky" aria-hidden="true">
+        <div class="sky-stars"></div>
+        <div class="sky-limb"></div>
+      </div>
+
       <div class="landing-card">
-        <h1>PlanetHex</h1>
-        <p class="landing-lead">A world, a system, a chart, a sector. Start where you meant to.</p>
+        <header class="landing-head">
+          <h1>PlanetHex</h1>
+          <p class="landing-lead">A world, a system, a chart, a sector.<br />Start where you meant to.</p>
+        </header>
 
         <ul class="levels">
-          <li class="level">
+          <li class="level level-planet">
+            <svg class="level-icon" viewBox="0 0 48 48" aria-hidden="true"><circle cx="24" cy="24" r="13" class="ic-body" /><path d="M11 24c4 3 22 3 26 0" class="ic-line" /><path d="M24 11c-5 4-5 22 0 26" class="ic-line" /><circle cx="24" cy="24" r="13" class="ic-edge" /></svg>
             <div class="level-what">
               <h2>Planet</h2>
               <p>One world, its surface, and the globe it turns on.</p>
@@ -36,12 +47,8 @@
               <button id="landing-planet-load" type="button">Load</button>
             </div>
           </li>
-          <!-- The three levels below are specified and not built. They are on
-               screen rather than left off, because a landing page showing only
-               what exists says the application is a planet generator, and
-               SystemSpec, SubSectorSpec and AppSpec all say it is not going to
-               stay one. Disabled says not yet; absent would say never. -->
-          <li class="level">
+          <li class="level level-system">
+            <svg class="level-icon" viewBox="0 0 48 48" aria-hidden="true"><ellipse cx="24" cy="24" rx="20" ry="8" class="ic-orbit" /><ellipse cx="24" cy="24" rx="12" ry="5" class="ic-orbit" /><circle cx="24" cy="24" r="4.5" class="ic-star" /><circle cx="44" cy="24" r="2.6" class="ic-body" /><circle cx="12" cy="22" r="2" class="ic-body" /></svg>
             <div class="level-what">
               <h2>System</h2>
               <p>A star or two, its orbits, and the worlds in them.</p>
@@ -51,7 +58,8 @@
               <button id="landing-system-load" type="button">Load</button>
             </div>
           </li>
-          <li class="level">
+          <li class="level level-subsector">
+            <svg class="level-icon" viewBox="0 0 48 48" aria-hidden="true"><path d="M8 17l7-4 7 4v8l-7 4-7-4z" class="ic-hex" /><path d="M22 9l7-4 7 4v8l-7 4-7-4z" class="ic-hex" /><path d="M22 25l7-4 7 4v8l-7 4-7-4z" class="ic-hex" /><circle cx="15" cy="21" r="2.4" class="ic-body" /><circle cx="29" cy="13" r="2" class="ic-body" /><circle cx="29" cy="29" r="2.8" class="ic-body" /></svg>
             <div class="level-what">
               <h2>Subsector</h2>
               <p>Eighty hexes of star systems, drawn as a chart.</p>
@@ -61,20 +69,23 @@
               <button id="landing-sub-load" type="button">Load</button>
             </div>
           </li>
-          <li class="level">
+          <!-- The sector is specified and not built. On screen rather than left
+               off, because a landing page showing only what exists says the
+               application is a planet generator, and SystemSpec, SubSectorSpec
+               and AppSpec all say it is not going to stay one. -->
+          <li class="level level-sector level-soon">
+            <svg class="level-icon" viewBox="0 0 48 48" aria-hidden="true"><path d="M6 12h10v10H6zM19 12h10v10H19zM32 12h10v10H32M6 26h10v10H6zM19 26h10v10H19zM32 26h10v10H32z" class="ic-grid" /><circle cx="11" cy="17" r="1.6" class="ic-body" /><circle cx="24" cy="31" r="1.6" class="ic-body" /><circle cx="37" cy="17" r="1.6" class="ic-body" /><circle cx="24" cy="17" r="1.6" class="ic-body" /><circle cx="37" cy="31" r="1.6" class="ic-body" /></svg>
             <div class="level-what">
               <h2>Sector</h2>
               <p>Sixteen subsectors, and the worlds in all of them.</p>
             </div>
             <div class="actions">
-              <button type="button" disabled>New</button>
-              <button type="button" disabled>Load</button>
+              <span class="level-soon-note">Specified</span>
             </div>
           </li>
         </ul>
 
         <p id="landing-status" class="status" role="status"></p>
-        <p class="landing-note">Planets and systems are built. Subsectors and sectors are specified.</p>
       </div>
     </section>
 
