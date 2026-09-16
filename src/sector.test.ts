@@ -7,7 +7,7 @@ import {
   sectorOf,
   subsectorIn,
 } from "./sector";
-import { generateSector, subsectorSeedFor, SECTOR_HEXES } from "./gen/sector";
+import { generateSector, letterAt, subsectorSeedFor, SECTOR_HEXES, type Sector } from "./gen/sector";
 import { generateSubsector } from "./gen/subsector";
 import { setOverride, subsectorOf } from "./subsector";
 import { hexDistance, subsectorLetter, parseSectorHex, SUBSECTOR_LETTERS } from "./location";
@@ -105,6 +105,58 @@ describe("a sector document", () => {
     expect(held.density).toBe("dense");
     expect(held.shifts).toEqual({ population: 2, tech: -1 });
     expect(held.sector).toBe("Spinward Marches");
+  });
+
+  it("shows a chart the referee worked on, at its own density", () => {
+    // SectorSpec 5.2: a subsector turned up to dense is denser on the sector
+    // map too. Generating the sixteen from the sector's own density and nothing
+    // else meant an hour's work on a chart was invisible one level up.
+    const doc = newSectorDoc(SEED, "Spinward Marches", "sparse");
+    const before = sectorOf(doc);
+    const held = subsectorIn(doc, "C");
+    held.density = "dense";
+    keepSubsector(doc, "C", held);
+    const after = sectorOf(doc);
+    const inC = (held: Sector) =>
+      held.worlds.filter((world) => letterAt(world.at) === "C").length;
+    expect(inC(after)).toBeGreaterThan(inC(before));
+    // Everywhere else is untouched: only the letter worked on moves.
+    expect(after.worlds.filter((w) => letterAt(w.at) !== "C").length).toBe(
+      before.worlds.filter((w) => letterAt(w.at) !== "C").length,
+    );
+  });
+
+  it("works the routes out again over what is actually there", () => {
+    // SectorSpec 3.3: the routes are a fact about the worlds, so worlds that
+    // appeared when a chart was turned up have routes of their own.
+    const doc = newSectorDoc(SEED, "Spinward Marches", "sparse");
+    const before = sectorOf(doc).routes.length;
+    const held = subsectorIn(doc, "C");
+    held.density = "dense";
+    keepSubsector(doc, "C", held);
+    expect(sectorOf(doc).routes.length).toBeGreaterThan(before);
+  });
+
+  it("carries a hand-written world up to the sector", () => {
+    const doc = newSectorDoc(SEED, "Spinward Marches");
+    const held = subsectorIn(doc, "C");
+    const at = subsectorOf(held).worlds[0]!.at;
+    setOverride(held, at, "name", "Hadley's Hope");
+    keepSubsector(doc, "C", held);
+    expect(sectorOf(doc).worlds.find((world) => world.at === at)?.name).toBe("Hadley's Hope");
+  });
+
+  it("shows the chart being looked at before it has been put away", () => {
+    // A referee editing a chart has not saved it against its letter yet, and
+    // the border of 4.5 is drawn against the sector, so the open chart wins.
+    const doc = newSectorDoc(SEED, "Spinward Marches");
+    const open = subsectorIn(doc, "C");
+    const at = subsectorOf(open).worlds[0]!.at;
+    setOverride(open, at, "name", "Hadley's Hope");
+    expect(sectorOf(doc).worlds.find((world) => world.at === at)?.name).not.toBe("Hadley's Hope");
+    expect(sectorOf(doc, open).worlds.find((world) => world.at === at)?.name).toBe(
+      "Hadley's Hope",
+    );
   });
 
   it("gives back the chart the referee left", () => {

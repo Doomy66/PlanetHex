@@ -18,7 +18,8 @@ import {
   type Density,
 } from "./gen/subsector";
 import { generateSector, subsectorSeedFor, type Sector } from "./gen/sector";
-import { newSubsectorDoc, parseSubsectorDoc, type SubsectorDoc } from "./subsector";
+import type { Subsector } from "./gen/subsector";
+import { newSubsectorDoc, parseSubsectorDoc, subsectorOf, type SubsectorDoc } from "./subsector";
 import { SUBSECTOR_LETTERS } from "./location";
 
 export interface SectorDoc {
@@ -88,9 +89,20 @@ export function subsectorIn(doc: SectorDoc, letter: string): SubsectorDoc {
 /**
  * The sector a document describes: generated from its seed, with the charts the
  * referee has worked on laid over the top. SectorSpec 5.2.
+ *
+ * Laid over rather than merged: a worked chart carries its own density, lean and
+ * written hexes, and it is that chart which goes into the sector. So a subsector
+ * turned up to dense shows more systems on the sector map, and the routes and
+ * Mains of 3.3 and 3.4 are worked out again over the worlds that are now there.
+ *
+ * `open` is the chart being looked at this moment, which wins over the stored
+ * one: an edit shows on the sector without having to be put away first.
  */
-export function sectorOf(doc: SectorDoc): Sector {
-  return generateSector(doc.seed, doc.density, doc.shifts);
+export function sectorOf(doc: SectorDoc, open?: SubsectorDoc): Sector {
+  const worked = new Map<string, Subsector>();
+  for (const held of doc.subsectors) worked.set(held.letter.toUpperCase(), subsectorOf(held.doc));
+  if (open !== undefined) worked.set(open.letter.toUpperCase(), subsectorOf(open));
+  return generateSector(doc.seed, doc.density, doc.shifts, worked);
 }
 
 /**

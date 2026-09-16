@@ -3174,6 +3174,10 @@ function openSubsector(next: SubsectorDoc, parent: "landing" | "sector" = "landi
 function drawSubsector(): void {
   if (subDoc === null) return;
   subsector = chartOf(subDoc);
+  // The sector, wearing this chart as it stands. An edit in here can move a
+  // route that crosses the edge, so the border of 4.5 is worked out against the
+  // chart on the screen rather than against the one the sector last rolled.
+  if (subParent === "sector" && sectorDoc !== null) sector = sectorOf(sectorDoc, subDoc);
   // What is over the edge, where there is a sector above to ask. A chart opened
   // on its own has no neighbours to know about. SectorSpec 4.5.
   const around =

@@ -74,7 +74,8 @@ export const SECTOR_HEXES = SECTOR_COLS * SECTOR_ROWS;
 /**
  * A whole sector. SectorSpec section 3.
  *
- * Sixteen charts generated the way one chart is generated, and then the two
+ * Sixteen charts generated the way one chart is generated - bar any the referee
+ * has worked on, which are handed in and used as they stand - and then the two
  * things that are only true across all of them worked out again over the lot.
  * The routes and Mains a subsector knows about are its own, and a subsector
  * cannot see past its edge; here there is no edge to see past.
@@ -83,9 +84,17 @@ export function generateSector(
   seed: string,
   density: Density = DEFAULT_DENSITY,
   shifts: UwpShifts = {},
+  worked: ReadonlyMap<string, Subsector> = new Map(),
 ): Sector {
-  const subsectors = SECTOR_SUBSECTORS.map((letter) =>
-    generateSubsector(subsectorSeedFor(seed, letter), letter, density, shifts),
+  const subsectors = SECTOR_SUBSECTORS.map(
+    (letter) =>
+      // A chart the referee has worked on is that chart, not the one the sector
+      // would roll for the letter. A density they changed, a hex they turned on
+      // and a world they renamed are all facts about the sector, and the routes
+      // and Mains below are worked out over what is actually there rather than
+      // over what was first rolled.
+      worked.get(letter) ??
+      generateSubsector(subsectorSeedFor(seed, letter), letter, density, shifts),
   );
   const worlds = subsectors
     .flatMap((held) => held.worlds)
