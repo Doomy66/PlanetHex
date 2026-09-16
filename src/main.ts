@@ -3092,6 +3092,8 @@ let subFolder: DirectoryHandle | null = null;
 let hexShown: string | null = null;
 let subDirty = false;
 let subParent: "landing" | "sector" = "landing";
+/** Which chart the view was last framed on, so an edit does not move it. */
+let drawnChart = "";
 
 for (const letter of SUBSECTOR_LETTERS) {
   const option = document.createElement("option");
@@ -3180,6 +3182,12 @@ function drawSubsector(): void {
       : undefined;
   chart.render(subsector, around);
   chart.setMains(el<HTMLInputElement>("sub-mains").checked);
+  // Opened on its own eighty hexes. What is over the edge is there to be found
+  // by going out, not the first thing a referee is shown. SubSectorSpec 4.7.
+  if (drawnChart !== subDoc.seed + subDoc.letter) {
+    drawnChart = subDoc.seed + subDoc.letter;
+    chart.resetView();
+  }
   showSubsectorAbout();
   showSubsectorList();
 }

@@ -11,6 +11,7 @@ import {
   ZONE_R,
 } from "../chartlayout";
 import { BORDER_REACH } from "../gen/sector";
+import { boxFor, pointIn, wholeOf, zoomedAt, type Box, type View } from "./viewbox";
 import type { ChartWorld, Route, Subsector } from "../gen/subsector";
 
 /**
@@ -33,6 +34,9 @@ import type { ChartWorld, Route, Subsector } from "../gen/subsector";
  */
 
 const SVG_NS = "http://www.w3.org/2000/svg";
+
+/** A pointer that moved further than this was a drag, not a click. */
+const DRAG_SLOP = 4;
 
 function make<K extends keyof SVGElementTagNameMap>(
   tag: K,
@@ -68,6 +72,8 @@ export interface Around {
 export interface Chart {
   readonly element: SVGSVGElement;
   render(subsector: Subsector, around?: Around): void;
+  /** Frame the chart on its own eighty hexes again. SubSectorSpec 4.7. */
+  resetView(): void;
   /** Show or hide the Mains overlay. SubSectorSpec 3.10.4. */
   setMains(show: boolean): void;
   setSelected(at: string | null): void;
@@ -94,6 +100,17 @@ export function createChart(): Chart {
   let selected: string | null = null;
   let shown: Subsector | null = null;
   let mainsShown = false;
+  /**
+   * How far out the view is. One is the chart's own eighty hexes filling the
+   * panel; going out from there brings the neighbours of 4.5 into view, and a
+   * chart with none to show simply has less to find out there.
+   */
+  let view: View = { zoom: 1, x: 0, y: 0 };
+  let press: { x: number; y: number; from: { x: number; y: number } } | null = null;
+  /** Whether this chart has neighbours to find outside its own hexes. */
+  let hasAround = false;
+  /** A drag that moved the chart swallows the click that ended it. */
+  let dragged = false;
 
   function drawSelection(): void {
     selectLayer.replaceChildren();
@@ -144,19 +161,41 @@ export function createChart(): Chart {
       );
     }
 
-    // What is outside, and the room to draw it in. Without a sector above there
-    // is no outside to know about, and the chart is framed on itself as before.
-    const { width, height } = chartSize();
-    const margin = around === undefined ? 0 : 1;
-    const outX = margin * BORDER_REACH * COLUMN_STEP;
-    const outY = margin * BORDER_REACH * HEX_HIGH;
     if (around !== undefined) drawAround(around, acrossFrom, downFrom);
-    svg.setAttribute(
-      "viewBox",
-      `${-outX} ${-outY} ${width + outX * 2} ${height + outY * 2}`,
-    );
+    hasAround = around !== undefined;
+    showView();
     drawMains();
     drawSelection();
+  }
+
+  /** The chart's own eighty hexes, which is what the view is framed on. */
+  function content(): Box {
+    const { width, height } = chartSize();
+    return { x: 0, y: 0, width, height };
+  }
+
+  function panel(): { width: number; height: number } {
+    return { width: svg.clientWidth, height: svg.clientHeight };
+  }
+
+  /**
+   * The window on to the chart, matched to the shape of the panel. SubSectorSpec
+   * 4.7: the chart fills the panel rather than sitting in the middle of it with
+   * a margin down both ends.
+   */
+  function showView(): void {
+    const box = boxFor(content(), view, panel());
+    view = { ...view, x: box.x + box.width / 2, y: box.y + box.height / 2 };
+    svg.setAttribute("viewBox", `${box.x} ${box.y} ${box.width} ${box.height}`);
+  }
+
+  /** How far out this chart is allowed to go, which is as far as it has to show. */
+  function limits(): { out: number; in: number } {
+    if (!hasAround) return { out: 1, in: 4 };
+    // Far enough out for the whole border to be in view, and no further: past
+    // that there is nothing more to see and the chart is just getting smaller.
+    const { width } = chartSize();
+    return { out: width / (width + BORDER_REACH * COLUMN_STEP * 2), in: 4 };
   }
 
   /**
@@ -322,6 +361,10 @@ export function createChart(): Chart {
     }
 
     group.addEventListener("click", () => {
+      if (dragged) {
+        dragged = false;
+        return;
+      }
       for (const handler of handlers) handler(at);
     });
     group.addEventListener("keydown", (event) => {
@@ -374,9 +417,50 @@ export function createChart(): Chart {
     group.append(make("ellipse", { class: "chart-giant-ring", cx: x, cy: y, rx: 8, ry: 2.6 }));
   }
 
+  new ResizeObserver(() => showView()).observe(svg);
+
+  svg.addEventListener(
+    "wheel",
+    (event) => {
+      event.preventDefault();
+      const at = pointIn(event, svg, boxFor(content(), view, panel()));
+      view = zoomedAt(content(), view, panel(), Math.pow(0.999, event.deltaY), at, limits());
+      showView();
+    },
+    { passive: false },
+  );
+
+  // A drag moves the chart, and the click that ends one is not a click on a hex.
+  svg.addEventListener("pointerdown", (event) => {
+    if (event.button !== 0) return;
+    press = { x: event.clientX, y: event.clientY, from: { x: view.x, y: view.y } };
+  });
+  svg.addEventListener("pointermove", (event) => {
+    if (press === null) return;
+    const on = svg.getBoundingClientRect();
+    const box = boxFor(content(), view, panel());
+    if (on.width === 0 || on.height === 0) return;
+    const moved = Math.hypot(event.clientX - press.x, event.clientY - press.y);
+    if (moved <= DRAG_SLOP) return;
+    dragged = true;
+    view.x = press.from.x - ((event.clientX - press.x) / on.width) * box.width;
+    view.y = press.from.y - ((event.clientY - press.y) / on.height) * box.height;
+    showView();
+  });
+  const letGo = (): void => {
+    press = null;
+  };
+  svg.addEventListener("pointerup", letGo);
+  svg.addEventListener("pointercancel", letGo);
+  svg.addEventListener("pointerleave", letGo);
+
   return {
     element: svg,
     render,
+    resetView() {
+      view = wholeOf(content());
+      showView();
+    },
     setMains(show) {
       mainsShown = show;
       drawMains();

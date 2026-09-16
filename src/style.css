@@ -850,16 +850,15 @@ body[data-view="subsector"] .sector { display: none; }
 .sec-map {
   grid-area: map;
   min-height: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  min-width: 0;
   background: #0a0c10;
   border: 1px solid var(--line);
   border-radius: 4px;
-  padding: 6px;
-  overflow: auto;
+  overflow: hidden;
 }
-.sectormap { width: auto; height: 100%; max-width: 100%; display: block; }
+/* The map fills the panel: the viewBox is matched to the panel's shape, so a
+   wide panel shows more map rather than a margin down both ends. */
+.sectormap { width: 100%; height: 100%; display: block; }
 
 /* A thousand hexes at once, so the grid is barely there and the worlds carry
    the map. SectorSpec 4.2. */
@@ -933,16 +932,16 @@ body[data-view="system"] .subsector { display: none; }
 .sub-chart {
   grid-area: model;
   min-height: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  min-width: 0;
   background: #0d0f13;
   border: 1px solid var(--line);
   border-radius: 4px;
-  padding: 6px;
-  overflow: auto;
+  overflow: hidden;
 }
-.chart { width: auto; height: 100%; max-width: 100%; display: block; }
+/* The chart fills the panel, the way the sector map does: the viewBox is matched
+   to the panel's shape rather than letterboxed inside it. */
+.chart { width: 100%; height: 100%; display: block; cursor: grab; }
+.chart:active { cursor: grabbing; }
 .sub-chart { background: #0a0c10; }
 
 /* Every part of the panel folds away, so the panel itself is what scrolls and

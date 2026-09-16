@@ -10,6 +10,7 @@ import {
 import { SECTOR_COLS, SECTOR_ROWS, SUB_COLS, SUB_ROWS } from "../location";
 import type { Sector } from "../gen/sector";
 import type { ChartWorld } from "../gen/subsector";
+import { boxFor, pointIn, wholeOf, zoomedAt, type Box, type View } from "./viewbox";
 
 /**
  * The sector map: thirty-two hexes across and forty down, with its sixteen
@@ -91,7 +92,7 @@ export function createSectorMap(): SectorMap {
   let selectedHex: string | null = null;
   let shown: Sector | null = null;
   /** Where the view is: how far in, and what it is centred on. */
-  let view = { zoom: ZOOM.out, x: 0, y: 0 };
+  let view: View = { zoom: 1, x: 0, y: 0 };
   let press: { x: number; y: number; from: { x: number; y: number } } | null = null;
   /** What the last draw was drawn at, so a redraw only happens on a change. */
   let detailDrawn = false;
@@ -233,28 +234,27 @@ export function createSectorMap(): SectorMap {
   }
 
   /** How big the whole sector is, in drawing units. */
-  function size(): { width: number; height: number } {
+  function content(): Box {
     return {
+      x: 0,
+      y: 0,
       width: PAD * 2 + (SECTOR_COLS - 1) * COLUMN_STEP + HEX_WIDE,
       height: PAD * 2 + SECTOR_ROWS * HEX_HIGH + HEX_HIGH / 2,
     };
   }
 
+  function panel(): { width: number; height: number } {
+    return { width: svg.clientWidth, height: svg.clientHeight };
+  }
+
   /**
-   * The window on to the drawing. SectorSpec 4.4.
-   *
-   * The whole sector at zoom one, and a window that many times smaller as it
-   * goes in, held so the view cannot be panned off the edge of the map: a map
-   * that can be lost is a map that will be.
+   * The window on to the map, matched to the shape of the panel so a wide panel
+   * shows more map either side rather than a margin down both ends of it.
    */
   function showView(): void {
-    const { width, height } = size();
-    const across = width / view.zoom;
-    const down = height / view.zoom;
-    const x = Math.min(Math.max(view.x, 0), width - across);
-    const y = Math.min(Math.max(view.y, 0), height - down);
-    view = { ...view, x, y };
-    svg.setAttribute("viewBox", `${x} ${y} ${across} ${down}`);
+    const box = boxFor(content(), view, panel());
+    view = { ...view, x: box.x + box.width / 2, y: box.y + box.height / 2 };
+    svg.setAttribute("viewBox", `${box.x} ${box.y} ${box.width} ${box.height}`);
     // What a hex can hold depends on how close it is, so what is drawn in one
     // changes as the view goes in. 4.4.1.
     svg.classList.toggle("sec-close", view.zoom >= DETAIL_FROM);
@@ -262,31 +262,9 @@ export function createSectorMap(): SectorMap {
 
   /** Go in or out about a point of the drawing, keeping that point still. */
   function zoomAt(by: number, at: { x: number; y: number }): void {
-    const held = Math.min(ZOOM.in, Math.max(ZOOM.out, view.zoom * by));
-    if (held === view.zoom) return;
-    const { width, height } = size();
-    // The point under the pointer stays under the pointer, which is what makes
-    // a wheel feel like a magnifier rather than a scrollbar.
-    const share = { x: (at.x - view.x) / (width / view.zoom), y: (at.y - view.y) / (height / view.zoom) };
-    view = {
-      zoom: held,
-      x: at.x - share.x * (width / held),
-      y: at.y - share.y * (height / held),
-    };
+    view = zoomedAt(content(), view, panel(), by, at, ZOOM);
     showView();
     drawDetail();
-  }
-
-  /** Where a pointer is, in the drawing's own units. */
-  function pointIn(event: PointerEvent | WheelEvent): { x: number; y: number } {
-    const box = svg.getBoundingClientRect();
-    const { width, height } = size();
-    const across = width / view.zoom;
-    const down = height / view.zoom;
-    return {
-      x: view.x + ((event.clientX - box.left) / box.width) * across,
-      y: view.y + ((event.clientY - box.top) / box.height) * down,
-    };
   }
 
   /** Redraw at the level of detail the view is now at. */
@@ -298,11 +276,13 @@ export function createSectorMap(): SectorMap {
     render(shown);
   }
 
+  new ResizeObserver(() => showView()).observe(svg);
+
   svg.addEventListener(
     "wheel",
     (event) => {
       event.preventDefault();
-      zoomAt(Math.pow(0.999, event.deltaY), pointIn(event));
+      zoomAt(Math.pow(0.999, event.deltaY), pointIn(event, svg, boxFor(content(), view, panel())));
     },
     { passive: false },
   );
@@ -313,11 +293,11 @@ export function createSectorMap(): SectorMap {
   });
   svg.addEventListener("pointermove", (event) => {
     if (press === null) return;
-    const box = svg.getBoundingClientRect();
-    const { width, height } = size();
+    const on = svg.getBoundingClientRect();
+    const box = boxFor(content(), view, panel());
     // A drag moves the same amount of map however far in the view is.
-    view.x = press.from.x - ((event.clientX - press.x) / box.width) * (width / view.zoom);
-    view.y = press.from.y - ((event.clientY - press.y) / box.height) * (height / view.zoom);
+    view.x = press.from.x - ((event.clientX - press.x) / on.width) * box.width;
+    view.y = press.from.y - ((event.clientY - press.y) / on.height) * box.height;
     showView();
   });
   const letGo = (): void => {
@@ -331,7 +311,7 @@ export function createSectorMap(): SectorMap {
     element: svg,
     render,
     resetView() {
-      view = { zoom: ZOOM.out, x: 0, y: 0 };
+      view = wholeOf(content());
       showView();
       drawDetail();
     },
