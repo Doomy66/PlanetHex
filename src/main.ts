@@ -108,6 +108,7 @@ import {
 import { createOrbitMap } from "./ui/orbitmap";
 import { createChart } from "./ui/chart";
 import { createSectorMap } from "./ui/sectormap";
+import { APP_VERSION, RELEASE_NOTES, suggestionLink } from "./version";
 import { letterAt, SECTOR_HEXES, type Sector } from "./gen/sector";
 import {
   keepSubsector,
@@ -1874,6 +1875,36 @@ function openHelp(): void {
 }
 
 el("help").addEventListener("click", openHelp);
+el("landing-help").addEventListener("click", openHelp);
+
+/* What this is, and how to say something about it. AppSpec 2.6 ----------- */
+
+for (const id of ["landing-version", "help-version"]) {
+  el(id).textContent = `v${APP_VERSION}`;
+}
+for (const id of ["landing-notes", "help-notes"]) {
+  el<HTMLAnchorElement>(id).href = RELEASE_NOTES;
+}
+/**
+ * The suggestion link carries whatever is open, since a report that says which
+ * seed it was is a report that can be reproduced, and nobody remembers to
+ * include it. Rebuilt on every click rather than once, because what is open
+ * changes and a link written at startup would always say the landing page.
+ */
+for (const id of ["landing-suggest", "help-suggest"]) {
+  el(id).addEventListener("click", () => {
+    el<HTMLAnchorElement>(id).href = suggestionLink(whatIsOpen());
+  });
+}
+
+function whatIsOpen(): { level?: string; seed?: string } {
+  const view = currentAppView();
+  if (view === "sector") return { level: "sector", seed: sectorDoc?.seed };
+  if (view === "subsector") return { level: "subsector", seed: subDoc?.seed };
+  if (view === "system") return { level: "system", seed: doc?.seed };
+  if (view === "planet") return { level: "planet", seed: state.planet.seed };
+  return {};
+}
 el("help-close").addEventListener("click", () => helpDialog.close());
 el("help-done").addEventListener("click", () => helpDialog.close());
 

@@ -569,9 +569,9 @@ body[data-view="planet"] .landing { display: none; }
   left: 50%;
   /* Far enough down that its lit rim passes under the cards rather than
      through the words above them. */
-  bottom: -104vmin;
-  width: 170vmin;
-  height: 170vmin;
+  bottom: -132vmin;
+  width: 190vmin;
+  height: 190vmin;
   transform: translateX(-50%);
   border-radius: 50%;
   /* Dark, with the light only along the rim: a world at night, not a grey
@@ -598,6 +598,14 @@ body[data-view="planet"] .landing { display: none; }
 .landing-card { width: 100%; max-width: 660px; }
 
 .landing-head { text-align: center; margin: 0 0 26px; }
+.landing-logo {
+  display: block;
+  margin: 0 auto 10px;
+  border-radius: 14px;
+  /* A little of the gold the title is in, so the mark and the name read as one
+     thing rather than two stacked. */
+  box-shadow: 0 0 0 1px rgba(224, 179, 65, 0.18), 0 8px 26px rgba(0, 0, 0, 0.45);
+}
 .landing-card h1 {
   font-size: clamp(34px, 7vw, 52px);
   line-height: 1;
@@ -617,6 +625,45 @@ body[data-view="planet"] .landing { display: none; }
   font-size: 15px;
   max-width: 34ch;
 }
+/* What the thing actually is, for somebody who has arrived without being told. */
+.landing-what {
+  color: var(--muted);
+  margin: 14px auto 0;
+  max-width: 56ch;
+  line-height: 1.6;
+}
+
+/* Help, the release notes, and a way to say something. Quiet, at the foot, and
+   out of the way of the four things the page is for. */
+.landing-links {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 6px 18px;
+  margin-top: 22px;
+  color: var(--muted);
+}
+.landing-links a,
+.landing-links .linky {
+  color: var(--muted);
+  background: none;
+  border: 0;
+  padding: 0;
+  font: inherit;
+  text-decoration: none;
+  border-bottom: 1px solid transparent;
+  cursor: pointer;
+}
+.landing-links a:hover,
+.landing-links .linky:hover { color: var(--text); border-bottom-color: var(--accent); }
+.landing-version { color: #6a7280; }
+
+/* The same links inside the help, where somebody reading about the application
+   is most likely to have something to say about it. */
+.help-links { display: flex; align-items: center; gap: 16px; margin-right: auto; color: var(--muted); }
+.help-links a { color: var(--muted); text-decoration: none; border-bottom: 1px solid transparent; }
+.help-links a:hover { color: var(--text); border-bottom-color: var(--accent); }
 
 /* Four cards rather than four rows. A level is a thing to be chosen, and a
    choice reads better as a card than as a line of a table. AppSpec 2.1. */

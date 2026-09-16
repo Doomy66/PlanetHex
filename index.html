@@ -31,8 +31,15 @@
 
       <div class="landing-card">
         <header class="landing-head">
+          <img class="landing-logo" src="./icon.svg" alt="" width="72" height="72" />
           <h1>PlanetHex</h1>
           <p class="landing-lead">A world, a system, a chart, a sector.<br />Start where you meant to.</p>
+          <p class="landing-what">
+            A Traveller generator that works at four levels and keeps them in
+            step. Everything comes from a seed, so a world found on a chart is
+            the same world opened on its own — the surface is rebuilt rather than
+            stored, and what you write over it is all that is kept.
+          </p>
         </header>
 
         <ul class="levels">
@@ -87,6 +94,13 @@
         </ul>
 
         <p id="landing-status" class="status" role="status"></p>
+
+        <footer class="landing-links">
+          <button id="landing-help" type="button" class="linky">Help</button>
+          <a id="landing-notes" href="#" target="_blank" rel="noreferrer noopener">Release notes</a>
+          <a id="landing-suggest" href="#" target="_blank" rel="noreferrer noopener">Suggest something</a>
+          <span id="landing-version" class="landing-version"></span>
+        </footer>
       </div>
     </section>
 
@@ -999,6 +1013,13 @@ SOFTWARE.</pre>
         </p>
       </div>
       <div class="actions help-actions">
+        <!-- The same three as the landing page, so the way to say something is
+             wherever the user is when they think of it. AppSpec 2.6.1. -->
+        <span class="help-links">
+          <a id="help-notes" href="#" target="_blank" rel="noreferrer noopener">Release notes</a>
+          <a id="help-suggest" href="#" target="_blank" rel="noreferrer noopener">Suggest something</a>
+          <span id="help-version" class="landing-version"></span>
+        </span>
         <button id="help-done" type="button">Close</button>
       </div>
     </dialog>
