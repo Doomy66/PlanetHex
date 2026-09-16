@@ -156,7 +156,9 @@ This document sits under [SubSectorSpec.md](SubSectorSpec.md) and over [PlanetSp
 
 4.9.3 The first line is the run to the jump point: out of every jump shadow the ship is inside. There is always one to leave, since a ship at a world is inside that world's own shadow by definition, and around a dim star it is usually inside the star's as well. The question is never whether but how far.
 
-4.9.3.1 Measured straight out from the star, which leaves the system and the star's shadow at once. Not the shortest escape from a world's shadow taken alone — that would be straight up out of the plane — because a ship leaving is leaving, and what a referee wants is the run to the jump point rather than the shortest hop to technically legal space.
+4.9.3.1 The shortest run, not the run outwards. A ship leaving wants the jump point it can reach soonest, and only the shadows it is actually inside count towards that: one it is outside is one it has already cleared, and a shadow lying across one heading is a reason to pick another heading rather than a distance to add on.
+
+4.9.3.2 Which way that is depends on what the ship is caught in, so the headings are tried rather than assumed. From a world inside its star's shadow the way out is straight out, and the arithmetic finds that on its own. From a world already outside it there is nothing to leave but the world's own, and any heading will do. From a ship at a gas giant far from its star it is off to one side, across a shadow a hundred giant-diameters wide rather than out past the orbit of everything.
 
 4.9.4 Distances are taken from where the model of 8.1.2 draws the bodies: each at its orbit's distance and at the angle its seed gave it. That arrangement is a picture of one moment rather than an ephemeris, and this document takes it as the truth — a referee reading the diagram and a referee reading these numbers have to be told the same thing, and a system where the worlds were somewhere else for the arithmetic would be two systems.
 

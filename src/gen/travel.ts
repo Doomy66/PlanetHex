@@ -68,42 +68,56 @@ export interface ShadowBody {
   readonly shadowKm: number;
 }
 
+/** How many headings the search of 4.9.3.2 tries before settling on one. */
+const HEADINGS = 180;
+
 /**
- * How far a ship has to run to be clear of every jump shadow in the system.
+ * How far a ship has to run to be clear of every jump shadow it is inside.
  * SystemSpec 4.9.3.
  *
  * There is always one to leave. A ship sitting at a world is inside that
  * world's shadow by definition, and around a dim star it is usually inside the
  * star's as well; the question is never whether but how far.
  *
- * Measured straight out from the star, which is the way out of the system and
- * the way out of the star's shadow at once. Not the shortest escape from a
- * world's own shadow taken alone - that would be straight up out of the plane -
- * but a ship leaving is leaving, and the figure a referee wants is the run to
- * the jump point rather than the shortest hop to technically legal space.
+ * The shortest run, not the run outwards. A ship leaving wants the jump point
+ * it can reach soonest, and which way that lies depends on what it is in: from
+ * a world inside its star's shadow it is straight out, from a world outside it
+ * is any way at all, and from a world caught in a gas giant's it is off to one
+ * side. Rather than assume, the directions are tried.
+ *
+ * Only the shadows the ship is actually in count. One it is outside is one it
+ * has already cleared, and a shadow that happens to lie across one heading is a
+ * reason to pick another heading rather than a distance to add on.
  */
 export function clearOfShadows(
   bodies: readonly ShadowBody[],
   from: { x: number; y: number },
 ): number {
-  // Outward from the star. A ship sitting on the star itself has no outward, so
-  // any direction will do.
-  const out = Math.hypot(from.x, from.y);
-  const dx = out === 0 ? 1 : from.x / out;
-  const dy = out === 0 ? 0 : from.y / out;
-
-  let far = 0;
-  for (const body of bodies) {
-    // Where along the outward run this body's shadow ends, if the ship is in it.
+  // Only what the ship is inside. Everything else is already behind it.
+  const holding = bodies.filter((body) => {
     const px = from.x - body.x;
     const py = from.y - body.y;
-    const along = px * dx + py * dy;
-    const inside = px * px + py * py - body.shadowKm * body.shadowKm;
-    // t^2 + 2(along)t + inside = 0, and the ship is in the shadow when inside < 0.
-    const under = along * along - inside;
-    if (under < 0) continue;
-    const exit = -along + Math.sqrt(under);
-    if (exit > far) far = exit;
+    return px * px + py * py < body.shadowKm * body.shadowKm;
+  });
+  if (holding.length === 0) return 0;
+
+  let best = Infinity;
+  for (let turn = 0; turn < HEADINGS; turn++) {
+    const angle = (turn / HEADINGS) * Math.PI * 2;
+    const dx = Math.cos(angle);
+    const dy = Math.sin(angle);
+    let far = 0;
+    for (const body of holding) {
+      const px = from.x - body.x;
+      const py = from.y - body.y;
+      const along = px * dx + py * dy;
+      const inside = px * px + py * py - body.shadowKm * body.shadowKm;
+      // t^2 + 2(along)t + inside = 0, and inside is negative in a shadow, so the
+      // root is always real and always ahead.
+      const exit = -along + Math.sqrt(along * along - inside);
+      if (exit > far) far = exit;
+    }
+    if (far < best) best = far;
   }
-  return far;
+  return best;
 }

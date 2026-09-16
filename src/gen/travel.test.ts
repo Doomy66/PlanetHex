@@ -66,6 +66,32 @@ describe("getting clear of the shadows", () => {
     expect(clearOfShadows([star(0.9), far], at)).toBe(0);
   });
 
+  it("does not charge for a shadow that merely lies across the way out", () => {
+    // 4.9.3.1: a shadow ahead is a reason to pick another heading, not a
+    // distance to add on. The ship here is clear of everything already.
+    const at = { x: auToKm(5), y: 0 };
+    const ahead = { x: auToKm(6), y: 0, shadowKm: jumpShadowKm(140000) };
+    expect(clearOfShadows([star(0.9), ahead], at)).toBe(0);
+  });
+
+  it("leaves a giant's shadow sideways rather than running out of the system", () => {
+    // 4.9.3.2: which way out is shortest depends on what the ship is in. A ship
+    // at a gas giant far from its star crosses the giant's own shadow, which is
+    // a fraction of the run to the outside of the system.
+    const giant = { x: auToKm(20), y: 0, shadowKm: jumpShadowKm(140000) };
+    const clear = clearOfShadows([star(0.9), giant], { x: giant.x, y: 0 });
+    expect(clear).toBeCloseTo(giant.shadowKm, 0);
+    expect(clear).toBeLessThan(auToKm(0.2));
+  });
+
+  it("finds the near edge when the ship is off to one side of a shadow", () => {
+    // Inside the star's shadow but well out towards its edge: the shortest way
+    // is the way it is already facing, not back through the middle.
+    const clear = clearOfShadows([star(0.9)], { x: auToKm(0.8), y: 0 });
+    expect(clear / auToKm(0.1)).toBeGreaterThan(0.95);
+    expect(clear / auToKm(0.1)).toBeLessThan(1.05);
+  });
+
   it("leaves a real system from a real world", () => {
     // Every system, from its main world: there is always a run to make, and it
     // is never longer than the system is wide.
