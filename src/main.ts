@@ -59,6 +59,7 @@ import {
   orbitalPeriodHours,
   orbitForTemperature,
   orbitLimitsFor,
+  SUN_LUMINOSITY,
   type ClimateOverrides,
 } from "./gen/climate";
 import { describeUwp } from "./gen/describe";
@@ -97,6 +98,7 @@ import { EXPORT_FORMATS, manifest, type ExportContext } from "./io/export";
 import { shaderFor, surfaceOn } from "./surface";
 import { currentAppView, landingSay, setAppView, wireLanding } from "./ui/landing";
 import { auLabel, contentLabel, createOrbitDiagram } from "./ui/orbits";
+import { parseStar, starLabel, SPECTRAL_CLASSES, STAR_SIZES } from "./gen/star";
 import { createOrbitMap } from "./ui/orbitmap";
 import { createChart } from "./ui/chart";
 import { createCrumbs, type Level, type Trail } from "./ui/crumbs";
@@ -418,6 +420,8 @@ const fields = {
   orbit: el<HTMLInputElement>("p-orbit"),
   temp: el<HTMLInputElement>("p-temp"),
   craters: el<HTMLInputElement>("p-craters"),
+  starClass: el<HTMLSelectElement>("p-star-class"),
+  starSize: el<HTMLSelectElement>("p-star-size"),
   narrative: el<HTMLTextAreaElement>("p-narrative"),
 };
 
@@ -488,6 +492,7 @@ function showWorld(detail: PlanetDetail): void {
   set(fields.orbit, detail.orbitAu, 2, state.planet.orbitAu !== null);
   set(fields.temp, detail.meanTempK - 273.15, 0, state.planet.orbitAu !== null);
   showCraters(detail);
+  showStar();
 
   const days = detail.rotationHours / 24;
   el("rotation-note").textContent = [
@@ -1429,6 +1434,72 @@ el("toggle-left").addEventListener("click", () => {
   button.setAttribute("aria-expanded", String(!collapsed));
   button.title = collapsed ? "Expand the panel" : "Collapse the panel";
 });
+
+/* The star a world orbits. PlanetSpec 6.15.13 -------------------------- */
+
+// The Sun's own line, for a world nobody has given a star to. Every world
+// generated before systems existed was assumed to have one.
+const SUN_LABEL = "G2 V";
+
+for (const [box, values] of [
+  [fields.starClass, SPECTRAL_CLASSES],
+  [fields.starSize, STAR_SIZES],
+] as const) {
+  for (const value of values) {
+    const option = document.createElement("option");
+    option.value = value;
+    option.textContent = value;
+    box.append(option);
+  }
+}
+
+/** What the fields say, as a label a document can hold. */
+function starFromFields(): string {
+  return `${fields.starClass.value}2 ${fields.starSize.value}`;
+}
+
+/**
+ * Show the star, and say whether it can be changed here.
+ *
+ * A world of a system orbits that system's primary, and the system is where a
+ * star is chosen: two places to set it would be two answers to one question.
+ * A world on its own has nobody to tell it, so it says so itself.
+ */
+function showStar(): void {
+  const label = state.planet.star ?? SUN_LABEL;
+  const star = parseStar(label) ?? parseStar(SUN_LABEL)!;
+  fields.starClass.value = star.spectral;
+  fields.starSize.value = star.size;
+  const own = planetParent !== "system";
+  fields.starClass.disabled = !own;
+  fields.starSize.disabled = !own;
+  const times = (state.planet.luminosity ?? SUN_LUMINOSITY) / SUN_LUMINOSITY;
+  const brightness =
+    times >= 10 ? `${Math.round(times)}×` : times >= 0.1 ? `${times.toFixed(2)}×` : times.toPrecision(2);
+  el("star-note").textContent =
+    `${starLabel(star)}, ${brightness} the Sun's output` +
+    (own ? "" : " — its system's, and set there");
+}
+
+for (const box of [fields.starClass, fields.starSize]) {
+  box.addEventListener("change", () => {
+    const star = parseStar(starFromFields());
+    if (star === null) return;
+    state.planet.star = starLabel(star);
+    // The luminosity is what the climate reads; the label is what the referee
+    // reads. Both are written, because both are asked for.
+    state.planet.luminosity = star.luminosity;
+    // A different star is a different climate, so every figure worked out from
+    // one is worked out again: where the world sits, how warm that leaves it,
+    // and the surface itself.
+    const detail = currentDetail();
+    showWorld(detail);
+    showDetail();
+    resurface();
+    markDirty();
+    say(`${starLabel(star)}: ${detail.orbitAu.toFixed(2)} AU for the same climate.`);
+  });
+}
 
 /* Buttons ---------------------------------------------------------------- */
 
@@ -2824,22 +2895,25 @@ function openWorld(
   // The world they left, if they have been here before. Anything they typed on
   // it, drew on it or placed on it is still on it.
   const kept = doc === null ? undefined : savedWorld(doc, seed);
+  // Everything the system knows that the world would otherwise have to be told
+  // twice: which body it is, where it is in the setting, and what it orbits.
+  // AppSpec 1.3.2 - a level above fills in the settings of the level below.
+  const fromAbove = {
+    designation,
+    sector: doc?.sector ?? "",
+    hex: doc?.hex ?? "",
+    orbitAu: settings.orbitAu,
+    luminosity: settings.luminosity,
+    star: system === null ? null : starLabel(system.stars.primary),
+  };
   Object.assign(
     state.planet,
     kept === undefined
-      ? Object.assign(newPlanet(seed), {
-        name,
-        // Which body of which system this is, which is what its files are named
-        // for and what it goes on being called after it has been saved and
-        // reopened with no system in sight. AppSpec 4.2.1.
-        designation,
-          uwp,
-          orbitAu: settings.orbitAu,
-          luminosity: settings.luminosity,
-        })
-      : // What the referee left, wearing the designation the system gives it
-        // now: rename a system and its worlds are filed under the new name.
-        { ...kept, designation },
+      ? Object.assign(newPlanet(seed), { name, uwp }, fromAbove)
+      : // What the referee left, wearing what the system says about it now. Its
+        // designation, its place and its star follow the system rather than
+        // being frozen at whatever they were when it was last looked at.
+        { ...kept, ...fromAbove },
   );
   state.folder = null;
   state.selected = null;

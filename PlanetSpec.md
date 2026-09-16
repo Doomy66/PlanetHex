@@ -631,7 +631,7 @@ This document is the specification for one planet. [SubSectorSpec.md](SubSectorS
 | UWP | The Universal World Profile, see 6.7. |
 | Narrative text | Free prose about the world, written by the user. Plain text, no length limit. |
 | Points of interest | The hex attachments of 6.5, each with its kind, name, narrative, and the point of 2.4.8 it sits on. |
-| Star | The output of the star the world orbits, relative to the Sun, see 6.15.13. Absent means the Sun. |
+| Star | The star the world orbits: its output relative to the Sun, and its label, see 6.15.13. Absent means the Sun. |
 | Seed | Required. Without it the surface cannot be rebuilt on load. |
 | Detail | The detail level of 2.2.1, stored as its row count. |
 
@@ -891,7 +891,15 @@ This document is the specification for one planet. [SubSectorSpec.md](SubSectorS
 
 6.15.13.2 It is here rather than in the system a world came from because a save has to hold everything its surface is built from. A world lifted out of its system and opened on its own must come up the same world, and its climate cannot be worked out without knowing what is shining on it. [SystemSpec.md](SystemSpec.md) 5.2.2 is what writes it; this clause is why it has somewhere to write it to.
 
-6.15.13.3 It is not offered as a field to type in. A star is the system's business, and a world that has one got it from there; a world that has not is around the Sun. What the user can still move is the orbit, and the range that field allows moves with the star, since fifty AU from a supergiant is inside the fire.
+6.15.13.3 A world on its own can be given one. A star is a system's business where there is a system, but a planet rolled from the landing page has no system to ask and no reason to be stuck around the Sun — a world of a red dwarf is a different world, and saying so is a field rather than a feature.
+
+6.15.13.3.1 Chosen as a spectral class and a size, which is how a referee says it, rather than as a number. A G2 V is a star; 1.00 is an answer to a question nobody asked.
+
+6.15.13.3.2 A world of a system shows the star it orbits and cannot change it there. The system is where a star is chosen, and two places to set one would be two answers to one question.
+
+6.15.13.4 The label is stored beside the output. They answer different questions: the output is what the climate is worked out from and the only figure generation reads, and the label is what a referee wrote down, what a sector line carries, and what the field shows. A save that has the one without the other is read as the Sun.
+
+6.15.13.5 Changing the star moves the world. Everything 6.15 derives from an orbit is derived again, so a world whose profile asks for a temperate climate sits at 1.25 AU around a G, 0.18 around an M, and 5.59 around an A — the inverse square, arrived at rather than stated.
 
 ### 6.16 Trade classifications
 

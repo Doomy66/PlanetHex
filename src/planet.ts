@@ -52,6 +52,17 @@ export interface Planet {
    * is what every world generated before systems existed was assumed to have.
    */
   luminosity: number | null;
+  /**
+   * The star, as a label: "G2 V", or null for a world whose star nobody has
+   * named. PlanetSpec 6.15.13.1.
+   *
+   * Beside the luminosity rather than instead of it, because they answer
+   * different questions. The luminosity is what the climate is worked out from
+   * and is the only figure generation reads; the label is what a referee wrote
+   * down, what a sector line carries, and what the field on screen shows. A
+   * world handed down from a system gets both from that system's primary.
+   */
+  star: string | null;
   rotationHours: number | null;
   /** How many impacts the surface carries, or null for what the seed rolled. Spec 6.15.12. */
   craters: number | null;
@@ -85,6 +96,7 @@ export function blankPlanet(): Planet {
     tiltDeg: null,
     orbitAu: null,
     luminosity: null,
+    star: null,
     designation: null,
     rotationHours: null,
     craters: null,
@@ -105,6 +117,7 @@ export function newPlanet(seed = randomSeed()): Planet {
     tiltDeg: null,
     orbitAu: null,
     luminosity: null,
+    star: null,
     designation: null,
     rotationHours: null,
     craters: null,
@@ -283,6 +296,7 @@ export function parsePlanet(text: string): Planet {
       typeof r["designation"] === "string" && r["designation"].trim() !== ""
         ? r["designation"]
         : null,
+    star: typeof r["star"] === "string" && r["star"].trim() !== "" ? r["star"] : null,
     ...readLocation(r),
     // "upp" is the field name this build used before the rename to UWP.
     uwp: typeof r["uwp"] === "string" ? r["uwp"] : typeof r["upp"] === "string" ? r["upp"] : "",

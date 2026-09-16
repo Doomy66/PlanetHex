@@ -242,6 +242,34 @@ export function starLabel(star: Star): string {
   return star.size === "D" ? "D" : `${star.spectral}${star.subclass} ${star.size}`;
 }
 
+export const SPECTRAL_CLASSES: readonly SpectralClass[] = ["O", "B", "A", "F", "G", "K", "M"];
+export const STAR_SIZES: readonly StarSize[] = ["Ia", "Ib", "II", "III", "IV", "V", "VI", "D"];
+
+/**
+ * A star back out of its label. SystemSpec 2.6 and PlanetSpec 6.15.13.
+ *
+ * A document holds the label rather than the four fields, because the label is
+ * what a referee reads and types and what a sector line carries. "G2 V" is a
+ * star; { spectral: "G", subclass: 2, size: "V" } is the same star written for a
+ * machine, and one of the two has to be the stored form.
+ */
+export function parseStar(label: string): Star | null {
+  const text = label.trim().toUpperCase();
+  if (text === "" ) return null;
+  if (text === "D") return starOf("G", 2, "D");
+  const match = /^([OBAFGKM])\s*(\d)?\s*(IA|IB|II|III|IV|V|VI|D)?$/.exec(text.replace(/\s+/g, " "));
+  if (match === null) return null;
+  const spectral = match[1] as SpectralClass;
+  const subclass = match[2] === undefined ? 0 : Number(match[2]);
+  const size = (STAR_SIZES.find((held) => held.toUpperCase() === match[3]) ?? "V") as StarSize;
+  return starOf(spectral, subclass, size);
+}
+
+/** A star from its parts, with the output that follows from them. */
+export function starOf(spectral: SpectralClass, subclass: number, size: StarSize): Star {
+  return { spectral, subclass, size, luminosity: luminosityOf(spectral, size) };
+}
+
 /**
  * The Stars column of a sector line, which is every star in the system with a
  * space between them. SystemSpec 1.6.4 and 3.7.3: this is the one thing the

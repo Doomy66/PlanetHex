@@ -357,6 +357,18 @@
               <label class="grow">Mean temp&deg;C<input id="p-temp" type="number" step="1" autocomplete="off" /></label>
             </div>
             <div id="orbit-note" class="hint under"></div>
+            <!-- What the world orbits. Spec 6.15.13: the orbit above means
+                 nothing without it, since the same distance is a furnace round
+                 one star and a cinder round another. -->
+            <div class="row fields">
+              <label class="grow">Star
+                <select id="p-star-class"></select>
+              </label>
+              <label class="grow">Size
+                <select id="p-star-size"></select>
+              </label>
+            </div>
+            <div id="star-note" class="hint under"></div>
             <!-- Impacts. A count rather than a rate, because it is what the surface
                  carries now and not what fell on it. Spec 6.15.12. -->
             <div class="row fields">
