@@ -214,11 +214,17 @@ export function populationShares(count: number, total: number): number[] {
  *  draw the whole world shares, such as which word a functional world numbers. */
 type Pick = (stream: string, count: number, index?: number) => number;
 
-interface Flavour {
+export interface Flavour {
   readonly key: string;
   /** How often this flavour comes up, against the others. */
   readonly weight: number;
   make(pick: Pick, rank: number): string;
+  /**
+   * How this flavour names a whole world, where that differs from how it names
+   * a settlement. Left out, a world is named the way its first settlement would
+   * be, which is right for every flavour that does not count things.
+   */
+  world?(pick: Pick): string;
 }
 
 /* Polyglot: the mixture a thousand years of settlement leaves behind. Vowel-rich
@@ -227,10 +233,14 @@ const POLY_STEM = [
   "Ala", "Bori", "Cala", "Dara", "Emi", "Fane", "Gala", "Heri", "Imu", "Jora",
   "Kali", "Lome", "Mira", "Nuri", "Oda", "Pala", "Rhoda", "Sura", "Tovi", "Ulan",
   "Vera", "Yani", "Zeru", "Asha", "Ketu", "Nima", "Orsa", "Tala", "Ubri", "Wela",
+  "Andi", "Beru", "Caspi", "Deva", "Enno", "Feli", "Gorra", "Haly", "Ilva", "Junn",
+  "Kora", "Lassa", "Muri", "Nydia", "Ostra", "Praxi", "Quela", "Rovi", "Selka", "Tirra",
+  "Umbra", "Vasha", "Wynne", "Xola", "Yorro", "Zaida", "Amri", "Belu", "Corsa", "Dumi",
 ];
 const POLY_END = [
   "ne", "x", "nth", "va", "ri", "sh", "dor", "mar", "la", "th",
   "kai", "sen", "tu", "por", "an", "is", "ora", "um", "ez", "ai",
+  "vek", "nil", "ash", "oru", "tan", "wei", "dra", "lok", "shi", "arn",
 ];
 
 /* Anglic: English place-name elements, which is what a world settled out of the
@@ -238,10 +248,13 @@ const POLY_END = [
 const ANGLIC_HEAD = [
   "Kar", "Val", "Ter", "Mor", "Sel", "Dun", "Bar", "Ash", "Cor", "Rhen",
   "Tal", "Vos", "Lin", "Grim", "Ord", "Pel", "Sav", "Ked", "Bran", "Iro",
+  "Wen", "Mar", "Hal", "Stor", "Ferr", "Glen", "Thor", "Ayl", "Brack", "Cinder",
+  "Dray", "East", "Foss", "Garth", "Hart", "Kirk", "Long", "Nether", "Ram", "Wester",
 ];
 const ANGLIC_TAIL = [
   "port", "hold", "reach", "mere", "fell", "gate", "march", "stead", "combe", "ridge",
   "haven", "cross", "vale", "watch", "landing", "rise", "deep", "wold", "ford", "spire",
+  "barrow", "moor", "thorpe", "wick", "burn", "close", "dale", "hollow", "shaw", "strand",
 ];
 
 /* Vilani: the First Imperium's own tongue, and the one that most often survived
@@ -249,10 +262,14 @@ const ANGLIC_TAIL = [
 const VILANI_HEAD = [
   "Ish", "Lakh", "Dig", "Mesh", "Nag", "Girr", "Ashk", "Vlan", "Zir", "Kagg",
   "Shud", "Umm", "Barsh", "Enk", "Ikk", "Mag", "Shar", "Tuk", "Urd", "Khan",
+  "Anki", "Dush", "Gamm", "Hurr", "Kish", "Luur", "Mikk", "Nirg", "Pash", "Rukh",
+  "Sagg", "Teng", "Ushk", "Vugg", "Zhen", "Amkh", "Berr", "Dakk", "Ennu", "Garr",
 ];
 const VILANI_TAIL = [
   "kha", "shii", "uur", "dur", "gii", "mesh", "kar", "nuu", "shak", "gir",
   "tii", "lum", "zaa", "khii", "nam", "rii", "aan", "ushi",
+  "makh", "shur", "enni", "dagg", "irru", "khan", "lugg", "nesh", "puur", "zhii",
+  "arka", "immi",
 ];
 
 /* Founder: named for whoever got there first, which is what a recently settled
@@ -261,6 +278,9 @@ const FOUNDERS = [
   "Kemp", "Halloran", "Salazar", "Okonkwo", "Duvall", "Restrepo", "Naidu",
   "Bergman", "Achebe", "Ortiz", "Fenwick", "Nakamura", "Solano", "Weir",
   "Castellan", "Lindqvist", "Abara", "Voss", "Mahoney", "Petrakis",
+  "Adeyemi", "Blanchard", "Cheng", "Delacroix", "Eriksen", "Faulkner", "Gurung",
+  "Haddad", "Ivanova", "Jarrett", "Kowalski", "Larsen", "Mbeki", "Novak",
+  "Oyelaran", "Pradhan", "Quintero", "Rasmussen", "Sokolov", "Tanaka",
 ];
 const FOUNDER_PLACE = [
   "Landing", "Rest", "Down", "Station", "Crossing", "Reach", "Field",
@@ -311,6 +331,23 @@ export const FLAVOURS: readonly Flavour[] = [
       const word = FUNCTIONAL[pick("func-word", FUNCTIONAL.length, 0)]!;
       return `${word} ${NUMERALS[Math.min(rank, NUMERALS.length - 1)]!}`;
     },
+    /**
+     * A world, rather than a town on one. SubSectorSpec 3.4.3.
+     *
+     * "Camp One" is a good name for the first camp on a world and a poor name
+     * for a world: there are eight functional words, so a chart whose region
+     * named things this way had forty worlds drawing from eight names and the
+     * same four turned up in every subsector of a sector. A world takes the
+     * word after a name of its own - Vlanar Depot, Kadrin Station - which is
+     * how a working world is actually named and is four thousand eight hundred
+     * names rather than eight.
+     */
+    world: (pick) => {
+      const stem = POLY_STEM[pick("func-stem", POLY_STEM.length, 0)]!;
+      const end = POLY_END[pick("func-end", POLY_END.length, 0)]!;
+      const word = FUNCTIONAL[pick("func-word", FUNCTIONAL.length, 0)]!;
+      return `${stem}${end} ${word}`;
+    },
   },
 ];
 
@@ -355,6 +392,22 @@ export function settlementNames(
     out.push(name);
   }
   return out;
+}
+
+/**
+ * The name of a world. SubSectorSpec 3.4.
+ *
+ * A world is not a settlement, and one flavour names the two differently. The
+ * attempt shifts every draw at once, so a chart that finds it has drawn the same
+ * name twice can ask for another.
+ */
+export function worldNameFor(seed: string, flavour: Flavour, attempt = 0): string {
+  const shift = attempt * 1013;
+  const pick: Pick = (stream, count, index = 0) => {
+    const value = valueFor(`${seed}:settle:${stream}`, index + shift);
+    return Math.min(count - 1, Math.floor(value * count));
+  };
+  return flavour.world === undefined ? flavour.make(pick, 0) : flavour.world(pick);
 }
 
 /** One name. `attempt` shifts every draw at once, so a retry is a fresh name. */

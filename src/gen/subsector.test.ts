@@ -11,6 +11,7 @@ import {
   type Density,
 } from "./subsector";
 import { subsectorFile } from "../io/export/subsector";
+import { generateSector } from "./sector";
 
 const SEEDS = Array.from({ length: 40 }, (_, i) => `chart-${i}`);
 
@@ -419,6 +420,47 @@ describe("the Mains", () => {
       );
     });
     expect(anyEmpty).toBe(true);
+  });
+});
+
+describe("what the worlds are called", () => {
+  // SubSectorSpec 3.4.3 and 3.4.4.
+  it("never uses one name twice on a chart", () => {
+    for (const seed of SEEDS) {
+      const chart = generateSubsector(seed, "A");
+      const names = chart.worlds.map((world) => world.name);
+      expect(new Set(names).size, seed).toBe(names.length);
+    }
+  });
+
+  it("does not name a world after a numbered camp", () => {
+    // A world drawing from eight functional words had forty of them sharing
+    // eight names, and the same four turned up in every subsector of a sector.
+    for (const seed of SEEDS) {
+      for (const world of generateSubsector(seed, "A").worlds) {
+        expect(world.name, seed).not.toMatch(
+          /^(Site|Station|Camp|Depot|Hub|Works|Post|Sector) (One|Two|Three)$/,
+        );
+      }
+    }
+  });
+
+  it("keeps a chart's names whether or not a sector is above it", () => {
+    // AppSpec 1.3: naming is the chart's, so a chart cannot be renamed from
+    // above without the same subsector being two different subsectors.
+    const alone = generateSubsector("SPINWARD-C", "C");
+    const again = generateSubsector("SPINWARD-C", "C");
+    expect(alone.worlds.map((w) => w.name)).toEqual(again.worlds.map((w) => w.name));
+  });
+
+  it("leaves nearly every world in a sector with a name of its own", () => {
+    // Across sixteen charts a repeat is chance rather than a rule, and with the
+    // pools of 3.4.3 it stays under one world in twenty.
+    const sector = generateSector("SPINWARD", "standard");
+    const counts = new Map<string, number>();
+    for (const world of sector.worlds) counts.set(world.name, (counts.get(world.name) ?? 0) + 1);
+    const shared = [...counts.values()].filter((n) => n > 1).reduce((sum, n) => sum + n, 0);
+    expect(shared / sector.worlds.length).toBeLessThan(0.12);
   });
 });
 

@@ -19,7 +19,7 @@ import { parseUwp, rollUwp, seedFrom, type Uwp, type UwpShifts } from "../planet
 import { mainWorldSeed } from "./system";
 import { starsFor, starsLabel, systemLuminosity, type Stars } from "./star";
 import { formatPbg, pbgFor, tradeCodes, type Pbg, type TradeCode } from "./trade";
-import { flavourFor, settlementNames } from "./settle";
+import { flavourFor, worldNameFor, type Flavour } from "./settle";
 import { valueFor } from "./rng";
 import { basesFor, zoneFor } from "./base";
 
@@ -297,7 +297,7 @@ export function worldAt(
   return {
     hex,
     at,
-    name: settlementNames(`${systemSeed}:names`, 1, flavour)[0] ?? systemSeed,
+    name: worldNameFor(`${systemSeed}:names`, flavour),
     systemSeed,
     seed: worldSeed,
     uwp,
@@ -324,15 +324,57 @@ export function generateSubsector(
     const world = chartWorld(seed, at, hex, density, regional, shifts);
     if (world !== null) worlds.push(world);
   }
+  // Named before anything is worked out over them, since a Main is called after
+  // the busiest world on it and that world's name is settled here.
+  const held = unrepeated(worlds, seed, regional);
   return {
     seed,
     letter: letter.toUpperCase(),
     density,
     shifts,
-    worlds,
-    routes: routesBetween(worlds),
-    mains: mainsIn(worlds),
+    worlds: held,
+    routes: routesBetween(held),
+    mains: mainsIn(held),
   };
+}
+
+/**
+ * No two worlds of a chart called the same thing. SubSectorSpec 3.4.4.
+ *
+ * Every world draws its name from its own seed, so two of them landing on one
+ * name is unlikely and not impossible - and a referee saying "go to Kadrin" on a
+ * chart with two Kadrins has a chart with a mistake in it.
+ *
+ * Walked in hex order, so the chart comes out the same every time it is built.
+ * The first world to claim a name keeps it and the next draws again, which is
+ * the rule settlementNames already follows within one world.
+ *
+ * Kept to the chart. A sector is sixteen of these and cannot rename across them
+ * without a subsector opened from a sector being different from the same
+ * subsector opened on its own, which is the one thing AppSpec 1.3 does not
+ * allow. Collisions across a sector are rare enough to live with once a flavour
+ * has more than a handful of names in it, which 3.4.3 is about.
+ */
+function unrepeated(
+  worlds: readonly ChartWorld[],
+  seed: string,
+  regional: Flavour,
+): ChartWorld[] {
+  const used = new Set<string>();
+  return worlds.map((world) => {
+    if (!used.has(world.name)) {
+      used.add(world.name);
+      return world;
+    }
+    const follows = valueFor(`${seed}:flavour-follows`, Number(world.at)) < FOLLOWS_THE_REGION;
+    const flavour = follows ? regional : flavourFor(`${world.systemSeed}:names`);
+    let name = world.name;
+    for (let attempt = 1; attempt < 12 && used.has(name); attempt++) {
+      name = worldNameFor(`${world.systemSeed}:names`, flavour, attempt);
+    }
+    used.add(name);
+    return { ...world, name };
+  });
 }
 
 /** What lights a world's orbits, which is both stars of a close pair. 2.4.2. */
