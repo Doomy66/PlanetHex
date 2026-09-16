@@ -3164,8 +3164,10 @@ function showSubsectorAbout(): void {
   const written = subDoc?.overrides.length ?? 0;
   if (written > 0) fact("Edited", written === 1 ? "one hex" : `${written} hexes`);
   el("sub-where").textContent = `Subsector ${subsector.letter}`;
-  const sector = el<HTMLInputElement>("sub-sector").value.trim();
-  el("sub-counts").textContent = [sector, `seed ${subsector.seed}`].filter(Boolean).join(" · ");
+  // The sector alone up here. The seed is a fact in the panel below and does not
+  // need saying twice, and a header that wraps is a header that has stopped
+  // being a header.
+  el("sub-counts").textContent = el<HTMLInputElement>("sub-sector").value.trim();
 }
 
 /** Every world on the chart, down the left, in hex order. */

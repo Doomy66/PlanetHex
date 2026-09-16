@@ -686,10 +686,11 @@ body[data-view="system"] .subsector { display: none; }
 .chart { width: auto; height: 100%; max-width: 100%; display: block; }
 .sub-chart { background: #0a0c10; }
 
-/* The key is pinned to the foot of the panel and the world list scrolls above
-   it: a key that scrolls off the bottom of a long list is a key nobody reads. */
-.subsector .sys-tree-panel { display: flex; flex-direction: column; overflow: hidden; }
-.subsector #sub-list { flex: 1 1 auto; min-height: 3em; overflow: auto; }
+/* Every part of the panel folds away, so the panel itself is what scrolls and
+   nothing has to be pinned to the foot of it. The list of worlds is the one
+   thing long enough to need a limit of its own: capped, it leaves the sections
+   under it reachable without a scroll of forty rows first. */
+.subsector #sub-list { max-height: 42vh; overflow: auto; }
 .chart-legend { flex: none; margin-top: 10px; }
 .chart-legend summary {
   cursor: pointer;
@@ -752,6 +753,22 @@ body[data-view="system"] .subsector { display: none; }
 .chart-giant { fill: #d7b273; }
 .chart-giant-ring { fill: none; stroke: #d7b273; stroke-width: 1.4; }
 
+/* The chart's own settings, two to a row inside a section that folds away, so
+   four of them cost one line of panel rather than half the header - and nothing
+   at all once the chart is rolled and the referee has moved on to reading it. */
+.sub-settings { display: grid; gap: 5px; margin: 0 0 4px; }
+.sub-settings label {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.85rem;
+}
+.sub-settings select,
+.sub-settings input { width: 7.5em; margin: 0; }
+
 .sub-choices { border-top: 0; padding-top: 0; }
 .sub-choices label { display: flex; align-items: center; gap: 6px; cursor: pointer; }
 
@@ -803,7 +820,7 @@ body[data-view="planet"] .system { display: none; }
 .system-head { grid-area: head; display: flex; align-items: baseline; gap: 12px; }
 .system-head h1 { margin: 0; }
 .sys-stars { color: var(--accent); }
-.sys-counts { color: var(--muted); }
+.sys-counts { color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .system-actions { margin-left: auto; display: flex; gap: 6px; align-items: center; }
 
 .sys-name {

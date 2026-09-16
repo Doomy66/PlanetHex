@@ -90,26 +90,6 @@
         <span id="sub-dirty" class="dirty" hidden>unsaved</span>
         <span class="system-actions">
           <label class="sys-where">Sector<input id="sub-sector" type="text" autocomplete="off" /></label>
-          <label class="sys-where">Subsector
-            <select id="sub-letter"></select>
-          </label>
-          <!-- Which way the region leans. SubSectorSpec 3.11: a modifier on
-               the dice every world here is rolled with, not a number written
-               over the answer. -->
-          <label class="sys-where">People
-            <input id="sub-people" type="number" min="-3" max="3" step="1" value="0" />
-          </label>
-          <label class="sys-where">Tech
-            <input id="sub-tech" type="number" min="-3" max="3" step="1" value="0" />
-          </label>
-          <label class="sys-where">Density
-            <select id="sub-density">
-              <option value="rift">Rift</option>
-              <option value="sparse">Sparse</option>
-              <option value="standard" selected>Standard</option>
-              <option value="dense">Dense</option>
-            </select>
-          </label>
           <button id="sub-roll" type="button" title="Another subsector">Roll</button>
           <button id="sub-save" type="button">Save</button>
           <button id="sub-home" class="home" type="button" title="Back to the levels">Levels</button>
@@ -119,16 +99,47 @@
       <aside class="sys-tree-panel">
         <h2>Subsector</h2>
         <dl id="sub-about" class="sys-facts"></dl>
-        <h2>Worlds</h2>
-        <label class="sys-only">
-          <input id="sub-inhabited" type="checkbox" />
-          Inhabited only
-        </label>
-        <label class="sys-only">
-          <input id="sub-mains" type="checkbox" />
-          Show Mains
-        </label>
-        <ul id="sub-list" class="sys-tree"></ul>
+
+        <!-- What the chart is generated from. Here rather than in the header
+             because these are settings rather than actions: where the chart
+             sits, how thickly it is settled, and which way it leans. -->
+        <details class="chart-legend" id="sub-generation" open>
+          <summary>Generation</summary>
+          <div class="sub-settings">
+          <label>Subsector
+            <select id="sub-letter"></select>
+          </label>
+          <label>Density
+            <select id="sub-density">
+              <option value="rift">Rift</option>
+              <option value="sparse">Sparse</option>
+              <option value="standard" selected>Standard</option>
+              <option value="dense">Dense</option>
+            </select>
+          </label>
+          <!-- Which way the region leans. SubSectorSpec 3.11: a modifier on the
+               dice every world here is rolled with, not a number written over
+               the answer. -->
+          <label>People
+            <input id="sub-people" type="number" min="-3" max="3" step="1" value="0" />
+          </label>
+          <label>Tech
+            <input id="sub-tech" type="number" min="-3" max="3" step="1" value="0" />
+          </label>
+          </div>
+        </details>
+        <details class="chart-legend sub-worlds" id="sub-worlds" open>
+          <summary>Worlds</summary>
+          <label class="sys-only">
+            <input id="sub-inhabited" type="checkbox" />
+            Inhabited only
+          </label>
+          <label class="sys-only">
+            <input id="sub-mains" type="checkbox" />
+            Show Mains
+          </label>
+          <ul id="sub-list" class="sys-tree"></ul>
+        </details>
 
         <!-- What a save writes beside the document. SubSectorSpec 6.5. -->
         <details class="chart-legend" id="sub-files">
