@@ -475,6 +475,14 @@ This document is the specification for one planet. [SubSectorSpec.md](SubSectorS
 
 5.4.6 Ice is drawn, not generated. It does not move a height, and it does not change sea level: the water counted by 5.2 is counted whether it is frozen or not.
 
+5.4.7 A world locked to its star of 6.12.3 gets one cap rather than two, and it goes on the side that never sees the sun. Neither lever of 5.4.2 is saying anything about such a world: it has no tilt worth the name, and both of its poles sit on the terminator at the same temperature as each other. What it has instead is a hemisphere in permanent night, and that is where its ice is.
+
+5.4.7.1 The cap is centred on the point furthest from the star and reaches back towards the terminator as far as the temperature of 5.7.7 allows, which on a cold enough world is the whole night half. It cannot reach past the terminator, because past it there is sunlight.
+
+5.4.7.2 It is read against the temperature of the dark side rather than against the world's mean. A locked world's mean is an average of two places nobody would call the same world, and it can sit a hundred kelvin above the face the ice is actually on.
+
+5.4.7.3 The water ceiling of 5.4.4 still binds, halved: one cap reaching to a given angle covers half of what two poleward caps of the same reach would.
+
 ### 5.5 Points of interest
 
 5.5.1 A starport is drawn red and a comment pale grey, on the map of 4.3.4, on the globe of 4.4.8, and in the patch of 4.5.7.3. The two kinds of 6.5.2 are told apart by colour alone, so which is which can be seen at a glance across the whole map rather than read one hex at a time.
@@ -544,6 +552,23 @@ This document is the specification for one planet. [SubSectorSpec.md](SubSectorS
 5.7.5 The caps of 5.4 are drawn as ice rather than as pale ground. Frozen water is white, and it is white over sea and over land alike, so the cap reads as a sheet rather than as terrain seen through frost. This is the one thing the two views deliberately disagree about, and 5.4.5 gives the reason the map does it the other way: a map has to keep the terrain legible under the ice and a photograph does not.
 
 5.7.6 What does not change between the views: the coastline, the ice edge, the heights, the hex readout of 4.5.6, and the grey heightmap of 6.21. The view is paint. Nothing under it moves.
+
+### 5.7.7 Temperature on a locked world
+
+5.7.7.1 A world locked to its star by 6.12.3 is not banded by latitude at all, and reading 5.7.3 over it describes somewhere that does not exist. It takes its sunlight on one face for ever. The only axis that means anything on it runs from the point under its star to the point opposite, and its own two poles sit on the terminator at the same temperature as each other.
+
+5.7.7.2 So a locked world is modelled with that axis as its polar axis: the star overhead at the north pole, endless night at the south, and everything that reads a latitude reading the angle to the star instead. It is the same sphere with its labels changed. Modelling it any other way would mean carrying a longitude through every part of 5.4, 5.8 and 6.24 for the one case that needs it, and a locked world's real poles are the least interesting places on it.
+
+5.7.7.3 The flux at the point under the star is four times the world's average rather than equal to it, and temperature goes as the fourth root of flux, so that point sits at the square root of two times the mean. From there it falls as the fourth root of the cosine of the angle to the star, and over the whole night half there is no sunlight and no gradient: it is level, and it is cold.
+
+5.7.7.4 Air rubs the difference out, as it does in 5.7.3.3, and harder. Moving heat round to a face that never sees the sun is the one job a deep atmosphere is unambiguously good at, so the contrast is divided down by a pressure half the figure the latitude model uses. A locked world under a bar or two is warm all over; one under nothing is a furnace facing an icebox.
+
+5.7.7.5 The contrast scales with the world's mean rather than being a fixed number of degrees, because the fall-off from the substellar point is a ratio. A world twice as warm has twice the spread across it.
+
+5.7.7.6 The profile has zero mean by construction, as 5.7.3.5 does. A locked world is the temperature 6.15 worked out, spread very differently over the surface.
+
+5.7.7.7 The description of 4.6 gives both ends rather than the mean alone, because the mean of a locked world is an average of two places and describes neither.
+
 
 ### 5.8 What the ground is
 

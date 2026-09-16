@@ -139,6 +139,35 @@ const POLE_CONTRAST_K = 90;
  */
 const HEAT_TRANSPORT_ATM = 2.2;
 
+/**
+ * How much hotter the point under the star runs than the world's mean on a
+ * locked world with no air at all, as a share of that mean. PlanetSpec 5.7.7.
+ *
+ * A locked world takes its sunlight on one face for ever, so the flux at the
+ * point under the star is four times the world's average rather than the same
+ * as it. Temperature goes as the fourth root of flux, so that point sits at the
+ * square root of two times the mean, and everything from there to the terminator
+ * falls off as the fourth root of the cosine of the angle to the star.
+ */
+const LOCKED_PEAK = Math.SQRT2;
+
+/**
+ * The average of that fall-off over the whole sphere, which is what has to be
+ * taken off it for the profile to leave the world's mean alone. Half of the
+ * integral of mu to the quarter from nought to one, the night half contributing
+ * nothing.
+ */
+const LOCKED_SHAPE_MEAN = 0.4;
+
+/**
+ * The pressure at which air has carried a fair share of a locked world's heat
+ * round to its night side. Lower than the figure above, because the day-night
+ * difference is what a thick atmosphere works hardest against: a locked world
+ * under a bar or two is warm all over, and one under nothing is a furnace facing
+ * an icebox.
+ */
+const LOCKED_TRANSPORT_ATM = 1;
+
 /** Obliquity spreads, in degrees. See 6.12.3 for where the three populations come from. */
 const SETTLED_SIGMA_DEG = 1;
 const ORDERED_SIGMA_DEG = 20;
@@ -404,6 +433,44 @@ export function latitudeContrastK(seasonalTiltDeg: number, pressureAtm: number):
   const lean = Math.sin(radians(seasonalTiltDeg));
   const gradient = 1 - 1.5 * lean * lean;
   return (POLE_CONTRAST_K * gradient) / (1 + Math.max(0, pressureAtm) / HEAT_TRANSPORT_ATM);
+}
+
+/**
+ * How much hotter the point under the star runs than the world's mean, in
+ * kelvin. PlanetSpec 5.7.7, and the locked world's answer to latitudeContrastK.
+ *
+ * It scales with the mean rather than being a fixed number of degrees, because
+ * the fall-off from the substellar point is a ratio: a world twice as warm has
+ * twice the spread across it. Air rubs it out the way it rubs out the pole to
+ * equator contrast, and harder, since moving heat round to a face that never
+ * sees the sun is the one job a thick atmosphere is unambiguously good at.
+ */
+export function lockedContrastK(meanTempK: number, pressureAtm: number): number {
+  const bare = ((LOCKED_PEAK - 1) * meanTempK) / (1 - LOCKED_SHAPE_MEAN);
+  return bare / (1 + Math.max(0, pressureAtm) / LOCKED_TRANSPORT_ATM);
+}
+
+/**
+ * The mean temperature at one angle from the star, in kelvin. PlanetSpec 5.7.7.
+ *
+ * `cosStar` is the cosine of the angle between the place and the point under the
+ * star: one directly under it, nought on the terminator, minus one at the far
+ * side. The shape is the fourth root of the sunlight falling there, which is
+ * nought over the whole night half, and it is written so that its average over
+ * the sphere is nought - so a locked world's mean is still the number 6.15
+ * worked out, spread very differently over the surface.
+ *
+ * Nothing here is symmetric, which is the point. A turning world is warm in a
+ * belt and cold at two ends; a locked one is scorched at one point, frozen over
+ * a whole hemisphere, and habitable only in a ring between them.
+ */
+export function temperatureAtStar(
+  meanTempK: number,
+  contrastK: number,
+  cosStar: number,
+): number {
+  const lit = Math.max(clamp(cosStar, -1, 1), 0);
+  return meanTempK + contrastK * (Math.pow(lit, 0.25) - LOCKED_SHAPE_MEAN);
 }
 
 /**

@@ -1,6 +1,11 @@
 import { parseUwp } from "../planet";
 import { compactNumber, type PlanetDetail } from "./detail";
-import { isRetrograde, isTidallyLocked } from "./climate";
+import {
+  isRetrograde,
+  isTidallyLocked,
+  lockedContrastK,
+  temperatureAtStar,
+} from "./climate";
 
 /**
  * Prose read off the UWP. Spec 6.13.
@@ -77,9 +82,27 @@ const at = (table: readonly string[], i: number): string | null => table[i] ?? n
  * A sentence or three describing the world. Returns null when the UWP cannot be
  * read, so the caller can say so rather than print a description full of gaps.
  */
+/** Whether one face of the world is turned to its star for good. */
+function locked(detail: PlanetDetail): boolean {
+  return isTidallyLocked(detail.rotationHours, detail.orbitAu, detail.climate.luminosity);
+}
+
+/**
+ * What the ends of a locked world run at, in Celsius. PlanetSpec 5.7.7: the mean
+ * of a locked world is an average of two places nobody would call the same
+ * world, so the description gives both rather than the average of them.
+ */
+function faces(detail: PlanetDetail): { day: number; night: number } {
+  const contrast = lockedContrastK(detail.meanTempK, detail.pressureAtm ?? 0);
+  return {
+    day: temperatureAtStar(detail.meanTempK, contrast, 1) - 273.15,
+    night: temperatureAtStar(detail.meanTempK, contrast, -1) - 273.15,
+  };
+}
+
 /** A day in whichever unit makes it readable, and whether it is a day at all. */
 function dayLength(detail: PlanetDetail): string {
-  if (isTidallyLocked(detail.rotationHours, detail.orbitAu)) {
+  if (locked(detail)) {
     return "one face always to its sun";
   }
   const hours = detail.rotationHours;
@@ -130,6 +153,16 @@ export function describeUwp(uwp: string, detail: PlanetDetail): string | null {
         `It sits ${detail.orbitAu.toFixed(2)} AU out at a mean ${(detail.meanTempK - 273.15).toFixed(0)}°C, ` +
           `with ${dayLength(detail)}.`,
       ];
+
+  // A locked world's mean is an average of a furnace and an icebox, and quoting
+  // it on its own says nothing true about anywhere on the surface.
+  if (!belt && locked(detail)) {
+    const { day, night } = faces(detail);
+    sentences.push(
+      `Under the sun it runs ${day.toFixed(0)}°C and on the far side ${night.toFixed(0)}°C, ` +
+        "with whatever lives there living in the ring between them.",
+    );
+  }
 
   if (detail.population !== null && detail.population < 1) {
     sentences.push(belt ? "Nobody works it." : "Nobody lives there.");

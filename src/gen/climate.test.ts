@@ -6,6 +6,9 @@ import {
   despinFor,
   greenhouseFor,
   isTidallyLocked,
+  latitudeContrastK,
+  lockedContrastK,
+  temperatureAtStar,
   orbitalPeriodHours,
   orbitForTemperature,
   rotationHoursFor,
@@ -303,5 +306,60 @@ describe("overrides", () => {
     expect(climateFor("Regina", profile, 1, 70, { obliquityDeg: 400 }).obliquityDeg).toBe(180);
     expect(climateFor("Regina", profile, 1, 70, { obliquityDeg: -5 }).obliquityDeg).toBe(0);
     expect(climateFor("Regina", profile, 1, 70, { orbitAu: 1e6 }).orbitAu).toBe(50);
+  });
+});
+
+describe("a world locked to its star", () => {
+  // PlanetSpec 5.7.7. A locked world takes its sunlight on one face for ever,
+  // so its temperature runs from the point under the star to the point opposite
+  // and not from its equator to its poles.
+  const MEAN = 287;
+  const bare = lockedContrastK(MEAN, 0);
+  const airy = lockedContrastK(MEAN, 1);
+
+  const day = (contrast: number) => temperatureAtStar(MEAN, contrast, 1);
+  const night = (contrast: number) => temperatureAtStar(MEAN, contrast, -1);
+
+  it("puts the point under the star at the square root of two times the mean", () => {
+    // Four times the flux of the average, and temperature goes as its fourth
+    // root, so the substellar point is 1.414 times the mean above absolute zero.
+    expect(day(bare) / MEAN).toBeCloseTo(Math.SQRT2, 2);
+  });
+
+  it("leaves the world's own mean alone", () => {
+    // The shape averages to nothing over the sphere, the way the latitude one
+    // does, so a locked world is the temperature 6.15 worked out - spread very
+    // differently over the surface.
+    let total = 0;
+    const steps = 20001;
+    for (let i = 0; i < steps; i++) {
+      total += temperatureAtStar(MEAN, bare, -1 + (2 * i) / (steps - 1));
+    }
+    expect(total / steps).toBeCloseTo(MEAN, 0);
+  });
+
+  it("runs the whole night side cold and level", () => {
+    // No sun anywhere on it, so nowhere on it is warmer than anywhere else.
+    expect(temperatureAtStar(MEAN, bare, -0.1)).toBe(night(bare));
+    expect(night(bare)).toBeLessThan(MEAN - 50);
+  });
+
+  it("falls from the point under the star to the terminator", () => {
+    const along = [1, 0.75, 0.5, 0.25, 0].map((mu) => temperatureAtStar(MEAN, bare, mu));
+    for (let i = 1; i < along.length; i++) expect(along[i]!).toBeLessThan(along[i - 1]!);
+  });
+
+  it("is rubbed out by thick air", () => {
+    // Moving heat round to a face that never sees the sun is the one job a deep
+    // atmosphere is unambiguously good at: Venus runs the same all over.
+    expect(airy).toBeLessThan(bare);
+    expect(day(lockedContrastK(MEAN, 90)) - night(lockedContrastK(MEAN, 90))).toBeLessThan(10);
+  });
+
+  it("swings far harder than latitude ever does", () => {
+    // The difference the referee is meant to feel: a turning world is warm in a
+    // belt and cold at two ends, a locked one is a furnace facing an icebox.
+    const across = latitudeContrastK(23.4, 1);
+    expect(day(airy) - night(airy)).toBeGreaterThan(across * 1.5);
   });
 });

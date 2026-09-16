@@ -109,7 +109,7 @@ function build(input: SheetInput): { title: string; subtitle: string; sections: 
           ["Mean temperature", `${(detail.meanTempK - 273.15).toFixed(0)}°C`],
           [
             "Day",
-            isTidallyLocked(detail.rotationHours, detail.orbitAu)
+            isTidallyLocked(detail.rotationHours, detail.orbitAu, detail.climate.luminosity)
               ? "one face always to its sun"
               : `${detail.rotationHours.toFixed(1)} hours`,
           ],

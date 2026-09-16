@@ -1,4 +1,11 @@
-import { latitudeContrastK, seasonalTiltDeg, temperatureAtLatitude } from "./climate";
+import {
+  isTidallyLocked,
+  latitudeContrastK,
+  lockedContrastK,
+  seasonalTiltDeg,
+  temperatureAtLatitude,
+  temperatureAtStar,
+} from "./climate";
 import { coverFactorsFor, warmthAt } from "./life";
 import type { PlanetDetail } from "./detail";
 
@@ -96,8 +103,26 @@ const DEFAULT_WATER = 0.7;
 /** Everything the model needs about the world. The rest is per place. */
 export interface BiomeWorld {
   readonly meanTempK: number;
-  /** How much colder the poles run than the equator, in kelvin. Spec 5.7.3. */
+  /**
+   * How far the surface swings either side of the mean, in kelvin. From the
+   * equator to the poles on a turning world, 5.7.3; from the point under the
+   * star to the far side on a locked one, 5.7.7.
+   */
   readonly contrastK: number;
+  /**
+   * Which way that swing runs.
+   *
+   * A locked world's surface is not banded by latitude at all: the only axis
+   * that means anything on it runs from the point under its star to the point
+   * opposite, and its own poles both sit on the terminator at the same
+   * temperature as each other. So a locked world is modelled with that axis as
+   * its polar axis - the star overhead at the north pole, endless night at the
+   * south - and every figure below that takes a sine of latitude is reading the
+   * cosine of the angle to the star instead. It is the same sphere with its
+   * label changed, and it is what puts the ice cap on the dark side and the open
+   * water in a ring rather than a belt.
+   */
+  readonly gradient: "latitude" | "substellar";
   readonly air: number;
   readonly water: number;
   /** How far air and water have worked the surface over, 0 for bare stone. */
@@ -110,9 +135,17 @@ export function biomeWorldFor(uwp: string, detail: PlanetDetail): BiomeWorld {
   const cover = coverFactorsFor(uwp, detail);
   const pressure = detail.pressureAtm ?? 0;
   const wet = detail.hydrographicsPct ?? 0;
+  const locked = isTidallyLocked(
+    detail.rotationHours,
+    detail.orbitAu,
+    detail.climate.luminosity,
+  );
   return {
     meanTempK: detail.meanTempK,
-    contrastK: latitudeContrastK(seasonalTiltDeg(detail.axialTiltDeg), pressure),
+    gradient: locked ? "substellar" : "latitude",
+    contrastK: locked
+      ? lockedContrastK(detail.meanTempK, pressure)
+      : latitudeContrastK(seasonalTiltDeg(detail.axialTiltDeg), pressure),
     air: cover?.air ?? DEFAULT_AIR,
     water: cover?.water ?? DEFAULT_WATER,
     weathering: Math.max(
@@ -125,9 +158,14 @@ export function biomeWorldFor(uwp: string, detail: PlanetDetail): BiomeWorld {
 
 /* One place ---------------------------------------------------------------- */
 
-/** The mean temperature at a latitude, in kelvin. Spec 5.7.3. */
+/**
+ * The mean temperature at a place, in kelvin. Spec 5.7.3, or 5.7.7 where the
+ * world is locked and `sinLat` is the cosine of the angle to its star.
+ */
 export function temperatureAt(world: BiomeWorld, sinLat: number): number {
-  return temperatureAtLatitude(world.meanTempK, world.contrastK, sinLat);
+  return world.gradient === "substellar"
+    ? temperatureAtStar(world.meanTempK, world.contrastK, sinLat)
+    : temperatureAtLatitude(world.meanTempK, world.contrastK, sinLat);
 }
 
 /**
@@ -136,7 +174,11 @@ export function temperatureAt(world: BiomeWorld, sinLat: number): number {
  * belts of 5.7.2.2 taken out of it.
  */
 export function coverAt(world: BiomeWorld, sinLat: number, tempK = temperatureAt(world, sinLat)): number {
-  return world.air * world.water * warmthAt(tempK) * dryBelt(sinLat, world.air);
+  // The dry belts are a turning world's cells, thrown by the spin that a locked
+  // world has not got. Its own dry half is the night side, and the temperature
+  // above has already said so.
+  const belts = world.gradient === "substellar" ? 1 : dryBelt(sinLat, world.air);
+  return world.air * world.water * warmthAt(tempK) * belts;
 }
 
 /** How far the soil has given way to the rock under it, 0 to 1. */
