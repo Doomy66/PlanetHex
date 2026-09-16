@@ -3819,6 +3819,7 @@ function openSector(next: SectorDoc): void {
   openLevels.system = false;
   openLevels.planet = false;
   drawSector();
+  sectorMap.resetView();
   showCrumbs();
   selectLetter(null);
   secSay(`${sector?.worlds.length ?? 0} worlds in sixteen subsectors.`);

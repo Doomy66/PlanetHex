@@ -874,6 +874,17 @@ body[data-view="subsector"] .sector { display: none; }
 .sec-airless { fill: #8d96a2; }
 .sec-empty { fill: none; stroke: #6d7784; stroke-width: 1.2; }
 .sec-name { fill: #dfe3ea; font-size: 15px; text-anchor: middle; }
+/* What a hex holds once the view is close enough for it to fit. SectorSpec
+   4.4.1: the map becomes the chart rather than showing a smaller one. */
+.sec-at { fill: #59636f; font-size: 11px; text-anchor: middle; font-variant-numeric: tabular-nums; }
+.sec-port { fill: #dbe3ec; font-size: 14px; text-anchor: middle; font-weight: 600; }
+.sec-close .sec-name { font-size: 13px; fill: #f0f4f9; }
+.sec-close .sec-cell { stroke: #39414d; }
+/* The letters are for finding a subsector at a glance, and at this range the
+   glance has already happened. */
+.sec-close .sec-letter { opacity: 0; }
+.sectormap { cursor: grab; }
+.sectormap:active { cursor: grabbing; }
 .sec-route { stroke: #35608f; stroke-width: 1.6; opacity: 0.5; }
 .sec-xboat { stroke: #6aa6e8; stroke-width: 3; opacity: 0.85; }
 .sec-hex { cursor: pointer; }
