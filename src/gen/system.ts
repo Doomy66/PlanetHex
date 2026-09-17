@@ -20,41 +20,73 @@ import { pbgFor, type Pbg } from "./trade";
 import { planetDetail } from "./detail";
 import { valueFor } from "./rng";
 import { diameterKm, starsFor, systemLuminosity, type Stars } from "./star";
+import { stellarMassFor } from "./climate";
 import { basesFor, zoneFor } from "./base";
 import { jumpShadowKm, kmToAu } from "./jump";
 
 /**
- * The orbits, in AU. The solar system's own spacing, which is the pattern
- * climate.ts already describes: each orbit out is a multiple of the last rather
- * than a step further, so the inner ones are crowded and the outer ones are not.
- */
-const ORBIT_AU = [0.2, 0.4, 0.7, 1.0, 1.6, 2.8, 5.2, 10, 20, 30, 40, 52] as const;
-
-/**
- * The innermost orbit a star leaves alone, as a multiple of the square root of
- * its luminosity. A big hot star sweeps and scatters what forms close in, which
- * is SystemSpec 3.1, and the square root is there because everything in this
- * file that converts a star's output to a distance uses it: twice as far for
- * four times the light.
- */
-const SWEPT_INSIDE = 0.05;
-
-/**
- * The outermost orbit worth drawing, on the same scaling. Past it a world gets
- * so little light that it is a frozen rock whatever its profile says, and
- * SystemSpec 3.1 has a small star with few orbits far enough out to matter.
- */
-const REACHES_TO = 40;
-
-/**
- * The sunlight-equivalent band a world can hold liquid water in.
+ * The orbits, in sunlight-equivalent AU: where they would be around the Sun.
+ * SystemSpec 3.2.
  *
- * Wider than a bare rock's freezing point either side, because a world's own air
- * moves it: a thick atmosphere keeps water liquid further out and a bright cloudy
- * one stays cool further in. The band is what the star offers, and section 5 is
- * where a particular world's own reading of it is taken.
+ * The solar system's own spacing, which is the pattern climate.ts already
+ * describes - each orbit out is a multiple of the last rather than a step
+ * further, so the inner ones are crowded and the outer ones are not.
+ *
+ * Sunlight-equivalent and not AU, because the ladder moves with the star. See
+ * `orbitsFor`.
  */
-const HABITABLE_BAND = { near: 0.75, far: 1.5 } as const;
+const ORBIT_SUN_AU = [0.2, 0.4, 0.7, 1.0, 1.6, 2.8, 5.2, 10, 20, 30, 40, 52] as const;
+
+/**
+ * The sunlight-equivalent band a world can hold liquid water in. SystemSpec 3.2.
+ *
+ * Kopparapu's optimistic limits, which is recent Venus at 0.75 and early Mars at
+ * about 1.8: both of those are places we know held liquid water, which is a
+ * better pair of bounds than a bare rock's freezing point. It puts two of the
+ * orbits above in the zone, which is the "orbit or two" of 3.2.
+ */
+const HABITABLE_BAND = { near: 0.75, far: 1.84 } as const;
+
+/**
+ * How close a rocky world can get to a star before tides pull it apart, in AU
+ * per cube root of a solar mass. SystemSpec 3.1.
+ *
+ * The Roche limit, 2.44 times the star's radius times the cube root of the ratio
+ * of their densities. Write the star's density out as its mass over its volume
+ * and the radius cancels, which leaves a distance that depends on the star's
+ * mass alone: 2.44 times the cube root of three M over four pi times the density
+ * of rock. For the Sun that is 0.0072 AU.
+ *
+ * It is the one distance here that does not move with the light, and it is why
+ * the ladder needs a floor at all. A white dwarf puts out a ten-thousandth of
+ * the Sun's light, so its scaled innermost orbit lands at a five-hundredth of an
+ * AU - and a rocky world there is the debris disc we actually see around white
+ * dwarfs rather than a planet.
+ */
+const ROCHE_PER_CUBE_ROOT_MASS_AU = 0.0072;
+
+/**
+ * How far out a system of planets reaches at all, in AU, whatever the star.
+ * SystemSpec 3.1.
+ *
+ * A protoplanetary disc is a few hundred AU across and its size is set by the
+ * angular momentum of the cloud core it fell out of rather than by the star's
+ * light, so this one does not scale either. Without it a supergiant's innermost
+ * orbit lands two hundred AU out and its outermost most of a light year, which
+ * is not a planetary system - and the light a supergiant puts out is not what
+ * stops it being one.
+ */
+const DISC_REACHES_AU = 100;
+
+/**
+ * How many orbits a disc left behind, at the least and the most. SystemSpec 3.1.
+ *
+ * Real counts run from one to eight or more and follow the mass of the disc,
+ * which follows the mass of the star loosely and with enormous scatter. So the
+ * star leans on a draw here rather than deciding it. The floor is set so that
+ * every system has the habitable orbit of 3.2, whether or not anything is in it.
+ */
+const DISC_ORBITS = { fewest: 5, most: ORBIT_SUN_AU.length } as const;
 
 /**
  * What makes a world one that wants the habitable zone: water to keep liquid,
@@ -198,24 +230,70 @@ export function mainWorldSeed(systemSeed: string): string {
 }
 
 /**
- * The orbits a star has, before anything is put in them. SystemSpec 3.
+ * Where a star's orbits are. SystemSpec 3.1.
  *
- * Both ends scale with the square root of the star's output, so a dim star has a
- * short crowded run of orbits and a bright one has its inner orbits swept away.
+ * The whole ladder scales with the square root of the star's output, because
+ * every distance that means anything thermally does. The light falling on a
+ * world is the star's output over the square of the distance, so the place where
+ * water melts, where dust stops surviving, and where a world freezes solid all
+ * sit at their sunlight-equivalent distance times the root of the luminosity.
+ * That is the inverse square law rather than a choice, and climate.ts has always
+ * placed a planet's own orbit that way; this is the same arithmetic one level up.
+ *
+ * It is what the sky looks like. TRAPPIST-1 puts out a two-thousandth of the
+ * Sun's light and holds seven planets between 0.011 and 0.062 AU - sunlight
+ * equivalents of half an AU to two and a half, which is Venus out to the belt.
+ * A ladder fixed in AU cannot draw that system: its innermost orbit would be a
+ * sunlight-equivalent nine AU out, past Saturn, and every world around every
+ * dim star comes out a frozen rock.
+ *
+ * A big hot star having nothing close in then needs no rule of its own. The
+ * innermost orbit of a star sixty times the Sun's output is one and a half AU,
+ * which is where the sweeping and scattering of 3.1 would have left it anyway.
  */
 export function orbitsFor(luminosity: number): readonly { index: number; au: number; sunEquivalentAu: number; habitable: boolean }[] {
-  const reach = Math.sqrt(luminosity);
-  return ORBIT_AU.map((au, index) => ({ au, index }))
-    .filter(({ au }) => au >= SWEPT_INSIDE * reach && au <= REACHES_TO * reach)
-    .map(({ au, index }) => {
-      const sunEquivalentAu = au / reach;
-      return {
-        index,
-        au,
-        sunEquivalentAu,
-        habitable: sunEquivalentAu >= HABITABLE_BAND.near && sunEquivalentAu <= HABITABLE_BAND.far,
-      };
-    });
+  const reach = Math.sqrt(Math.max(luminosity, 0) || 1);
+  return ORBIT_SUN_AU.map((sunEquivalentAu, index) => ({
+    index,
+    au: sunEquivalentAu * reach,
+    sunEquivalentAu,
+    habitable:
+      sunEquivalentAu >= HABITABLE_BAND.near && sunEquivalentAu <= HABITABLE_BAND.far,
+  }));
+}
+
+const clamp01 = (v: number): number => (v < 0 ? 0 : v > 1 ? 1 : v);
+
+/**
+ * How many of them this system actually has. SystemSpec 3.1.
+ *
+ * The one thing about a system that does not follow from the star's light. Now
+ * that the ladder above moves with the star, filtering it by what the star
+ * sweeps or lights would cut the same orbits off every star and say nothing, so
+ * how far out a system reaches is drawn - leaning on the star's mass, because a
+ * heavier star forms from a heavier core and keeps a bigger disc, and leaning
+ * only, because the scatter in the real counts swamps the trend.
+ */
+export function discOrbitsFor(
+  seed: string,
+  luminosity: number,
+): readonly { index: number; au: number; sunEquivalentAu: number; habitable: boolean }[] {
+  const mass = stellarMassFor(luminosity);
+  const roche = ROCHE_PER_CUBE_ROOT_MASS_AU * Math.cbrt(mass);
+  const room = orbitsFor(luminosity).filter(
+    (orbit) => orbit.au >= roche && orbit.au <= DISC_REACHES_AU,
+  );
+  // The chart above has put a world in this hex, so there has to be somewhere
+  // for it to go even around a star with no room for one. The innermost orbit
+  // stands, and the world in it is somewhere nobody should be.
+  if (room.length === 0) return orbitsFor(luminosity).slice(0, 1);
+  // A tenth of a solar mass leans towards the fewest, ten of them to the most.
+  const lean = clamp01((Math.log10(mass) + 1) / 2);
+  const share = clamp01((lean + valueFor(`${seed}:disc`, 0)) / 2);
+  const held = Math.round(
+    DISC_ORBITS.fewest + share * (DISC_ORBITS.most - DISC_ORBITS.fewest),
+  );
+  return room.slice(0, Math.max(1, held));
 }
 
 /**
@@ -269,7 +347,7 @@ export function generateSystem(seed: string, given?: Stars): StarSystem {
   // What the orbits are lit by, which is both stars where the companion is
   // inside them all and the primary alone where it is outside them all.
   const luminosity = systemLuminosity(stars);
-  const laid = orbitsFor(luminosity);
+  const laid = discOrbitsFor(seed, luminosity);
   const worldSeed = mainWorldSeed(seed);
   const uwp = rollUwp(worldSeed);
   const pbg = pbgFor(worldSeed, uwp);

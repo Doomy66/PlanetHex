@@ -8,6 +8,7 @@ import {
   namesOf,
   mainWorldSeed,
   ordinalOf,
+  discOrbitsFor,
   orbitsFor,
   worldIn,
   worldName,
@@ -16,6 +17,7 @@ import {
 import { basesFor } from "./base";
 import { planetDetail } from "./detail";
 import { luminosityOf, starsFor } from "./star";
+import { stellarMassFor } from "./climate";
 
 const SEEDS = Array.from({ length: 500 }, (_, i) => `system-${i}`);
 
@@ -450,11 +452,37 @@ describe("orbitsFor", () => {
     expect(sun[0]!.au).toBeLessThan(giant[0]!.au);
   });
 
-  it("leaves a dim star a short run of orbits", () => {
+  it("puts a dim star's whole run closer in", () => {
+    // SystemSpec 3.1: the ladder moves with the star, because the light falling
+    // on a world is the star's output over the square of the distance. A dim
+    // star's system is compact in AU and not a cold copy of the Sun's.
     const dwarf = orbitsFor(luminosityOf("M", "V"));
     const sun = orbitsFor(luminosityOf("G", "V"));
-    expect(dwarf.length).toBeLessThan(sun.length);
+    expect(dwarf[0]!.au).toBeLessThan(sun[0]!.au);
     expect(dwarf[dwarf.length - 1]!.au).toBeLessThan(sun[sun.length - 1]!.au);
+  });
+
+  it("scales the innermost orbit with the root of the star's output", () => {
+    // The thing a fixed ladder got wrong. TRAPPIST-1 puts out a two-thousandth
+    // of the Sun's light and holds seven planets inside a sixteenth of an AU; an
+    // innermost orbit pinned at 0.2 AU would be out past its Saturn.
+    const sun = orbitsFor(1);
+    for (const luminosity of [0.0005, 0.02, 1, 4, 60]) {
+      const held = orbitsFor(luminosity);
+      expect(held[0]!.au / sun[0]!.au, String(luminosity)).toBeCloseTo(
+        Math.sqrt(luminosity),
+        6,
+      );
+    }
+  });
+
+  it("gives every star the same orbits measured in sunlight", () => {
+    // Which is what makes the habitable band of 3.2 a band of orbit numbers
+    // rather than a band that some stars miss entirely.
+    const sun = orbitsFor(1).map((orbit) => orbit.sunEquivalentAu);
+    for (const luminosity of [0.0005, 0.02, 4, 60]) {
+      expect(orbitsFor(luminosity).map((o) => o.sunEquivalentAu), String(luminosity)).toEqual(sun);
+    }
   });
 
   it("marks the orbits where water could be liquid", () => {
@@ -462,8 +490,9 @@ describe("orbitsFor", () => {
     const habitable = sun.filter((orbit) => orbit.habitable);
     expect(habitable.length).toBeGreaterThan(0);
     for (const orbit of habitable) {
-      expect(orbit.sunEquivalentAu).toBeGreaterThanOrEqual(0.8);
-      expect(orbit.sunEquivalentAu).toBeLessThanOrEqual(1.5);
+      // Kopparapu's optimistic limits: recent Venus in, early Mars out.
+      expect(orbit.sunEquivalentAu).toBeGreaterThanOrEqual(0.75);
+      expect(orbit.sunEquivalentAu).toBeLessThanOrEqual(1.84);
     }
     // Around the Sun, sunlight-equivalent and actual are the same figure, so the
     // habitable orbit is the one at 1 AU. Anything else means the two readings
@@ -474,7 +503,18 @@ describe("orbitsFor", () => {
   it("has a habitable orbit closer in for a dimmer star", () => {
     const dwarf = orbitsFor(luminosityOf("M", "V")).filter((o) => o.habitable);
     const sun = orbitsFor(luminosityOf("G", "V")).filter((o) => o.habitable);
-    if (dwarf.length > 0) expect(dwarf[0]!.au).toBeLessThan(sun[0]!.au);
+    expect(dwarf.length).toBeGreaterThan(0);
+    expect(dwarf[0]!.au).toBeLessThan(sun[0]!.au);
+  });
+
+  it("gives an orbit or two to liquid water, whatever the star", () => {
+    // SystemSpec 3.2, and the reason a dim star can no longer come out with no
+    // habitable orbit at all: the band is the same orbits for everyone.
+    for (const luminosity of [0.0005, 0.02, 1, 4, 60]) {
+      const zone = orbitsFor(luminosity).filter((o) => o.habitable);
+      expect(zone.length, String(luminosity)).toBeGreaterThanOrEqual(1);
+      expect(zone.length, String(luminosity)).toBeLessThanOrEqual(2);
+    }
   });
 
   it("never runs dry, at either end of what a star can be", () => {
@@ -484,6 +524,63 @@ describe("orbitsFor", () => {
     expect(orbitsFor(dimmest).length).toBeGreaterThan(0);
     for (const seed of SEEDS) {
       expect(orbitsFor(starsFor(seed).primary.luminosity).length, seed).toBeGreaterThan(0);
+    }
+  });
+});
+
+describe("how far out a system reaches", () => {
+  // SystemSpec 3.1. Now that the ladder moves with the star, cutting it by what
+  // the star sweeps or lights would cut the same orbits off every star and say
+  // nothing, so how many orbits a system has is drawn.
+  it("keeps the habitable orbit in every system", () => {
+    for (const seed of SEEDS) {
+      for (const luminosity of [0.0005, 0.02, 1, 4, 60]) {
+        const held = discOrbitsFor(seed, luminosity);
+        expect(held.some((orbit) => orbit.habitable), `${seed} ${luminosity}`).toBe(true);
+      }
+    }
+  });
+
+  it("gives different systems different numbers of orbits", () => {
+    const counts = new Set(SEEDS.map((seed) => discOrbitsFor(seed, 1).length));
+    expect(counts.size).toBeGreaterThan(1);
+  });
+
+  it("leans on the star's mass without being decided by it", () => {
+    // A heavier star forms from a heavier core and keeps a bigger disc; the
+    // scatter in the real counts swamps the trend, so it is a lean.
+    const mean = (luminosity: number) =>
+      SEEDS.reduce((sum, seed) => sum + discOrbitsFor(seed, luminosity).length, 0) /
+      SEEDS.length;
+    expect(mean(60)).toBeGreaterThan(mean(0.02));
+  });
+
+  it("keeps a rocky world outside the Roche limit", () => {
+    // SystemSpec 3.1.4.1. A white dwarf's scaled innermost orbit is a
+    // five-hundredth of an AU, and a rocky world there is the debris disc we see
+    // around white dwarfs rather than a planet.
+    for (const seed of SEEDS) {
+      for (const luminosity of [0.0001, 0.0005, 0.02, 1, 60]) {
+        const held = discOrbitsFor(seed, luminosity);
+        const roche = 0.0072 * Math.cbrt(stellarMassFor(luminosity));
+        expect(held[0]!.au, `${seed} ${luminosity}`).toBeGreaterThanOrEqual(roche);
+      }
+    }
+  });
+
+  it("keeps a supergiant's orbits inside a disc rather than a light year", () => {
+    // SystemSpec 3.1.4.2 and 3.1.6: a star with no room between the limits gets
+    // the one orbit it needs for the world the chart put in the hex, and no run
+    // of orbits stretching most of the way to the next star.
+    expect(discOrbitsFor("SUPERGIANT", 1e6).length).toBe(1);
+    for (const orbit of discOrbitsFor("SEED", 60)) {
+      expect(orbit.au).toBeLessThanOrEqual(100);
+    }
+  });
+
+  it("is the same system every time", () => {
+    for (const seed of SEEDS) {
+      expect(discOrbitsFor(seed, 1)).toEqual(discOrbitsFor(seed, 1));
     }
   });
 });

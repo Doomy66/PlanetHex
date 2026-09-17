@@ -92,9 +92,29 @@ This document sits under [SubSectorSpec.md](SubSectorSpec.md) and over [PlanetSp
 
 ## 3. Orbits
 
-3.1 A system has a numbered sequence of orbits outward from the primary. How many depends on the primary: a large, hot star sweeps and scatters the inner ones, a small one has few that are far enough out to matter.
+3.1 A system has a numbered sequence of orbits outward from the primary. The orbits are spaced the way the solar system's are, each one out a multiple of the last rather than a step further, so the inner ones are crowded and the outer ones are not.
 
-3.2 Each orbit has a distance, and from the primary's class and size comes a **habitable zone**: the orbit or two where a world could have liquid water and an atmosphere worth breathing.
+3.1.1 The whole ladder is placed in sunlight-equivalent distance and multiplied out by the square root of the primary's luminosity. The light falling on a world is the star's output over the square of the distance, so every distance that means anything thermally - where water melts, where dust stops surviving, where a world freezes solid - sits at its sunlight-equivalent distance times that root. It is the inverse square law rather than a choice, and 6.15 of the planet spec has always placed a planet's own orbit that way; this is the same arithmetic one level up.
+
+3.1.2 It is also what the sky looks like. TRAPPIST-1 puts out a two-thousandth of the Sun's light and holds seven planets between 0.011 and 0.062 AU, which are sunlight equivalents of half an AU out to two and a half: Venus to the asteroid belt. A ladder fixed in AU cannot draw that system. Its innermost orbit would be a sunlight-equivalent nine AU out, past Saturn, so every world around every dim star comes out a frozen rock and the habitable zone of 3.2 falls off the inner end of the system entirely.
+
+3.1.3 A large, hot star having nothing close in then needs no rule of its own. The innermost orbit of a star sixty times the Sun's output is a full AU and a half, which is where its sweeping and scattering would have left it anyway.
+
+3.1.4 Two distances do not scale, because neither is set by the star's light.
+
+3.1.4.1 The floor is the Roche limit: closer than that, tides pull a rocky world apart. It works out as a figure in the star's mass alone, 0.0072 AU per cube root of a solar mass, because writing the star's density as its mass over its volume cancels its radius out. It is what the ladder needs a floor for: a white dwarf puts out a ten-thousandth of the Sun's light, so its scaled innermost orbit lands at a five-hundredth of an AU, and a rocky world there is the debris disc we actually see around white dwarfs rather than a planet.
+
+3.1.4.2 The ceiling is how far out a disc of planets reaches at all, a hundred AU. A protoplanetary disc is a few hundred AU across and its size is set by the angular momentum of the cloud core it fell out of, not by the star's light. Without the ceiling a supergiant's innermost orbit lands two hundred AU out and its outermost most of a light year, which is not a planetary system.
+
+3.1.5 How many orbits a system has is drawn, leaning on the primary's mass. With the ladder moving with the star, cutting it by what the star sweeps or lights would cut the same orbits off every star and say nothing at all. Real counts run from one to eight or more and follow the mass of the disc, which follows the mass of the star loosely and with enormous scatter, so the star leans on the draw rather than deciding it. The floor is set so that a system has the habitable orbit of 3.2 in it, whether or not anything is put there.
+
+3.1.6 A star with no room between the two limits of 3.1.4 still gets one orbit. The chart above has put a world in this hex and there has to be somewhere for it to go; it is somewhere nobody should be, and the figures say so.
+
+3.2 Each orbit has a distance, and from the primary's class and size comes a **habitable zone**: the orbit or two where a world could have liquid water and an atmosphere worth breathing. The band is Kopparapu's optimistic limits, a sunlight-equivalent 0.75 to 1.84 AU, which is recent Venus at one end and early Mars at the other - two places we know held liquid water, which is a better pair of bounds than a bare rock's freezing point.
+
+3.2.1 Because the ladder of 3.1.1 is the same ladder in sunlight for every star, the band is a band of orbit numbers and not one that some stars miss. A dim star has a habitable orbit; it is simply very close in.
+
+3.2.2 And close in is where tides settle a world's spin, so around a dim star the habitable orbit is inside the despinning reach of the planet spec 6.12.3 and the world in it is tidally locked, with the temperature model of its 5.7.7. That is not an artefact. The habitable zone goes as the square root of the luminosity and the tidal reach as the cube root of the mass, and below about half a solar mass the first falls inside the second - which is why Proxima b and the TRAPPIST-1 planets are all expected to be locked.
 
 3.3 The habitable zone is derived from the star, and the star is rolled before anything is placed. So the arithmetic runs: roll the star, lay out its orbits, find the habitable zone, then fill the orbits under sections 4 to 6.
 
