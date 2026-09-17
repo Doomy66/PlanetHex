@@ -3089,8 +3089,44 @@ function confirmSubDiscard(action: string): boolean {
   return confirm(`${subDoc.name || "This subsector"} has unsaved changes. ${action} and lose them?`);
 }
 
+/**
+ * What rolling another subsector would lose, asked before it does. SubSectorSpec
+ * 5.6.
+ *
+ * Unsaved changes are one thing. Under a sector there is another: the letter may
+ * already carry work the sector has put away, and the dirty mark was cleared
+ * when it was opened out of the sector, so nothing on the screen says so. A roll
+ * replaces it, and replacing an evening's work without asking is not on.
+ */
+function confirmSubRoll(): boolean {
+  if (subDoc === null) return true;
+  const systems = subDoc.systems.length;
+  const written = subDoc.overrides.length;
+  if (!subDirty && systems === 0 && written === 0) return true;
+  const name = subDoc.name.trim() === "" ? `Subsector ${subDoc.letter}` : subDoc.name.trim();
+  const holds = [
+    systems === 0 ? "" : systems === 1 ? "one system worked up" : `${systems} systems worked up`,
+    written === 0 ? "" : written === 1 ? "one hex written on" : `${written} hexes written on`,
+  ]
+    .filter(Boolean)
+    .join(" and ");
+  const loses = holds === "" ? "has unsaved changes" : `has ${holds}`;
+  return confirm(`${name} ${loses}. Roll another subsector over it and lose that?`);
+}
+
+/**
+ * Roll another subsector. SubSectorSpec 5.5, and SectorSpec 7.1 where there is a
+ * sector above.
+ *
+ * Under a sector, rolling rolls this letter again rather than walking out of the
+ * sector. The new subsector goes in the same slot, wearing the sector's name and
+ * lean, and the sector carries it the way it carried the one before - a referee
+ * who does not like the look of C wants another C, not to be put back on the
+ * landing page with the sector closed behind them.
+ */
 function startNewSubsector(): void {
-  if (!confirmSubDiscard("Roll another subsector")) return;
+  if (!confirmSubRoll()) return;
+  const under = subParent === "sector" ? sectorDoc : null;
   // Which of the sixteen this is comes from what was already open, since a
   // subsector rolled from the landing page is a subsector and its letter only
   // says where in a sector it would sit.
@@ -3098,8 +3134,17 @@ function startNewSubsector(): void {
   const density = (el<HTMLSelectElement>("sub-density").value || "standard") as Density;
   const held = newSubsectorDoc(randomSeed(), letter, density, `Subsector ${letter}`);
   subFolder = null;
-  openSubsector(held);
+  if (under !== null) {
+    held.sector = under.name;
+    held.shifts = { ...under.shifts };
+    // Against its letter before it is drawn, so the sector the border of 4.5 is
+    // read from is a sector that already holds it.
+    keepSubsector(under, letter, held);
+    markSectorDirty();
+  }
+  openSubsector(held, under === null ? "landing" : "sector");
   markSubClean();
+  if (under !== null) subSay(`Rolled another subsector ${letter}.`);
 }
 
 /** Put a document on screen, and the chart it describes with it. */
@@ -3107,6 +3152,8 @@ function openSubsector(next: SubsectorDoc, parent: "landing" | "sector" = "landi
   subDoc = next;
   subParent = parent;
   el("sub-home").textContent = parent === "sector" ? "Sector" : "Levels";
+  el("sub-roll").title =
+    parent === "sector" ? `Roll another subsector ${next.letter}` : "Another subsector";
   // A chart under a sector is saved by that sector, the way a system under a
   // chart is saved by the chart. AppSpec 4.10.
   el("sub-save").hidden = parent === "sector";

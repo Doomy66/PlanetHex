@@ -9,7 +9,7 @@ import {
 } from "./sector";
 import { generateSector, letterAt, subsectorSeedFor, SECTOR_HEXES, type Sector } from "./gen/sector";
 import { generateSubsector } from "./gen/subsector";
-import { setOverride, subsectorOf } from "./subsector";
+import { newSubsectorDoc, setOverride, subsectorOf } from "./subsector";
 import { hexDistance, subsectorLetter, parseSectorHex, SUBSECTOR_LETTERS } from "./location";
 
 const SEED = "SPINWARD";
@@ -135,6 +135,31 @@ describe("a sector document", () => {
     held.density = "dense";
     keepSubsector(doc, "C", held);
     expect(sectorOf(doc).routes.length).toBeGreaterThan(before);
+  });
+
+  it("keeps a letter rolled again, and leaves the other fifteen alone", () => {
+    // SectorSpec 7.1: a referee who does not like the look of C wants another C
+    // in the same slot, not to be put back on the landing page with the sector
+    // closed behind them. The rolled subsector carries its own seed, so the
+    // sector stores it rather than rolling the letter's own seed again.
+    const doc = newSectorDoc(SEED, "Spinward Marches");
+    const before = sectorOf(doc);
+    const rolled = newSubsectorDoc("ANOTHER-C", "C", doc.density, "Subsector C");
+    keepSubsector(doc, "C", rolled);
+    const after = sectorOf(doc);
+
+    const inC = (held: Sector) => held.worlds.filter((w) => letterAt(w.at) === "C");
+    expect(inC(after).map((w) => w.uwp)).not.toEqual(inC(before).map((w) => w.uwp));
+    const rest = (held: Sector) =>
+      held.worlds.filter((w) => letterAt(w.at) !== "C").map((w) => w.uwp);
+    expect(rest(after)).toEqual(rest(before));
+    // And it is the subsector that seed makes, opened from the sector or alone:
+    // AppSpec 1.3, hex by hex. The sector lays its worlds out in hex order and a
+    // subsector in its own, so the comparison is of what is there and not of the
+    // order it comes in.
+    expect(inC(after).map((w) => w.at + w.uwp).sort()).toEqual(
+      subsectorOf(rolled).worlds.map((w) => w.at + w.uwp).sort(),
+    );
   });
 
   it("carries a hand-written world up to the sector", () => {
