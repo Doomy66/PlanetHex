@@ -4,7 +4,7 @@ import { splitLegacyLocation } from "./location";
 import { parsePois, type Poi } from "./poi";
 
 /**
- * The planet record, and the thing a save file holds. Spec.md section 6.1.
+ * The planet record, and the thing a save file holds. PlanetSpec.md section 6.1.
  *
  * Heights are absent on purpose: they are rebuilt from seed and size on load, so
  * a save can never disagree with what the generator produces.
@@ -13,6 +13,21 @@ export interface Planet {
   /** Save format version, so a later phase can add fields. Spec 6.4.2. */
   readonly version: 1;
   name: string;
+  /**
+   * Where the world sits in its system - "Sol-3", "Regina Belt-1" - or null for
+   * a world that has no system. SystemSpec 7.2 and AppSpec 4.2.1.
+   *
+   * A world's name is what people call it and can be anything; its designation
+   * is which body of which system it is, and is what its files are named for. A
+   * world named Earth is still Sol-3 on disk, because a folder of files is read
+   * by somebody looking for the third orbit of a system whose folder they are
+   * standing in.
+   *
+   * Stored rather than worked out, because a world opened from a file has no
+   * system to ask. Null for a planet rolled on its own, which is named for
+   * itself and saved into a folder of its own - AppSpec 4.2.4.
+   */
+  designation: string | null;
   /** The sector the world sits in, free text. Spec 6.14. */
   sector: string;
   /** Its four digit hex within that sector, held as typed. Spec 6.14. */
@@ -26,6 +41,28 @@ export interface Planet {
    */
   tiltDeg: number | null;
   orbitAu: number | null;
+  /**
+   * The output of the star this world orbits, relative to the Sun, or null for a
+   * world whose star nobody has named. PlanetSpec 6.15.13.
+   *
+   * Here rather than in the system it came from, because a save has to hold
+   * everything its surface is built from: a world lifted out of a system and
+   * opened on its own has to come up the same world, and its climate cannot be
+   * worked out without knowing what is shining on it. Null means the Sun, which
+   * is what every world generated before systems existed was assumed to have.
+   */
+  luminosity: number | null;
+  /**
+   * The star, as a label: "G2 V", or null for a world whose star nobody has
+   * named. PlanetSpec 6.15.13.1.
+   *
+   * Beside the luminosity rather than instead of it, because they answer
+   * different questions. The luminosity is what the climate is worked out from
+   * and is the only figure generation reads; the label is what a referee wrote
+   * down, what a sector line carries, and what the field on screen shows. A
+   * world handed down from a system gets both from that system's primary.
+   */
+  star: string | null;
   rotationHours: number | null;
   /** How many impacts the surface carries, or null for what the seed rolled. Spec 6.15.12. */
   craters: number | null;
@@ -38,6 +75,37 @@ export interface Planet {
 
 export const DEFAULT_SIZE = DEFAULT_DETAIL;
 
+/**
+ * A planet record with nothing rolled into it, for a window that has not opened
+ * a planet yet. AppSpec 2.5: the landing page is a chooser, and choosing nothing
+ * must cost nothing.
+ *
+ * Every field is the empty form of itself rather than a default worth looking
+ * at, because nothing reads this record: New replaces it under AppSpec 3.1 and
+ * Load overwrites it. A blank seed is the tell. No seed means no world, where a
+ * seed that happened to be lying about would mean a world nobody asked for.
+ */
+export function blankPlanet(): Planet {
+  return {
+    version: 1,
+    name: "",
+    sector: "",
+    hex: "",
+    uwp: "",
+    narrative: "",
+    tiltDeg: null,
+    orbitAu: null,
+    luminosity: null,
+    star: null,
+    designation: null,
+    rotationHours: null,
+    craters: null,
+    seed: "",
+    size: DEFAULT_DETAIL,
+    pois: [],
+  };
+}
+
 export function newPlanet(seed = randomSeed()): Planet {
   return {
     version: 1,
@@ -48,6 +116,9 @@ export function newPlanet(seed = randomSeed()): Planet {
     narrative: "",
     tiltDeg: null,
     orbitAu: null,
+    luminosity: null,
+    star: null,
+    designation: null,
     rotationHours: null,
     craters: null,
     seed,
@@ -56,12 +127,41 @@ export function newPlanet(seed = randomSeed()): Planet {
   };
 }
 
+/**
+ * The alphabet a seed is written in. No letters that can be read as digits, since
+ * a seed is meant to be copied off a screen and typed back in.
+ */
+const SEED_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+const SEED_LENGTH = 8;
+
 /** A short readable seed. Uses Math.random because this is a choice, not generation. */
 export function randomSeed(): string {
-  const alphabet = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
   let out = "";
-  for (let i = 0; i < 8; i++) {
-    out += alphabet[Math.floor(Math.random() * alphabet.length)];
+  for (let i = 0; i < SEED_LENGTH; i++) {
+    out += SEED_ALPHABET[Math.floor(Math.random() * SEED_ALPHABET.length)];
+  }
+  return out;
+}
+
+/**
+ * A seed derived from other seeds, in the same form and alphabet as one drawn at
+ * random. SubSectorSpec 3.1.3 and SystemSpec 5.1.
+ *
+ * This is what makes a chain of levels a chain: a subsector names its hexes'
+ * system seeds, a system names its worlds' seeds, and every one of them is an
+ * ordinary seed that can be copied off the screen and opened on its own. Under
+ * AppSpec 1.3 the world that comes back has to be the same world, which needs
+ * only that the derivation is a function of its parts and nothing else.
+ *
+ * The parts are joined with a separator that cannot appear in them, so no two
+ * different chains can collide by running together into the same string.
+ */
+export function seedFrom(...parts: readonly string[]): string {
+  const key = parts.join("\u0000");
+  let out = "";
+  for (let i = 0; i < SEED_LENGTH; i++) {
+    const value = valueFor(key, i);
+    out += SEED_ALPHABET[Math.min(SEED_ALPHABET.length - 1, Math.floor(value * SEED_ALPHABET.length))];
   }
   return out;
 }
@@ -94,7 +194,20 @@ const WATERLESS_ATMOSPHERES = new Set([0, 1, 10, 11, 12]);
  * The dice come from the seed rather than Math.random, so the profile is part of
  * what the seed names and a shared seed brings the same world with it.
  */
-export function rollUwp(seed: string): string {
+/**
+ * What a region does to the worlds in it. SubSectorSpec 3.11.
+ *
+ * A modifier on the dice rather than a number written over the answer, so a
+ * settled region rolls settled worlds: a population modifier carries into the
+ * government and the law that follow from it, which is how the rules work and
+ * what a figure written over the top afterwards would miss.
+ */
+export interface UwpShifts {
+  readonly population?: number;
+  readonly tech?: number;
+}
+
+export function rollUwp(seed: string, shifts: UwpShifts = {}): string {
   let die = 0;
   const d6 = () => Math.floor(valueFor(seed + ":uwp", die++) * 6) + 1;
   const roll2 = () => d6() + d6();
@@ -110,7 +223,7 @@ export function rollUwp(seed: string): string {
   const hydrographics =
     size <= 1 ? 0 : clamp(rolls.hydrographics - 7 + size + waterDm, HYDROGRAPHICS_LIMIT);
 
-  const population = clamp(roll2() - 2, POPULATION_LIMIT);
+  const population = clamp(roll2() - 2 + (shifts.population ?? 0), POPULATION_LIMIT);
   const governmentRoll = roll2();
   const lawRoll = roll2();
   const techRoll = d6();
@@ -119,7 +232,8 @@ export function rollUwp(seed: string): string {
   const government = population === 0 ? 0 : clamp(governmentRoll - 7 + population, GOVERNMENT_LIMIT);
   const law = population === 0 ? 0 : clamp(lawRoll - 7 + government, LAW_LIMIT);
   const profile = { starport, size, atmosphere, hydrographics, population, government, law };
-  const tech = population === 0 ? 0 : clamp(techRoll + techLevelDm(profile), TECH_LIMIT);
+  const tech =
+    population === 0 ? 0 : clamp(techRoll + techLevelDm(profile) + (shifts.tech ?? 0), TECH_LIMIT);
 
   const digits = [size, atmosphere, hydrographics, population, government, law];
   return `${starport}${digits.map(hexDigit).join("")}-${hexDigit(tech)}`;
@@ -189,6 +303,14 @@ export function parsePlanet(text: string): Planet {
   return {
     version: 1,
     name: typeof r["name"] === "string" ? r["name"] : "Unnamed",
+    // A save written before systems existed has no designation, which is the
+    // same planet as one rolled on its own: named for itself, and saved under
+    // its own name. AppSpec 4.2.4.
+    designation:
+      typeof r["designation"] === "string" && r["designation"].trim() !== ""
+        ? r["designation"]
+        : null,
+    star: typeof r["star"] === "string" && r["star"].trim() !== "" ? r["star"] : null,
     ...readLocation(r),
     // "upp" is the field name this build used before the rename to UWP.
     uwp: typeof r["uwp"] === "string" ? r["uwp"] : typeof r["upp"] === "string" ? r["upp"] : "",
@@ -210,6 +332,7 @@ export function parsePlanet(text: string): Planet {
 function readSettings(r: Record<string, unknown>): {
   tiltDeg: number | null;
   orbitAu: number | null;
+  luminosity: number | null;
   rotationHours: number | null;
   craters: number | null;
 } {
@@ -220,6 +343,9 @@ function readSettings(r: Record<string, unknown>): {
   return {
     tiltDeg: setting("tiltDeg"),
     orbitAu: setting("orbitAu"),
+    // A save written before stars existed says nothing about one, and a world
+    // around no star is a world around the Sun. PlanetSpec 6.15.13.1.
+    luminosity: setting("luminosity"),
     rotationHours: setting("rotationHours"),
     craters: setting("craters"),
   };
@@ -260,6 +386,25 @@ const UWP_PATTERN = /^([A-EX])([0-9A-Z])([0-9A-Z])([0-9A-Z])([0-9A-Z])([0-9A-Z])
  * free text the user can type into, so anything downstream of it has to cope with
  * half-finished input rather than assume eight good positions.
  */
+/**
+ * The digits written back as a profile string. The inverse of parseUwp, for
+ * anything that works out a profile rather than rolling one: a world in a system
+ * under [SystemSpec.md](SystemSpec.md) 6.3 and 6.4 takes its physical digits from
+ * its own seed and its social ones from the world it was settled from, and has to
+ * put the two halves back together.
+ */
+export function formatUwp(profile: Uwp): string {
+  const digits = [
+    profile.size,
+    profile.atmosphere,
+    profile.hydrographics,
+    profile.population,
+    profile.government,
+    profile.law,
+  ];
+  return `${profile.starport}${digits.map(hexDigit).join("")}-${hexDigit(profile.tech)}`;
+}
+
 export function parseUwp(uwp: string): Uwp | null {
   const match = UWP_PATTERN.exec(uwp.trim().toUpperCase());
   if (!match) return null;

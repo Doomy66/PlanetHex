@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { iceCapsFor, icedFraction, isIced, isIceCapped } from "./ice";
 import { planetDetail, type PlanetDetail } from "./detail";
+import { orbitalPeriodHours } from "./climate";
 import { parseUwp } from "../planet";
 import { aggressionFor, erosion, waterActivity, windFor } from "./shape";
 import { heightColour, terrainBand } from "../ui/colour";
@@ -11,7 +12,15 @@ import { heightColour, terrainBand } from "../ui/colour";
  * the other two move at the same time.
  */
 const world = (axialTiltDeg: number, meanTempK: number, hydrographicsPct: number) =>
-  ({ axialTiltDeg, meanTempK, hydrographicsPct }) as PlanetDetail;
+  ({
+    axialTiltDeg,
+    meanTempK,
+    hydrographicsPct,
+    // Turning, so the caps are the two of 5.4 rather than the night cap of 5.4.7.
+    rotationHours: 24,
+    orbitAu: 1,
+    climate: { luminosity: 1 } as PlanetDetail["climate"],
+  }) as PlanetDetail;
 
 /**
  * The same for erosion, where what matters is the air and what state the water is
@@ -19,7 +28,15 @@ const world = (axialTiltDeg: number, meanTempK: number, hydrographicsPct: number
  * terms can be read on their own.
  */
 const surface = (over: Partial<PlanetDetail>) =>
-  ({ meanTempK: 290, rotationHours: 24, hydrographicsPct: 0, pressureAtm: 0, ...over }) as PlanetDetail;
+  ({
+    meanTempK: 290,
+    rotationHours: 24,
+    orbitAu: 1,
+    climate: { luminosity: 1 } as PlanetDetail["climate"],
+    hydrographicsPct: 0,
+    pressureAtm: 0,
+    ...over,
+  }) as PlanetDetail;
 
 /** Earth's mean surface temperature, and a world frozen hard. */
 const TEMPERATE_K = 287;
@@ -224,5 +241,58 @@ describe("ice in the colouring", () => {
     expect(terrainBand(0.8, 0.5, true)).toBe("Ice cap");
     expect(terrainBand(0.3, 0.5, true)).toBe("Ice over sea");
     expect(terrainBand(0.8, 0.5, false)).not.toContain("Ice");
+  });
+});
+
+describe("a locked world's ice", () => {
+  // Spec 5.4.7. One face never sees the sun, so the ice is not at the poles: it
+  // is on that face, and under the substellar convention of the biome model
+  // that face is the south.
+  const locked = (meanTempK: number, hydrographicsPct: number, pressureAtm = 1) =>
+    ({
+      axialTiltDeg: 0,
+      meanTempK,
+      hydrographicsPct,
+      pressureAtm,
+      orbitAu: 0.05,
+      // A day as long as its year, which is what locked means.
+      rotationHours: orbitalPeriodHours(0.05),
+      climate: { luminosity: 1 } as PlanetDetail["climate"],
+    }) as PlanetDetail;
+
+  it("puts the cap on the dark side and nothing on the lit one", () => {
+    const caps = iceCapsFor(EARTHLIKE, locked(TEMPERATE_K, 70));
+    expect(caps).not.toBeNull();
+    expect(caps!.side).toBe("night");
+    expect(isIced(caps, -1)).toBe(true);
+    expect(isIced(caps, 1)).toBe(false);
+  });
+
+  it("reaches far further back than a turning world's caps do", () => {
+    // The whole night half is in the dark, and the terminator is the only thing
+    // that stops the ice.
+    const caps = iceCapsFor(EARTHLIKE, locked(TEMPERATE_K, 70));
+    const turning = iceCapsFor(EARTHLIKE, world(0, TEMPERATE_K, 70));
+    expect(caps!.edgeDeg).toBeLessThan(turning!.edgeDeg);
+  });
+
+  it("counts only the one cap towards how much of the world is iced", () => {
+    const caps = iceCapsFor(EARTHLIKE, locked(TEMPERATE_K, 70));
+    expect(icedFraction(caps)).toBeLessThanOrEqual(0.5);
+  });
+
+  it("never asks for more ice than the world has water", () => {
+    for (const water of [1, 5, 20, 50, 100]) {
+      const caps = iceCapsFor(EARTHLIKE, locked(TEMPERATE_K, water));
+      expect(icedFraction(caps), String(water)).toBeLessThanOrEqual(water / 100 + 1e-9);
+    }
+  });
+
+  it("thaws when thick air carries the heat round", () => {
+    // A deep atmosphere levels a locked world out, and there is nowhere cold
+    // enough left for a permanent cap.
+    const thin = iceCapsFor(EARTHLIKE, locked(TEMPERATE_K, 70, 0.1));
+    const thick = iceCapsFor(EARTHLIKE, locked(310, 70, 60));
+    expect(icedFraction(thin)).toBeGreaterThan(icedFraction(thick));
   });
 });

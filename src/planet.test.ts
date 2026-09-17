@@ -1,10 +1,27 @@
 import { describe, expect, it } from "vitest";
-import { newPlanet, parseUwp, parsePlanet, rollUwp } from "./planet";
+import { blankPlanet, newPlanet, parseUwp, parsePlanet, rollUwp } from "./planet";
 
 /** A spread of seeds, enough that every branch of the rules is exercised. */
 const WORLDS = Array.from({ length: 500 }, (_, i) => {
   const seed = `roll-${i}`;
   return { seed, uwp: rollUwp(seed), w: parseUwp(rollUwp(seed))! };
+});
+
+describe("blankPlanet", () => {
+  it("rolls nothing", () => {
+    // AppSpec 2.5: the landing page is a chooser, and a window that has not
+    // opened a planet must not have generated one. A blank seed is the tell.
+    const planet = blankPlanet();
+    expect(planet.seed).toBe("");
+    expect(planet.uwp).toBe("");
+    expect(planet.pois).toHaveLength(0);
+  });
+
+  it("is a different record each time", () => {
+    // Shared would mean two windows editing one planet, and the record is
+    // written into rather than replaced.
+    expect(blankPlanet()).not.toBe(blankPlanet());
+  });
 });
 
 describe("rollUwp", () => {
@@ -143,5 +160,19 @@ describe("the world settings a save carries", () => {
   it("leaves a save written before craters existed on its rolled count", () => {
     const { craters: _dropped, ...older } = newPlanet("Older");
     expect(parsePlanet(JSON.stringify(older)).craters).toBeNull();
+  });
+
+  it("carries the star a system put the world around", () => {
+    // PlanetSpec 6.15.13.2: a save holds everything its surface is built from,
+    // so a world lifted out of its system opens as the world that system made.
+    expect(save({ luminosity: 0.02 }).luminosity).toBe(0.02);
+    expect(save({ orbitAu: 0.14, luminosity: 0.02 }).orbitAu).toBe(0.14);
+  });
+
+  it("reads a save written before stars as a world around the Sun", () => {
+    // PlanetSpec 6.15.13.1. Nothing in an old file changes, and nothing in an
+    // old file has to be rewritten.
+    const { luminosity: _dropped, ...older } = newPlanet("Older");
+    expect(parsePlanet(JSON.stringify(older)).luminosity).toBeNull();
   });
 });

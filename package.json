@@ -1,7 +1,7 @@
 {
   "name": "planethex",
   "private": true,
-  "version": "1.5.1",
+  "version": "2.0.0",
   "type": "module",
   "license": "MIT",
   "author": "Steve Burrows",
@@ -19,7 +19,7 @@
   },
   "devDependencies": {
     "@types/three": "^0.185.4",
-    "electron": "^44.1.0",
+    "electron": "44.1.0",
     "electron-builder": "^26.15.3",
     "typescript": "^5.7.2",
     "vite": "^6.0.7",

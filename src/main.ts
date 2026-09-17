@@ -1,9 +1,10 @@
 import "./style.css";
-import { buildGrid, cellCount, nearestCell, type Grid } from "./grid/grid";
+import { buildGrid, cellCount, EMPTY_GRID, nearestCell, type Grid } from "./grid/grid";
 import {
   asLatticeRef,
   buildRefIndex,
   DETAIL_LEVELS,
+  EMPTY_REFS,
   formatLattice,
   formatRef,
   latticeKey,
@@ -14,7 +15,7 @@ import {
   type RefCoord,
   type RefIndex,
 } from "./grid/coord";
-import { generateHeights, heightsOn } from "./gen/height";
+import { heightsOn } from "./gen/height";
 import {
   craterList,
   craterOptionsFor,
@@ -26,7 +27,7 @@ import {
 } from "./gen/crater";
 import { isIced, type IceCaps } from "./gen/ice";
 import { DEFAULT_FIELD_OPTIONS, type HeightFieldOptions } from "./gen/field";
-import { newPlanet, parseUwp, rollUwp, type Planet } from "./planet";
+import { blankPlanet, newPlanet, parseUwp, randomSeed, rollUwp, type Planet } from "./planet";
 import { starportSite } from "./gen/site";
 import {
   MAX_SETTLEMENTS,
@@ -57,6 +58,8 @@ import {
   isTidallyLocked,
   orbitalPeriodHours,
   orbitForTemperature,
+  orbitLimitsFor,
+  SUN_LUMINOSITY,
   type ClimateOverrides,
 } from "./gen/climate";
 import { describeUwp } from "./gen/describe";
@@ -76,10 +79,12 @@ import { orbitalShader } from "./ui/orbital";
 import {
   download,
   isSupported,
+  loadFolder,
   load,
   loadFromInput,
   PickerCancelled,
   pickFolder,
+  LEVEL_SUFFIX,
   planetFile,
   saveName,
   saveTo,
@@ -91,6 +96,101 @@ import {
 import { nextFrame, renderMaps } from "./io/images";
 import { EXPORT_FORMATS, manifest, type ExportContext } from "./io/export";
 import { shaderFor, surfaceOn } from "./surface";
+import { currentAppView, landingSay, setAppView, wireLanding } from "./ui/landing";
+import { auLabel, contentLabel, createOrbitDiagram } from "./ui/orbits";
+import {
+  diameterKm as starDiameterKm,
+  parseStar,
+  starLabel,
+  starsFor,
+  SPECTRAL_CLASSES,
+  STAR_SIZES,
+} from "./gen/star";
+import { createOrbitMap, STAR_PICKED } from "./ui/orbitmap";
+import { createChart } from "./ui/chart";
+import { createSectorMap } from "./ui/sectormap";
+import { APP_VERSION, RELEASE_NOTES, suggestionLink } from "./version";
+import { aroundSubsector, letterAt, SECTOR_HEXES, type Sector } from "./gen/sector";
+import {
+  keepSubsector,
+  newSectorDoc,
+  parseSectorDoc,
+  savedSubsector,
+  sectorOf,
+  subsectorIn,
+  type SectorDoc,
+} from "./sector";
+import { createCrumbs, type Level, type Trail } from "./ui/crumbs";
+import {
+  generateSubsector,
+  systemSeedFor,
+  type ChartWorld,
+  type Density,
+  type Subsector,
+} from "./gen/subsector";
+import { sectorFile, subsectorFile } from "./io/export/subsector";
+import {
+  chartSvg,
+  subsectorCsv,
+  subsectorSheetHtml,
+  subsectorSheetMarkdown,
+} from "./io/export/chart";
+import { svgToPng } from "./io/export/raster";
+import {
+  newSubsectorDoc,
+  overrideFor as hexOverride,
+  parseSubsectorDoc,
+  setOverride as setHexOverride,
+  setPresence,
+  setSystemSeed,
+  SHIFT_LIMIT,
+  subsectorOf as chartOf,
+  dropSystem,
+  keepSystem,
+  savedSystem,
+  type HexField,
+  type SubsectorDoc,
+} from "./subsector";
+import { liveGlobe, worldImage } from "./ui/worldimage";
+import { giantImage } from "./ui/giant";
+import { basesLabel, zoneLabel } from "./gen/base";
+import { crossingLabel, hoursAt1g, jumpShadowKm, kmLabel } from "./gen/jump";
+import {
+  auToKm,
+  clearOfShadows,
+  crossing,
+  type ShadowBody,
+} from "./gen/travel";
+import {
+  beltName,
+  generateSystem,
+  moonKey,
+  moonsOf,
+  namesOf,
+  ordinalOf,
+  worldName,
+  positionAu,
+  starShadowAu,
+  worldIn,
+  worldSettings,
+  worldsOf,
+  type Orbit,
+  type StarSystem,
+  type SystemNames,
+} from "./gen/system";
+import {
+  keepWorld,
+  newSystemDoc,
+  overrideFor,
+  parseSystemDoc,
+  savedWorld,
+  setOverride,
+  subsectorOf,
+  systemOf,
+  type SystemDoc,
+} from "./system";
+import { starsLabel } from "./gen/star";
+import { formatPbg, tradeCodes } from "./gen/trade";
 
 const el = <T extends HTMLElement>(id: string): T => {
   const node = document.getElementById(id);
@@ -185,15 +285,24 @@ el("local-view").append(local.element);
 /** The view a session opens in. Spec 5.7.1.3: the world as it looks. */
 const DEFAULT_VIEW: ViewMode = "orbital";
 
+/**
+ * The state the window holds, starting empty.
+ *
+ * Nothing here is generated: the application opens on the landing page of
+ * AppSpec 2, where no planet has been chosen, and AppSpec 2.5 has a user who
+ * opens it and closes it again roll nothing. The planet is blank, the grid has
+ * no cells, and there are no heights. Opening a planet under AppSpec 3.1 or 3.2
+ * fills all three in through regenerate, which is what fills them in whenever
+ * the detail level changes as well.
+ */
 const state: State = (() => {
-  const planet = newPlanet();
-  const grid = buildGrid(planet.size);
+  const planet = blankPlanet();
   const biome = biomeWorldFor("", planetDetail(planet.seed, planet.uwp));
   return {
     planet,
-    grid,
-    refs: buildRefIndex(grid),
-    heights: generateHeights(grid, planet.seed),
+    grid: EMPTY_GRID,
+    refs: EMPTY_REFS,
+    heights: new Float64Array(0),
     seaLevel: DEFAULT_SEA_LEVEL,
     diameterKm: null,
     options: DEFAULT_FIELD_OPTIONS,
@@ -293,7 +402,10 @@ function resurface(): void {
 
 function markDirty(): void {
   state.dirty = true;
-  el("dirty").hidden = false;
+  // A world of a system says nothing about being unsaved: the level that saves
+  // it says it. AppSpec 4.1.2.
+  el("dirty").hidden = planetParent === "system";
+  if (planetParent === "system") markSystemDirty();
 }
 
 function markClean(): void {
@@ -334,6 +446,8 @@ const fields = {
   orbit: el<HTMLInputElement>("p-orbit"),
   temp: el<HTMLInputElement>("p-temp"),
   craters: el<HTMLInputElement>("p-craters"),
+  starClass: el<HTMLSelectElement>("p-star-class"),
+  starSize: el<HTMLSelectElement>("p-star-size"),
   narrative: el<HTMLTextAreaElement>("p-narrative"),
 };
 
@@ -346,6 +460,7 @@ function overrides(): ClimateOverrides {
   return {
     obliquityDeg: state.planet.tiltDeg,
     orbitAu: state.planet.orbitAu,
+    luminosity: state.planet.luminosity,
     rotationHours: state.planet.rotationHours,
   };
 }
@@ -368,6 +483,8 @@ function showPlanet(): void {
   showWorld(currentDetail());
   showDetail();
   document.title = `${state.planet.name || "Unnamed"} — PlanetHex`;
+  // The trail says the world's own name, so it is redrawn whenever the panel is.
+  showCrumbs();
 }
 
 /** What the slider is set to, in the terms the user cares about. Spec 2.2.2. */
@@ -401,16 +518,19 @@ function showWorld(detail: PlanetDetail): void {
   set(fields.orbit, detail.orbitAu, 2, state.planet.orbitAu !== null);
   set(fields.temp, detail.meanTempK - 273.15, 0, state.planet.orbitAu !== null);
   showCraters(detail);
+  showStar();
 
   const days = detail.rotationHours / 24;
   el("rotation-note").textContent = [
     days >= 2 ? `${days.toFixed(1)} days long` : "",
-    isTidallyLocked(detail.rotationHours, detail.orbitAu) ? "locked to its year" : "",
+    isTidallyLocked(detail.rotationHours, detail.orbitAu, detail.climate.luminosity)
+      ? "locked to its year"
+      : "",
     isRetrograde(detail.axialTiltDeg) ? "turning backwards" : "",
   ]
     .filter(Boolean)
     .join(", ");
-  const year = orbitalPeriodHours(detail.orbitAu) / (24 * 365.25);
+  const year = orbitalPeriodHours(detail.orbitAu, detail.climate.luminosity) / (24 * 365.25);
   el("orbit-note").textContent = `year of ${year < 1 ? `${(year * 12).toFixed(1)} months` : `${year.toFixed(1)} years`}`;
 }
 
@@ -609,7 +729,11 @@ fields.orbit.addEventListener("change", () => {
   setWorld(
     fields.orbit,
     (v) => {
-      state.planet.orbitAu = v === null ? null : Math.min(50, Math.max(0.05, v));
+      // The range a world can be put in moves out with the star it is put
+      // around: fifty AU from a supergiant is inside the fire.
+      const limits = orbitLimitsFor(currentDetail().climate.luminosity);
+      state.planet.orbitAu =
+        v === null ? null : Math.min(limits.far, Math.max(limits.near, v));
     },
     (d) => `${d.orbitAu.toFixed(2)} AU out, mean ${(d.meanTempK - 273.15).toFixed(0)}°C.`,
   );
@@ -628,7 +752,12 @@ fields.temp.addEventListener("change", () => {
         return;
       }
       const { climate } = currentDetail();
-      state.planet.orbitAu = orbitForTemperature(v + 273.15, climate.albedo, climate.greenhouseK);
+      state.planet.orbitAu = orbitForTemperature(
+        v + 273.15,
+        climate.albedo,
+        climate.greenhouseK,
+        climate.luminosity,
+      );
     },
     (d) => `Mean ${(d.meanTempK - 273.15).toFixed(0)}°C, which puts it ${d.orbitAu.toFixed(2)} AU out.`,
   );
@@ -1332,15 +1461,82 @@ el("toggle-left").addEventListener("click", () => {
   button.title = collapsed ? "Expand the panel" : "Collapse the panel";
 });
 
+/* The star a world orbits. PlanetSpec 6.15.13 -------------------------- */
+
+// The Sun's own line, for a world nobody has given a star to. Every world
+// generated before systems existed was assumed to have one.
+const SUN_LABEL = "G2 V";
+
+for (const [box, values] of [
+  [fields.starClass, SPECTRAL_CLASSES],
+  [fields.starSize, STAR_SIZES],
+] as const) {
+  for (const value of values) {
+    const option = document.createElement("option");
+    option.value = value;
+    option.textContent = value;
+    box.append(option);
+  }
+}
+
+/** What the fields say, as a label a document can hold. */
+function starFromFields(): string {
+  return `${fields.starClass.value}2 ${fields.starSize.value}`;
+}
+
+/**
+ * Show the star, and say whether it can be changed here.
+ *
+ * A world of a system orbits that system's primary, and the system is where a
+ * star is chosen: two places to set it would be two answers to one question.
+ * A world on its own has nobody to tell it, so it says so itself.
+ */
+function showStar(): void {
+  const label = state.planet.star ?? SUN_LABEL;
+  const star = parseStar(label) ?? parseStar(SUN_LABEL)!;
+  fields.starClass.value = star.spectral;
+  fields.starSize.value = star.size;
+  const own = planetParent !== "system";
+  fields.starClass.disabled = !own;
+  fields.starSize.disabled = !own;
+  const times = (state.planet.luminosity ?? SUN_LUMINOSITY) / SUN_LUMINOSITY;
+  const brightness =
+    times >= 10 ? `${Math.round(times)}×` : times >= 0.1 ? `${times.toFixed(2)}×` : times.toPrecision(2);
+  el("star-note").textContent =
+    `${starLabel(star)}, ${brightness} the Sun's output` +
+    (own ? "" : " — its system's, and set there");
+}
+
+for (const box of [fields.starClass, fields.starSize]) {
+  box.addEventListener("change", () => {
+    const star = parseStar(starFromFields());
+    if (star === null) return;
+    state.planet.star = starLabel(star);
+    // The luminosity is what the climate reads; the label is what the referee
+    // reads. Both are written, because both are asked for.
+    state.planet.luminosity = star.luminosity;
+    // A different star is a different climate, so every figure worked out from
+    // one is worked out again: where the world sits, how warm that leaves it,
+    // and the surface itself.
+    const detail = currentDetail();
+    showWorld(detail);
+    showDetail();
+    resurface();
+    markDirty();
+    say(`${starLabel(star)}: ${detail.orbitAu.toFixed(2)} AU for the same climate.`);
+  });
+}
+
 /* Buttons ---------------------------------------------------------------- */
 
-el("new").addEventListener("click", () => {
-  if (!confirmDiscard("Start a new planet")) return;
+function startNewPlanet(): void {
+  setPlanetParent("landing");
   Object.assign(state.planet, newPlanet());
   state.folder = null;
   state.selected = null;
   state.hovered = null;
   state.selectedRef = null;
+  setAppView("planet");
   showPlanet();
   regenerate();
   placeStarport();
@@ -1352,7 +1548,12 @@ el("new").addEventListener("click", () => {
   map.resetView();
   globe.resetView();
   markClean();
-  say(`New planet, seed ${state.planet.seed}.`);
+  say(`New planet, seed ${state.planet.seed}.${saveRoute()}`);
+}
+
+el("new").addEventListener("click", () => {
+  if (!confirmDiscard("Start a new planet")) return;
+  startNewPlanet();
 });
 
 /* Saving. Spec 6.4.1 and 6.23 ------------------------------------------- */
@@ -1625,8 +1826,7 @@ async function gather(choices: SaveChoices, into: string): Promise<SaveFile[]> {
   return files;
 }
 
-el("load").addEventListener("click", async () => {
-  if (!confirmDiscard("Load another planet")) return;
+async function loadPlanet(): Promise<void> {
   try {
     const { planet, name } = isSupported() ? await load() : await loadFromInput();
     Object.assign(state.planet, planet);
@@ -1645,11 +1845,23 @@ el("load").addEventListener("click", async () => {
     map.resetView();
     globe.resetView();
     markClean();
-    say(`Loaded ${name}.`);
+    setPlanetParent("landing");
+    setAppView("planet");
+    say(`Loaded ${name}.${saveRoute()}`);
   } catch (error) {
     if (error instanceof PickerCancelled) return;
-    say(error instanceof Error ? error.message : String(error), true);
+    const message = error instanceof Error ? error.message : String(error);
+    // Where the user is standing is where the failure has to be reported. A
+    // load that failed on the way in from the landing page has not opened
+    // anything, so the planet panel's status line is not on screen to read.
+    if (currentAppView() === "landing") landingSay(message, true);
+    else say(message, true);
   }
+}
+
+el("load").addEventListener("click", () => {
+  if (!confirmDiscard("Load another planet")) return;
+  void loadPlanet();
 });
 
 /* Help. Spec 4.8 --------------------------------------------------------- */
@@ -1663,6 +1875,35 @@ function openHelp(): void {
 }
 
 el("help").addEventListener("click", openHelp);
+
+/* What this is, and how to say something about it. AppSpec 2.6 ----------- */
+
+for (const id of ["landing-version", "help-version"]) {
+  el(id).textContent = `v${APP_VERSION}`;
+}
+for (const id of ["landing-notes", "help-notes"]) {
+  el<HTMLAnchorElement>(id).href = RELEASE_NOTES;
+}
+/**
+ * The suggestion link carries whatever is open, since a report that says which
+ * seed it was is a report that can be reproduced, and nobody remembers to
+ * include it. Rebuilt on every click rather than once, because what is open
+ * changes and a link written at startup would always say the landing page.
+ */
+for (const id of ["landing-suggest", "help-suggest"]) {
+  el(id).addEventListener("click", () => {
+    el<HTMLAnchorElement>(id).href = suggestionLink(whatIsOpen());
+  });
+}
+
+function whatIsOpen(): { level?: string; seed?: string } {
+  const view = currentAppView();
+  if (view === "sector") return { level: "sector", seed: sectorDoc?.seed };
+  if (view === "subsector") return { level: "subsector", seed: subDoc?.seed };
+  if (view === "system") return { level: "system", seed: doc?.seed };
+  if (view === "planet") return { level: "planet", seed: state.planet.seed };
+  return {};
+}
 el("help-close").addEventListener("click", () => helpDialog.close());
 el("help-done").addEventListener("click", () => helpDialog.close());
 
@@ -1690,18 +1931,2325 @@ window.addEventListener("keydown", (event) => {
   else openHelp();
 });
 
+/* The landing page. AppSpec 2 and 3 -------------------------------------- */
+
+/**
+ * Not an error on either path: a browser without the File System Access API
+ * saves as a download rather than writing back into the folder it came from.
+ * Spec 6.4.1. Said once, when a planet opens, since that is when it matters.
+ */
+function saveRoute(): string {
+  return isSupported() ? "" : " This browser saves as a zip download.";
+}
+
+/**
+ * Where the button at the head of the planet panel goes back to. AppSpec 6.2: a
+ * move down keeps the parent open, so a world reached through a system goes back
+ * to that system rather than out to the landing page, and the button says so.
+ */
+let planetParent: "landing" | "system" = "landing";
+
+function setPlanetParent(parent: "landing" | "system"): void {
+  planetParent = parent;
+  // A world of a system is saved by that system, which is saved by its chart.
+  // Three Save buttons down one chain is three ways to write the same work to
+  // three different places. AppSpec 4.1.2.
+  el("save").hidden = parent === "system";
+  el("dirty").hidden = parent === "system" || !state.dirty;
+  openLevels.planet = true;
+  if (parent === "landing") {
+    openLevels.system = false;
+    openLevels.subsector = false;
+  }
+  el("home").textContent = parent === "system" ? "System" : "Levels";
+  el("home").title = parent === "system" ? "Back to the system" : "Back to the levels";
+}
+
+// AppSpec 2.4 and 7.2: what is open is closed, and what is unsaved is asked
+// about first.
+el("home").addEventListener("click", () => {
+  // Going up to the system that holds this world loses nothing: the world goes
+  // with it, and the system is saved with the chart above. Nothing to warn
+  // about, so nothing is asked. Only leaving the levels altogether can lose
+  // work, and only then if it was never saved.
+  if (planetParent === "system" && system !== null) {
+    keepPlanetForSystem();
+    refreshSystem();
+    setAppView("system");
+    return;
+  }
+  if (!confirmDiscard("Leave this planet")) return;
+  setAppView("landing");
+  landingSay("");
+});
+
+
+/* The system view. SystemSpec section 8 ---------------------------------- */
+
+// Read only: the diagram draws a system and the panel says what an orbit holds.
+// Editing and saving are SystemSpec 9, and the Load row on the landing page
+// stays dark until there is a format to load.
+
+const orbits = createOrbitDiagram();
+el("sys-diagram").append(orbits.element);
+const model = createOrbitMap();
+el("sys-model").append(model.element);
+
+/**
+ * How big a world is drawn, once, for both the diagram and the panel.
+ *
+ * One size rather than two, because a world costs as much to draw as to open and
+ * drawing the same world twice at two sizes is paying that twice. This is the
+ * size the panel wants; the diagram scales it down, which is what a browser is
+ * good at.
+ */
+const GLOBE_PX = 256;
+
+/**
+ * The worlds still waiting to be drawn, and the frame that is drawing them.
+ *
+ * A world costs about as much to draw as to open: the height field of the planet
+ * spec 3.5 is built to the depth the finest level needs whatever size it is
+ * being shown at, since a shallower field would be a different world. So the
+ * diagram goes up at once with discs on it and the worlds arrive one a frame,
+ * which keeps a roll instant and lets the user click while they land.
+ */
+let pending: { system: StarSystem; orbits: number[] } | null = null;
+
+function drawWorldsSoon(open: StarSystem): void {
+  pending = { system: open, orbits: worldsOf(open).map((world) => world.orbitIndex) };
+  // A timer rather than a frame, because a frame never comes to a window nobody
+  // is looking at, and a system opened behind another window should be drawn by
+  // the time it is looked at.
+  setTimeout(drawNextWorld, 0);
+}
+
+function drawNextWorld(): void {
+  if (pending === null) return;
+  const next = pending.orbits.shift();
+  // A roll or a load while these are in flight moves on to the new system, and
+  // the pictures for the old one are dropped rather than drawn into nothing.
+  if (next === undefined || pending.system !== system) {
+    pending = null;
+    return;
+  }
+  const png = pictureOf(pending.system, next);
+  if (png !== null) {
+    orbits.setPicture(next, png);
+    model.setPicture(next, png);
+  }
+  setTimeout(drawNextWorld, 0);
+}
+
+/**
+ * The picture of whatever world is in an orbit, or null where there is no world
+ * in it. The settings the system wrote go in with the seed, so the world in the
+ * picture is the world that opens. SystemSpec 6.6.3.
+ */
+function pictureOf(open: StarSystem, orbitIndex: number): string | null {
+  const orbit = open.orbits.find((held) => held.index === orbitIndex);
+  if (orbit === undefined || orbit.content.kind !== "world") return null;
+  return worldImage(
+    {
+      seed: orbit.content.seed,
+      uwp: orbit.content.uwp,
+      ...worldSettings(open, orbitIndex),
+    },
+    GLOBE_PX,
+  );
+}
+
+/**
+ * The open system: the document that would be saved, the system it describes,
+ * and which orbit the panel is about.
+ *
+ * Two of them rather than one because they are two different things. The
+ * document is the seed and what the user wrote; the system is what that
+ * generates, rebuilt whenever the document changes. SystemSpec 9.2.
+ */
+let doc: SystemDoc | null = null;
+let system: StarSystem | null = null;
+/**
+ * Which body the right-hand panel is about: an orbit, and a moon within it
+ * where the user picked one out of the tree or the moon list.
+ */
+let orbitShown: number | null = null;
+let moonShown: number | null = null;
+/** The folder this system was loaded from or last saved into. AppSpec 3.3.2. */
+let systemFolder: DirectoryHandle | null = null;
+let systemDirty = false;
+
+function markSystemDirty(): void {
+  systemDirty = true;
+  // A system under a chart says nothing about being unsaved: the chart says it,
+  // and the chart is what saves it.
+  el("sys-dirty").hidden = systemParent === "subsector";
+  if (systemParent === "subsector") markSubDirty();
+}
+
+function markSystemClean(): void {
+  systemDirty = false;
+  el("sys-dirty").hidden = true;
+}
+
+/** What the header says about the system as a whole. SystemSpec 8.6. */
+function showHeader(): void {
+  if (doc === null || system === null) return;
+  const letter = subsectorOf(doc);
+  const place = [
+    doc.sector.trim(),
+    letter === "" ? "" : `${doc.hex.trim()} (subsector ${letter})`,
+  ].filter(Boolean);
+  el("sys-stars").textContent = starsLabel(system.stars);
+  // SystemSpec 4.2.1 where the two counts disagree: the chart's figures are the
+  // chart's, and what would not fit is said rather than quietly dropped.
+  const short =
+    system.placed.belts === system.pbg.belts && system.placed.gasGiants === system.pbg.gasGiants
+      ? ""
+      : ` (room for ${system.placed.belts} and ${system.placed.gasGiants})`;
+  el("sys-counts").textContent = [`seed ${doc.seed}`, `PBG ${formatPbg(system.pbg)}${short}`, ...place].join(
+    " · ",
+  );
+}
+
+/**
+ * What everything in the open system is called. SystemSpec 7.3.
+ *
+ * Drawn once with the system rather than asked for a name at a time, because
+ * the names of one system are one draw: they share a flavour and none of them
+ * repeats another.
+ */
+let names: SystemNames | null = null;
+
+/** The name of the world or moon a body is, where anybody lives on it. */
+function properName(orbitIndex: number, moon: number | null): string | null {
+  // What the referee called it beats what the generator called it. The override
+  // is the one place a typed name lives, whether it was typed here or came up
+  // from the world itself. SystemSpec 9.3.
+  if (moon === null && doc !== null) {
+    const written = overrideFor(doc, orbitIndex)?.name;
+    if (written !== undefined && written.trim() !== "") return written;
+  }
+  if (names === null) return null;
+  return moon === null
+    ? (names.worlds.get(orbitIndex) ?? null)
+    : (names.moons.get(moonKey(orbitIndex, moon)) ?? null);
+}
+
+function sysSay(message: string, isError = false): void {
+  const status = el("sys-status");
+  status.textContent = message;
+  status.classList.toggle("error", isError);
+}
+
+function startNewSystem(): void {
+  if (!confirmSystemDiscard("Roll another system")) return;
+  const seed = randomSeed();
+  systemFolder = null;
+  const fresh = newSystemDoc(seed, "");
+  fresh.name = namesOf(systemOf(fresh)).system;
+  openSystem(fresh);
+  markSystemClean();
+}
+
+/** Put a document on screen, and the system it describes with it. */
+function openSystem(next: SystemDoc): void {
+  doc = next;
+  system = systemOf(next);
+  // The document's name wins where it has one: a system opened from a chart is
+  // called what the chart called it. SystemSpec 7.3.3.
+  names = namesOf(system, next.name);
+  orbitShown = system.mainWorld.orbitIndex;
+  setAppView("system");
+  el<HTMLInputElement>("sys-name").value = next.name;
+  el<HTMLInputElement>("sys-sector").value = next.sector;
+  el<HTMLInputElement>("sys-hex").value = next.hex;
+  showSystemStar();
+  orbits.render(system);
+  model.render(system);
+  // The gas giants first, because they cost nothing: a picture of one is bands
+  // on a canvas rather than a surface generated and photographed.
+  for (const orbit of system.orbits) {
+    if (orbit.content.kind !== "giant") continue;
+    const png = giantImage(`${system.seed}:${orbit.index}`, GLOBE_PX);
+    orbits.setPicture(orbit.index, png);
+    model.setPicture(orbit.index, png);
+  }
+  selectBody(orbitShown, null);
+  setSystemParent("landing");
+  showHeader();
+  showCrumbs();
+  showTree();
+  drawWorldsSoon(system);
+  const worlds = worldsOf(system).length;
+  sysSay(`${system.orbits.length} orbits, ${worlds === 1 ? "one world" : `${worlds} worlds`}.`);
+}
+
+/**
+ * Draw the open system again from its document, keeping the body being looked
+ * at. What came up from the level below has changed the document, and a view
+ * that did not redraw would be showing the world as it was before it was edited.
+ */
+function refreshSystem(): void {
+  if (doc === null) return;
+  const held = orbitShown;
+  const moon = moonShown;
+  system = systemOf(doc);
+  names = namesOf(system, doc.name);
+  el<HTMLInputElement>("sys-name").value = doc.name;
+  showSystemStar();
+  orbits.render(system);
+  model.render(system);
+  for (const orbit of system.orbits) {
+    if (orbit.content.kind !== "giant") continue;
+    const png = giantImage(`${system.seed}:${orbit.index}`, GLOBE_PX);
+    orbits.setPicture(orbit.index, png);
+    model.setPicture(orbit.index, png);
+  }
+  selectBody(held ?? system.mainWorld.orbitIndex, moon);
+  showHeader();
+  showTree();
+  showCrumbs();
+  drawWorldsSoon(system);
+}
+
+/** The same for the chart, when a system has come back up to it. */
+function refreshChart(): void {
+  if (subDoc === null) return;
+  drawSubsector();
+  selectHex(hexShown);
+  showCrumbs();
+}
+
+/** What a save would lose, asked before anything discards it. SystemSpec 9.6. */
+function confirmSystemDiscard(action: string): boolean {
+  if (doc === null || !systemDirty) return true;
+  return confirm(`${doc.name || "This system"} has unsaved changes. ${action} and lose them?`);
+}
+
+/** The panel for one orbit, or for the star at the middle. SystemSpec 8.4. */
+function showOrbit(index: number | null): void {
+  const open = el<HTMLButtonElement>("sys-open");
+  // Travel times are from one body to another, and the star is neither an
+  // origin anybody leaves from nor a destination anybody arrives at.
+  const star = index === STAR_PICKED;
+  el<HTMLButtonElement>("sys-travel").hidden = index === null || star;
+  if (star) el("sys-travel-panel").hidden = true;
+  showTravel();
+  const facts = el("sys-facts");
+  const written = el<HTMLTextAreaElement>("sys-written");
+  const globe = el("sys-globe");
+  globe.hidden = true;
+  facts.replaceChildren();
+  el("sys-moons").replaceChildren();
+  el("sys-note").textContent = "";
+  open.hidden = true;
+  written.value = doc === null || index === null ? "" : (overrideFor(doc, index)?.note ?? "");
+  written.disabled = doc === null || index === null;
+  if (system === null || index === null) {
+    el("sys-what").textContent = "Select an orbit";
+    return;
+  }
+
+  const row = (term: string, value: string) => {
+    const dt = document.createElement("dt");
+    dt.textContent = term;
+    const dd = document.createElement("dd");
+    dd.textContent = value;
+    facts.append(dt, dd);
+  };
+
+  if (star) {
+    showStarPanel(system, row);
+    return;
+  }
+
+  const orbit = system.orbits.find((held) => held.index === index);
+  if (orbit === undefined) return;
+
+  const content = orbit.content;
+  const what = contentLabel(orbit);
+  el("sys-what").textContent = `${bodyName(system, orbit.index)} — ${what}`;
+  // Where the name is the world's own, what it is filed under is worth saying:
+  // SystemSpec 7.3.1 wants both, one for the player and one for the referee.
+  const called = positionName(system, orbit.index);
+  if (called !== bodyName(system, orbit.index)) row("Designation", called);
+  row("Distance", auLabel(orbit.au));
+  row("Sunlight", sunlightNote(orbit.sunEquivalentAu));
+  row("Year", yearNote(orbit.au, system.stars.primary.luminosity));
+  if (orbit.habitable) row("Zone", "habitable");
+
+  // A moon of the giant in this orbit, where the tree or the moon list picked
+  // one out. It sits at its giant's distance and under its giant's star, so
+  // everything about where it is comes from the orbit. SystemSpec 4.6.1.
+  const moon =
+    moonShown === null
+      ? undefined
+      : moonsOf(system, orbit.index).find((held) => held.index === moonShown);
+  if (moon !== undefined) {
+    const settings = worldSettings(system, orbit.index);
+    const detail = planetDetail(moon.seed, moon.uwp, settings);
+    el("sys-what").textContent = `${moonName(system, orbit.index, moon.index)} — moon`;
+    const called = moonPositionName(system, orbit.index, moon.index);
+    if (called !== moonName(system, orbit.index, moon.index)) row("Designation", called);
+    row("Moon of", `the gas giant at ${auLabel(orbit.au)}`);
+    row("Profile", moon.uwp);
+    row("Seed", moon.seed);
+    const codes = tradeCodes(moon.uwp);
+    if (codes.length > 0) row("Trade", codes.map((code) => `${code.code} ${code.label}`).join(", "));
+    row("Surface", `${(detail.meanTempK - 273.15).toFixed(0)}°C mean`);
+    el("sys-note").textContent = describeUwp(moon.uwp, detail) ?? "";
+    showMoonPicture(system, orbit.index, moon.seed, moon.uwp);
+    open.hidden = false;
+    return;
+  }
+
+  const inOrbit = worldIn(content);
+  if (inOrbit !== null) {
+    const detail = planetDetail(inOrbit.seed, inOrbit.uwp, worldSettings(system, orbit.index));
+    row("Profile", inOrbit.uwp);
+    row("Seed", inOrbit.seed);
+    const codes = tradeCodes(inOrbit.uwp);
+    if (codes.length > 0) row("Trade", codes.map((code) => `${code.code} ${code.label}`).join(", "));
+    row("Surface", `${(detail.meanTempK - 273.15).toFixed(0)}°C mean`);
+    // SystemSpec 4.7: the bases are in this system, and they are here, at the
+    // main world, rather than somewhere the chart never said.
+    if (inOrbit.main && system.bases.letter !== "") {
+      row("Bases", basesLabel(system.bases.letter));
+    }
+    // 4.8.3: a world can sit inside its own star's shadow, and around a dim
+    // star it usually does - which is a fact about every departure from it.
+    if (orbit.au < starShadowAu(system)) row("Jump", "inside the star's shadow");
+    // The description says it is a belt where it is one, since a belt profile
+    // reads as a belt wherever it is read. SystemSpec 4.3.
+    el("sys-note").textContent = describeUwp(inOrbit.uwp, detail) ?? "";
+    // The world itself beside its profile, drawn the way the planet view draws
+    // it rather than as a mark standing in for it. On a timer for the reason the
+    // diagram's are: the panel should be readable before the picture arrives.
+    if (content.kind === "world") showWorldPicture(system, orbit.index);
+    open.hidden = false;
+  } else if (content.kind === "giant") {
+    row("Diameter", kmLabel(content.diameterKm));
+    const shadow = jumpShadowKm(content.diameterKm);
+    row("Jump shadow", `${kmLabel(shadow)}, ${crossingLabel(hoursAt1g(shadow))}`);
+    const moons = content.moons.length === 1 ? "one moon" : `${content.moons.length} moons`;
+    el("sys-note").textContent =
+      `A gas giant with ${moons}. Nothing to land on, and fuel for anybody who can skim it.`;
+    const picture = document.createElement("img");
+    picture.src = giantImage(`${system.seed}:${orbit.index}`, GLOBE_PX);
+    picture.alt = "";
+    globe.replaceChildren(picture);
+    globe.hidden = false;
+    showMoons(system, orbit.index);
+  } else if (content.kind === "belt") {
+    el("sys-note").textContent = "A planetoid belt: where a world would have formed and did not.";
+  } else {
+    el("sys-note").textContent = "Nothing here. Empty orbits are normal.";
+  }
+}
+
+/**
+ * How much light falls on an orbit, against what falls on Earth. The stored
+ * figure is a sunlight-equivalent distance, and light goes as the inverse square
+ * of it, so this is the reading a referee can use: twice the distance is a
+ * quarter of the light.
+ */
+function sunlightNote(sunEquivalentAu: number): string {
+  const times = 1 / (sunEquivalentAu * sunEquivalentAu);
+  const figure = times >= 10 ? Math.round(times) : times >= 1 ? times.toFixed(1) : times.toFixed(3).replace(/0+$/, "");
+  return `${figure}× Earth's`;
+}
+
+/**
+ * Put the selected world's picture in the panel, now if it has been drawn before
+ * and shortly if it has not. The check on the way back is what stops a picture
+ * landing in a panel that has moved on to another orbit.
+ */
+function showMoonPicture(
+  open: StarSystem,
+  orbitIndex: number,
+  seed: string,
+  uwp: string,
+): void {
+  const box = el("sys-globe");
+  setTimeout(() => {
+    if (system !== open || orbitShown !== orbitIndex) return;
+    box.replaceChildren(liveGlobe({ seed, uwp, ...worldSettings(open, orbitIndex) }));
+    box.hidden = false;
+  }, 0);
+}
+
+function showWorldPicture(open: StarSystem, orbitIndex: number): void {
+  const box = el("sys-globe");
+  setTimeout(() => {
+    if (system !== open || orbitShown !== orbitIndex) return;
+    const orbit = open.orbits.find((held) => held.index === orbitIndex);
+    if (orbit === undefined || orbit.content.kind !== "world") return;
+    box.replaceChildren(
+      liveGlobe({
+        seed: orbit.content.seed,
+        uwp: orbit.content.uwp,
+        ...worldSettings(open, orbitIndex),
+      }),
+    );
+    box.hidden = false;
+  }, 0);
+}
+
+function yearNote(au: number, luminosity: number): string {
+  const years = orbitalPeriodHours(au, luminosity) / (24 * 365.25);
+  return years < 1 ? `${(years * 12).toFixed(1)} months` : `${years.toFixed(1)} years`;
+}
+
+el("sys-inhabited").addEventListener("change", showTree);
+
+el<HTMLInputElement>("sys-name").addEventListener("input", (event) => {
+  if (doc === null) return;
+  doc.name = (event.target as HTMLInputElement).value;
+  markSystemDirty();
+});
+
+for (const field of ["sector", "hex"] as const) {
+  el<HTMLInputElement>(`sys-${field}`).addEventListener("input", (event) => {
+    if (doc === null) return;
+    doc[field] = (event.target as HTMLInputElement).value;
+    markSystemDirty();
+    showHeader();
+  });
+}
+
+// Free prose about whatever is in an orbit, which is an override under
+// SystemSpec 9.3 and stored only where there is something to store.
+el<HTMLTextAreaElement>("sys-written").addEventListener("input", (event) => {
+  if (doc === null || orbitShown === null) return;
+  setOverride(doc, orbitShown, "note", (event.target as HTMLTextAreaElement).value);
+  markSystemDirty();
+});
+
+/** Select a body: an orbit, or a moon of the giant in one. */
+function selectBody(orbitIndex: number | null, moon: number | null): void {
+  orbitShown = orbitIndex;
+  moonShown = moon;
+  orbits.setSelected(orbitIndex, moon);
+  model.setSelected(orbitIndex);
+  showOrbit(orbitIndex);
+  markTree();
+}
+
+orbits.onSelect((index) => selectBody(index, null));
+orbits.onSelectMoon((index, moon) => selectBody(index, moon));
+model.onSelect((index) => selectBody(index, null));
+
+el("sys-roll").addEventListener("click", () => {
+  // A system that came out of a hex belongs to that hex, so rolling it again
+  // rolls what is in the hex rather than wandering off to an unrelated system
+  // the chart above has never heard of. SubSectorSpec 5.3.5.
+  if (systemParent === "subsector" && subDoc !== null && doc !== null && doc.hex.trim() !== "") {
+    rerollHexSystem(doc.hex.trim());
+    return;
+  }
+  startNewSystem();
+});
+
+/**
+ * What the system says about its main world, said to the chart as well.
+ *
+ * The chart draws one world per hex and that world is this system's main world,
+ * so a name or a profile changed down here has to reach the hex or the two
+ * levels disagree about the same world. SubSectorSpec 5.3.
+ */
+function tellChartAboutSystem(chart: SubsectorDoc, at: string, open: SystemDoc): void {
+  const rolled = rolledWorld(at);
+  if (rolled === null) return;
+  const held = systemOf(open);
+  setHexOverride(chart, at, "name", open.name === rolled.name ? "" : open.name);
+  const uwp = held.mainWorld.uwp;
+  setHexOverride(chart, at, "uwp", uwp === rolled.uwp ? "" : uwp);
+  // The Stars column is the chart's, so a star changed down here has to reach
+  // it or the two levels describe the same system differently.
+  const stars = starsLabel(held.stars);
+  setHexOverride(chart, at, "stars", stars === starsLabel(rolled.stars) ? "" : stars);
+}
+
+/** Roll a different system into a hex, and tell the chart about it. */
+function rerollHexSystem(at: string): void {
+  if (subDoc === null) return;
+  if (!confirmSystemDiscard("Roll another system into this hex")) return;
+  setSystemSeed(subDoc, at, randomSeed(), systemSeedFor(subDoc.seed, at));
+  dropSystem(subDoc, at);
+  markSubDirty();
+  drawSubsector();
+  const world = subsector?.worlds.find((held) => held.at === at);
+  if (world === undefined) return;
+  // The chart names what is in a hex, so the new system takes the new name.
+  setHexOverride(subDoc, at, "name", "");
+  openHexSystem(at, world.systemSeed, world.name, world.uwp);
+  subSay(`Rolled another system into ${at}.`);
+}
+
+/**
+ * Where the button at the head of the system goes back to. AppSpec 6.2, the same
+ * rule the planet panel follows above: a move down keeps the parent open, so a
+ * system reached through a chart goes back to that chart rather than out to the
+ * landing page, and the button says which.
+ */
+let systemParent: "landing" | "subsector" = "landing";
+
+function setSystemParent(parent: "landing" | "subsector"): void {
+  systemParent = parent;
+  el("sys-save").hidden = parent === "subsector";
+  el("sys-dirty").hidden = parent === "subsector" || !systemDirty;
+  openLevels.system = true;
+  openLevels.planet = false;
+  openLevels.subsector = parent === "subsector";
+  const button = el("sys-home");
+  button.textContent = parent === "subsector" ? "Subsector" : "Levels";
+  button.title = parent === "subsector" ? "Back to the subsector" : "Back to the levels";
+}
+
+el("sys-home").addEventListener("click", () => {
+  // The chart is still laid out and still selected on the hex this system came
+  // out of, so going back up is showing it again rather than rolling it again -
+  // and the system goes up with it, so there is nothing to lose and nothing to
+  // ask about.
+  if (systemParent === "subsector" && subsector !== null) {
+    keepSystemForChart();
+    refreshChart();
+    setAppView("subsector");
+    return;
+  }
+  if (!confirmSystemDiscard("Leave this system")) return;
+  setAppView("landing");
+  landingSay("");
+});
+
+/* How long it takes to get anywhere from here. SystemSpec 4.9 ----------- */
+
+/**
+ * Every mass in the system that casts a shadow, placed where the model draws it.
+ *
+ * The model's arrangement is taken as the truth: a body sits at its orbit's
+ * distance and at the angle its seed gave it, which is what the diagram shows
+ * and therefore what a referee reading the diagram will expect the numbers to
+ * agree with. A belt has no centre to cast one and is left out.
+ */
+function shadowsIn(open: StarSystem): ShadowBody[] {
+  const out: ShadowBody[] = [
+    // The star, at the middle of everything.
+    { x: 0, y: 0, shadowKm: auToKm(starShadowAu(open)) },
+  ];
+  for (const orbit of open.orbits) {
+    const size = bodyDiameterKm(open, orbit);
+    if (size === null) continue;
+    const at = positionAu(open, orbit.index);
+    out.push({ x: auToKm(at.x), y: auToKm(at.y), shadowKm: jumpShadowKm(size) });
+  }
+  return out;
+}
+
+/** How wide the body in an orbit is, or null where there is nothing to measure. */
+function bodyDiameterKm(open: StarSystem, orbit: Orbit): number | null {
+  const content = orbit.content;
+  if (content.kind === "giant") return content.diameterKm;
+  const held = worldIn(content);
+  if (held === null) return null;
+  return planetDetail(held.seed, held.uwp, worldSettings(open, orbit.index)).diameterKm;
+}
+
+/**
+ * The run from one body to another, in km, as the model lays them out.
+ *
+ * A belt is a ring rather than a place, so the crossing to one is the crossing
+ * to the nearest part of it: a ship going to the belt goes to the near edge,
+ * not to some agreed point on the far side of the star.
+ */
+function reachKm(open: StarSystem, from: number, to: Orbit): number {
+  const here = positionAu(open, from);
+  if (to.content.kind === "belt") {
+    return auToKm(Math.abs(Math.hypot(here.x, here.y) - to.au));
+  }
+  const there = positionAu(open, to.index);
+  return auToKm(Math.hypot(there.x - here.x, there.y - here.y));
+}
+
+function showTravel(): void {
+  const panel = el("sys-travel-panel");
+  const list = el("sys-travel-list");
+  list.replaceChildren();
+  if (system === null || orbitShown === null || panel.hidden) return;
+  const open = system;
+  const from = orbitShown;
+  const gees = Math.min(10, Math.max(0.1, Number(el<HTMLInputElement>("sys-gees").value) || 1));
+
+  const row = (term: string, value: string) => {
+    const dt = document.createElement("dt");
+    dt.textContent = term;
+    const dd = document.createElement("dd");
+    dd.textContent = value;
+    list.append(dt, dd);
+  };
+
+  // Out of the shadows first, because nothing else matters until a ship can
+  // leave. There is always one to clear: a ship at a world is inside that
+  // world's own. SystemSpec 4.9.3.
+  const here = positionAu(open, from);
+  const clear = clearOfShadows(shadowsIn(open), {
+    x: auToKm(here.x),
+    y: auToKm(here.y),
+  });
+  row("Jump point", `${kmLabel(clear)} · ${crossing(clear, gees)}`);
+
+  for (const orbit of open.orbits) {
+    if (orbit.index === from || orbit.content.kind === "empty") continue;
+    const km = reachKm(open, from, orbit);
+    row(bodyName(open, orbit.index), `${kmLabel(km)} · ${crossing(km, gees)}`);
+  }
+}
+
+el("sys-travel").addEventListener("click", () => {
+  const panel = el("sys-travel-panel");
+  panel.hidden = !panel.hidden;
+  el("sys-travel").setAttribute("aria-expanded", String(!panel.hidden));
+  showTravel();
+});
+
+el("sys-gees").addEventListener("input", showTravel);
+
+/* The star a system turns round. SystemSpec 2.6 -------------------------- */
+
+for (const [box, values] of [
+  [el<HTMLSelectElement>("sys-star-class"), SPECTRAL_CLASSES],
+  [el<HTMLSelectElement>("sys-star-size"), STAR_SIZES],
+] as const) {
+  for (const value of values) {
+    const option = document.createElement("option");
+    option.value = value;
+    option.textContent = value;
+    box.append(option);
+  }
+}
+
+/** The fields, showing whatever the system's primary is now. */
+function showSystemStar(): void {
+  if (system === null) return;
+  const primary = system.stars.primary;
+  el<HTMLSelectElement>("sys-star-class").value = primary.spectral;
+  el<HTMLSelectElement>("sys-star-size").value = primary.size;
+}
+
+/**
+ * Change the star, and lay the system out again around it.
+ *
+ * Not a repaint: the habitable zone, the snow line and every orbit distance are
+ * worked out from what the star puts out, so a different star is a different
+ * arrangement of the same system. The seed is untouched, so the worlds are the
+ * same worlds - they are somewhere else, under a different sky.
+ *
+ * A companion keeps whatever was rolled. What is being edited is the star the
+ * system is named for; a second star is a second question.
+ */
+function setSystemStar(): void {
+  if (doc === null || system === null) return;
+  const spectral = el<HTMLSelectElement>("sys-star-class").value;
+  const size = el<HTMLSelectElement>("sys-star-size").value;
+  const primary = parseStar(`${spectral}${system.stars.primary.subclass} ${size}`);
+  if (primary === null) return;
+  const held = system.stars.companion;
+  const rolled = starsLabel(starsFor(doc.seed));
+  const wanted = [starLabel(primary), held === null ? "" : starLabel(held)]
+    .filter((part) => part !== "")
+    .join(" ");
+  // Rolled back to what it was, the override goes: the document says only what
+  // the referee changed, the way every other override here does.
+  doc.star = wanted === rolled ? null : wanted;
+  markSystemDirty();
+  refreshSystem();
+  sysSay(`${starsLabel(system.stars)}. The orbits are laid out again around it.`);
+}
+
+for (const id of ["sys-star-class", "sys-star-size"]) {
+  el(id).addEventListener("change", setSystemStar);
+}
+
+/* Saving and loading a system. SystemSpec 9.5, AppSpec 3.3 and 4.3 ------- */
+
+/** The file a system is saved as, named for the system. AppSpec 4.3. */
+function systemFile(open: SystemDoc): SaveFile {
+  const stem = open.name.replace(/[^A-Za-z0-9 _-]/g, "").trim() || "system";
+  return { name: `${stem}${LEVEL_SUFFIX.system}`, data: JSON.stringify(open, null, 2) };
+}
+
+/**
+ * Keep the open world on the system it came out of. SystemSpec 9.5.1.
+ *
+ * By seed rather than designation, because a designation moves: rename the
+ * system and the world would be looked for under a name it never had.
+ */
+function keepPlanetForSystem(): void {
+  if (doc === null || planetParent !== "system") return;
+  const had = savedWorld(doc, state.planet.seed);
+  // A copy, because state.planet is the one object the planet view edits: kept
+  // by reference it would go on changing after it had been put down.
+  keepWorld(doc, structuredClone(state.planet));
+  tellSystemAboutWorld(doc, state.planet);
+  if (had === undefined) markSystemDirty();
+}
+
+/**
+ * What the world says about itself, said to the system as well. AppSpec 1.3.3.
+ *
+ * A name and a profile are what the level above draws: rename a world and the
+ * tree, the strip and the chart above should all say the new name. They read
+ * the system's overrides, so that is where it has to land - the world document
+ * holds everything about the world, and the override holds the part the levels
+ * above are looking at.
+ */
+function tellSystemAboutWorld(open: SystemDoc, planet: Planet): void {
+  const held = systemOf({ ...open, overrides: [] });
+  const orbit = held.orbits.find((one) => worldIn(one.content)?.seed === planet.seed);
+  if (orbit === undefined) return;
+  const rolled = worldIn(orbit.content);
+  if (rolled === undefined || rolled === null) return;
+
+  // Only what differs from what the generator said, the way every override in
+  // this application works: typed back to what it was, it goes away again.
+  setOverride(open, orbit.index, "uwp", planet.uwp === rolled.uwp ? "" : planet.uwp);
+
+  // The main world and its system are the same thing named once, under
+  // SystemSpec 7.3.4.1: renaming the world renames the system.
+  if (rolled.main) {
+    if (planet.name.trim() !== "") open.name = planet.name;
+    open.mainWorldUwp = planet.uwp;
+    return;
+  }
+  const rolledName = positionName(held, orbit.index);
+  setOverride(open, orbit.index, "name", planet.name === rolledName ? "" : planet.name);
+}
+
+el("sys-save").addEventListener("click", async () => {
+  if (doc === null) return;
+  try {
+    // The folder is asked for once: a load or an earlier save has already said
+    // where this system lives, and AppSpec 3.3.2 has it stay there.
+    systemFolder ??= await pickFolder();
+    keepPlanetForSystem();
+    const file = systemFile(doc);
+    await saveTo(systemFolder, [file]);
+    markSystemClean();
+    const worlds = doc.worlds.length;
+    const also = worlds === 0 ? "" : `, holding ${worlds === 1 ? "one world" : `${worlds} worlds`}`;
+    sysSay(`Saved ${file.name}${also} into ${systemFolder.name}.`);
+  } catch (error) {
+    if (error instanceof PickerCancelled) return;
+    sysSay(error instanceof Error ? error.message : String(error), true);
+  }
+});
+
+/**
+ * Open a system from the folder holding it. AppSpec 3.3 and section 5: what is
+ * chosen is the folder, not a file in it, and the folder is the save folder from
+ * that moment on.
+ */
+async function loadSystem(): Promise<void> {
+  if (!confirmSystemDiscard("Load another system")) return;
+  try {
+    const { dir, files } = await loadFolder();
+    const found: { name: string; doc: SystemDoc }[] = [];
+    const refused: string[] = [];
+    for (const file of files) {
+      try {
+        found.push({ name: file.name, doc: parseSystemDoc(file.text) });
+      } catch (error) {
+        refused.push(`${file.name}: ${error instanceof Error ? error.message : String(error)}`);
+      }
+    }
+    if (found.length === 0) {
+      // AppSpec 5.3 and 5.5: say what was found rather than failing blankly, and
+      // name the file where something in the folder claimed to be a system.
+      const detail = refused.length === 0 ? "" : ` ${refused[0]!}`;
+      throw new Error(`No system in ${dir.name}.${detail}`);
+    }
+    // AppSpec 5.4 wants the user asked which; until there is somewhere to ask,
+    // the first by name is opened and the rest are named in the status line.
+    const first = found[0]!;
+    systemFolder = dir;
+    openSystem(first.doc);
+    markSystemClean();
+    const others = found.length === 1 ? "" : ` (${found.length - 1} more in the folder)`;
+    sysSay(`Loaded ${first.name} from ${dir.name}.${others}`);
+  } catch (error) {
+    if (error instanceof PickerCancelled) return;
+    const message = error instanceof Error ? error.message : String(error);
+    if (currentAppView() === "landing") landingSay(message, true);
+    else sysSay(message, true);
+  }
+}
+
+/**
+ * A world out of a system, opened as a planet. SystemSpec 6.2 and the app spec
+ * 6.1: the same planet view, reached by moving down a level.
+ *
+ * The settings the system wrote travel with it, under SystemSpec 6.6.3, so the
+ * world that opens is the world the system made rather than one that happens to
+ * share its seed.
+ */
+/**
+ * The panel for the star at the middle. SystemSpec 8.4.1.
+ *
+ * The figures that are about the whole system rather than about one orbit, and
+ * this is where they belong: the star is what they are all facts about. They
+ * were a block of summary rows above the body list once, which is a place a
+ * reader has to ignore rather than a place they go to look something up.
+ */
+function showStarPanel(open: StarSystem, row: (term: string, value: string) => void): void {
+  const { primary, companion, companionOrbit } = open.stars;
+  const pair = companion !== null;
+  el("sys-what").textContent = `${starsLabel(open.stars)} — ${pair ? "the stars" : "the star"}`;
+
+  row("Class", pair ? `${starLabel(primary)} and ${starLabel(companion)}` : starLabel(primary));
+  // What the orbits are lit by, which is both where the companion is inside
+  // them all. SystemSpec 2.4.2.
+  row("Light", `${lightNote(primary.luminosity)} the Sun's`);
+  if (pair && companionOrbit === "close") {
+    row("Together", `${lightNote(primary.luminosity + companion.luminosity)} the Sun's`);
+  }
+  row("Diameter", kmLabel(starDiameterKm(primary)));
+
+  // SystemSpec 4.8: how far out a ship has to be before it can jump, and how far
+  // in an arriving one comes out.
+  const shadowAu = starShadowAu(open);
+  const shadowKm = auToKm(shadowAu);
+  // One figure, because kmLabel gives AU once a distance is big enough to want
+  // them and a star's shadow always is. Two readings of it side by side round
+  // differently and read as a mistake.
+  row("Jump shadow", kmLabel(shadowKm));
+  row("Crossing it", crossingLabel(hoursAt1g(shadowKm)));
+  const inside = open.orbits.filter((orbit) => orbit.au < shadowAu).length;
+  if (inside > 0) {
+    row("Orbits inside it", inside === 1 ? "one, which cannot jump" : `${inside}, none of which can jump`);
+  }
+
+  // SystemSpec 3.2, and the one figure a referee reads a system's whole shape off.
+  const zone = open.orbits.filter((orbit) => orbit.habitable);
+  row(
+    "Habitable zone",
+    zone.length === 0
+      ? "none of its orbits"
+      : `${auLabel(zone[0]!.au)} to ${auLabel(zone[zone.length - 1]!.au)}`,
+  );
+
+  row("Orbits", String(open.orbits.length));
+  row("Worlds", String(worldsOf(open).length));
+  if (open.placed.belts > 0) row("Belts", String(open.placed.belts));
+  if (open.placed.gasGiants > 0) row("Gas giants", String(open.placed.gasGiants));
+  if (open.bases.letter !== "") row("Bases", basesLabel(open.bases.letter));
+  if (doc !== null) row("Seed", doc.seed);
+
+  el("sys-note").textContent = starNote(open);
+}
+
+/** A star's output, said the way a reader can hold it. */
+function lightNote(luminosity: number): string {
+  if (luminosity >= 100) return `${Math.round(luminosity).toLocaleString("en-GB")}×`;
+  if (luminosity >= 1) return `${luminosity.toFixed(luminosity >= 10 ? 0 : 2)}×`;
+  if (luminosity >= 0.01) return `${luminosity.toFixed(3)}×`;
+  return `${luminosity.toExponential(1)}×`;
+}
+
+/** A sentence about the star, in the terms the rest of the system is read in. */
+function starNote(open: StarSystem): string {
+  const { primary, companion, companionOrbit } = open.stars;
+  const zone = open.orbits.filter((orbit) => orbit.habitable);
+  const held = zone.filter((orbit) => orbit.content.kind === "world").length;
+  const parts = [
+    `${starLabel(primary)}, ${kmLabel(starDiameterKm(primary))} across.`,
+    zone.length === 0
+      ? "Nothing it has is in reach of liquid water."
+      : held > 0
+        ? `Its habitable zone is ${auLabel(zone[0]!.au)} out and there is a world in it.`
+        : `Its habitable zone is ${auLabel(zone[0]!.au)} out and empty.`,
+  ];
+  if (companion !== null) {
+    parts.push(
+      companionOrbit === "close"
+        ? `A ${starLabel(companion)} rides with it inside every orbit, so both suns are in every sky here and the light of both is what the orbits are laid out on.`
+        : `A ${starLabel(companion)} lies outside every orbit: a bright star in the night rather than a second sun.`,
+    );
+  }
+  return parts.join(" ");
+}
+
+/**
+ * What the system holds, down the left: every orbit in order, and a gas giant's
+ * moons under it. The one place a moon can be found without knowing which giant
+ * it belongs to.
+ */
+function showTree(): void {
+  const tree = el("sys-tree");
+  tree.replaceChildren();
+  if (system === null || doc === null) return;
+
+  const peopleOnly = el<HTMLInputElement>("sys-inhabited").checked;
+  for (const orbit of system.orbits) {
+    // An empty orbit is a gap rather than a thing, and a list of things is not
+    // the place to say how many gaps there are. The model and the strip draw
+    // them, which is where an empty orbit is worth seeing.
+    if (orbit.content.kind === "empty") continue;
+    // Whatever is selected stays in the list whether anybody lives on it or
+    // not: a filter that hides what the rest of the window is about is a filter
+    // that has lost the user.
+    const chosen = orbit.index === orbitShown;
+    if (peopleOnly && !chosen && !anybodyHome(system, orbit.index)) continue;
+    const row = document.createElement("li");
+    row.append(treeButton(orbit.index, null));
+    const moons = moonsOf(system, orbit.index).filter(
+      (moon) =>
+        !peopleOnly ||
+        livedOn(moon.uwp) ||
+        (chosen && moon.index === moonShown),
+    );
+    if (moons.length > 0) {
+      const nested = document.createElement("ul");
+      for (const moon of moons) {
+        const li = document.createElement("li");
+        li.append(treeButton(orbit.index, moon.index));
+        nested.append(li);
+      }
+      row.append(nested);
+    }
+    tree.append(row);
+  }
+  if (tree.children.length === 0) {
+    const empty = document.createElement("li");
+    empty.className = "tree-none";
+    empty.textContent = "Nobody lives anywhere in this system.";
+    tree.append(empty);
+  }
+  markTree();
+}
+
+/**
+ * What to call the thing in an orbit.
+ *
+ * A world and a gas giant are both bodies and both get the system's name and
+ * their orbit, under SystemSpec 7.2. A belt and an empty orbit are places rather
+ * than things, so they are named by how far out they are, which is the only
+ * thing there is to say about them.
+ */
+function bodyName(open: StarSystem, orbitIndex: number): string {
+  return properName(orbitIndex, null) ?? positionName(open, orbitIndex);
+}
+
+/**
+ * Where a body is, written as a name. SystemSpec 7.2: the system's name and
+ * which planet it is, which is what a place with nobody on it is called and what
+ * every body is filed under.
+ */
+function positionName(open: StarSystem, orbitIndex: number): string {
+  const orbit = open.orbits.find((held) => held.index === orbitIndex);
+  if (orbit === undefined) return "";
+  const stem = names?.system ?? open.seed;
+  const held = ordinalOf(open, orbitIndex);
+  if (held.kind === "planet") return worldName(stem, held.n);
+  if (held.kind === "belt") return beltName(stem, held.n);
+  // An empty orbit is a place rather than a thing, and how far out it is the
+  // only thing there is to say about it.
+  return auLabel(orbit.au);
+}
+
+/** Whether anybody lives on the body in an orbit, or on any of its moons. */
+function anybodyHome(open: StarSystem, orbitIndex: number): boolean {
+  const orbit = open.orbits.find((held) => held.index === orbitIndex);
+  if (orbit === undefined) return false;
+  const held = worldIn(orbit.content);
+  if (held !== null && livedOn(held.uwp)) return true;
+  return moonsOf(open, orbitIndex).some((moon) => livedOn(moon.uwp));
+}
+
+function livedOn(uwp: string): boolean {
+  const profile = parseUwp(uwp);
+  return profile !== null && profile.population > 0;
+}
+
+/** One row of the tree. Its name, what it is, and whether anybody lives there. */
+function treeButton(orbitIndex: number, moon: number | null): HTMLButtonElement {
+  const open = system!;
+  const orbit = open.orbits.find((held) => held.index === orbitIndex)!;
+  const button = document.createElement("button");
+  button.type = "button";
+  button.dataset["orbit"] = String(orbitIndex);
+  button.dataset["moon"] = moon === null ? "" : String(moon);
+
+  const held = moon === null ? null : moonsOf(open, orbitIndex).find((m) => m.index === moon);
+  const uwp = held?.uwp ?? worldIn(orbit.content)?.uwp ?? null;
+  const name = document.createElement("span");
+  name.textContent =
+    held !== null && held !== undefined
+      ? moonName(open, orbitIndex, held.index)
+      : bodyName(open, orbitIndex);
+  button.append(name);
+
+  if (uwp !== null && uwp !== undefined) {
+    const profile = parseUwp(uwp);
+    const digits = document.createElement("span");
+    digits.className = "tree-uwp";
+    digits.textContent = uwp;
+    if (profile !== null && profile.population > 0) digits.classList.add("tree-people");
+    button.append(digits);
+  }
+  const what = document.createElement("span");
+  what.className = "tree-what";
+  what.textContent =
+    held !== null && held !== undefined ? "moon" : contentLabel(orbit).toLowerCase();
+  button.append(what);
+
+  button.addEventListener("click", () => selectBody(orbitIndex, moon));
+  return button;
+}
+
+/** Mark the row the panel is about. */
+function markTree(): void {
+  for (const button of el("sys-tree").querySelectorAll("button")) {
+    const orbit = Number(button.dataset["orbit"]);
+    const moon = button.dataset["moon"] === "" ? null : Number(button.dataset["moon"]);
+    const here = orbit === orbitShown && moon === moonShown;
+    if (here) {
+      button.setAttribute("aria-current", "true");
+      // Picked in the model or on the strip, the row may be well down a list
+      // nobody has scrolled. A mark that cannot be seen marks nothing.
+      button.scrollIntoView({ block: "nearest" });
+    } else {
+      button.removeAttribute("aria-current");
+    }
+  }
+}
+
+/** The moons of a gas giant, each one a world that opens. SystemSpec 4.6.1. */
+function showMoons(open: StarSystem, orbitIndex: number): void {
+  const list = el("sys-moons");
+  for (const moon of moonsOf(open, orbitIndex)) {
+    const profile = parseUwp(moon.uwp);
+    const button = document.createElement("button");
+    button.type = "button";
+    const name = document.createElement("span");
+    name.textContent = moonName(open, orbitIndex, moon.index);
+    const uwp = document.createElement("span");
+    uwp.className = "moon-uwp";
+    uwp.textContent = moon.uwp;
+    button.append(name, uwp);
+    if (profile !== null && profile.population > 0) {
+      const people = document.createElement("span");
+      people.className = "moon-people";
+      people.textContent = "inhabited";
+      button.append(people);
+    }
+    button.addEventListener("click", () => selectBody(orbitIndex, moon.index));
+    list.append(button);
+  }
+}
+
+/** A moon is its planet and a letter. SystemSpec 7.2. */
+function moonName(open: StarSystem, orbitIndex: number, moon: number): string {
+  return properName(orbitIndex, moon) ?? moonPositionName(open, orbitIndex, moon);
+}
+
+/** A moon is its planet and a letter. SystemSpec 7.2. */
+function moonPositionName(open: StarSystem, orbitIndex: number, moon: number): string {
+  const letter = String.fromCharCode(96 + Math.min(26, moon));
+  return `${positionName(open, orbitIndex)}${letter}`;
+}
+
+
+/**
+ * A world out of a system, opened as a planet. SystemSpec 6.2 and the app spec
+ * 6.1: the same planet view, reached by moving down a level.
+ *
+ * The settings the system wrote travel with it, under SystemSpec 6.6.3, so the
+ * world that opens is the world the system made rather than one that happens to
+ * share its seed.
+ */
+function openWorld(
+  seed: string,
+  uwp: string,
+  name: string,
+  settings: { orbitAu: number; luminosity: number },
+  au: number,
+  designation: string,
+): void {
+  setPlanetParent("system");
+  // The world they left, if they have been here before. Anything they typed on
+  // it, drew on it or placed on it is still on it.
+  const kept = doc === null ? undefined : savedWorld(doc, seed);
+  // Everything the system knows that the world would otherwise have to be told
+  // twice: which body it is, where it is in the setting, and what it orbits.
+  // AppSpec 1.3.2 - a level above fills in the settings of the level below.
+  const fromAbove = {
+    designation,
+    sector: doc?.sector ?? "",
+    hex: doc?.hex ?? "",
+    orbitAu: settings.orbitAu,
+    luminosity: settings.luminosity,
+    star: system === null ? null : starLabel(system.stars.primary),
+  };
+  Object.assign(
+    state.planet,
+    kept === undefined
+      ? Object.assign(newPlanet(seed), { name, uwp }, fromAbove)
+      : // What the referee left, wearing what the system says about it now. Its
+        // designation, its place and its star follow the system rather than
+        // being frozen at whatever they were when it was last looked at.
+        { ...kept, ...fromAbove },
+  );
+  state.folder = null;
+  state.selected = null;
+  state.hovered = null;
+  state.selectedRef = null;
+  setAppView("planet");
+  showPlanet();
+  regenerate();
+  placeStarport();
+  placeCities();
+  markSettled();
+  map.resetView();
+  globe.resetView();
+  markClean();
+  say(`${name}, ${au} AU out.${saveRoute()}`);
+}
+
+el("sys-open").addEventListener("click", () => {
+  if (system === null || orbitShown === null) return;
+  const orbit = system.orbits.find((held) => held.index === orbitShown);
+  if (orbit === undefined) return;
+  if (moonShown !== null) {
+    const moon = moonsOf(system, orbit.index).find((held) => held.index === moonShown);
+    if (moon === undefined) return;
+    openWorld(
+      moon.seed,
+      moon.uwp,
+      moonName(system, orbit.index, moon.index),
+      worldSettings(system, orbit.index),
+      orbit.au,
+      moonName(system, orbit.index, moon.index),
+    );
+    return;
+  }
+  const held = worldIn(orbit.content);
+  if (held === null) return;
+  openWorld(
+    held.seed,
+    held.uwp,
+    bodyName(system, orbit.index),
+    worldSettings(system, orbit.index),
+    orbit.au,
+    positionName(system, orbit.index),
+  );
+});
+
+
+/* The subsector chart. SubSectorSpec section 4 --------------------------- */
+
+// The document is what is edited and saved; the chart is what the document
+// describes, rebuilt from its seed every time either changes. SubSectorSpec 5.2.
+
+const chart = createChart();
+el("sub-chart").append(chart.element);
+
+let subDoc: SubsectorDoc | null = null;
+let subsector: Subsector | null = null;
+let subFolder: DirectoryHandle | null = null;
+let hexShown: string | null = null;
+let subDirty = false;
+let subParent: "landing" | "sector" = "landing";
+/** Which chart the view was last framed on, so an edit does not move it. */
+let drawnChart = "";
+
+function subSay(message: string, isError = false): void {
+  const status = el("sub-status");
+  status.textContent = message;
+  status.classList.toggle("error", isError);
+}
+
+function markSubDirty(): void {
+  subDirty = true;
+  el("sub-dirty").hidden = subParent === "sector";
+  if (subParent === "sector") markSectorDirty();
+}
+
+function markSubClean(): void {
+  subDirty = false;
+  el("sub-dirty").hidden = true;
+}
+
+/** What a save would lose, asked before anything discards it. SubSectorSpec 5.6. */
+function confirmSubDiscard(action: string): boolean {
+  if (subDoc === null || !subDirty) return true;
+  return confirm(`${subDoc.name || "This subsector"} has unsaved changes. ${action} and lose them?`);
+}
+
+/**
+ * What rolling another subsector would lose, asked before it does. SubSectorSpec
+ * 5.6.
+ *
+ * Unsaved changes are one thing. Under a sector there is another: the letter may
+ * already carry work the sector has put away, and the dirty mark was cleared
+ * when it was opened out of the sector, so nothing on the screen says so. A roll
+ * replaces it, and replacing an evening's work without asking is not on.
+ */
+function confirmSubRoll(): boolean {
+  if (subDoc === null) return true;
+  const systems = subDoc.systems.length;
+  const written = subDoc.overrides.length;
+  if (!subDirty && systems === 0 && written === 0) return true;
+  const name = subDoc.name.trim() === "" ? `Subsector ${subDoc.letter}` : subDoc.name.trim();
+  const holds = [
+    systems === 0 ? "" : systems === 1 ? "one system worked up" : `${systems} systems worked up`,
+    written === 0 ? "" : written === 1 ? "one hex written on" : `${written} hexes written on`,
+  ]
+    .filter(Boolean)
+    .join(" and ");
+  const loses = holds === "" ? "has unsaved changes" : `has ${holds}`;
+  return confirm(`${name} ${loses}. Roll another subsector over it and lose that?`);
+}
+
+/**
+ * Roll another subsector. SubSectorSpec 5.5, and SectorSpec 7.1 where there is a
+ * sector above.
+ *
+ * Under a sector, rolling rolls this letter again rather than walking out of the
+ * sector. The new subsector goes in the same slot, wearing the sector's name and
+ * lean, and the sector carries it the way it carried the one before - a referee
+ * who does not like the look of C wants another C, not to be put back on the
+ * landing page with the sector closed behind them.
+ */
+function startNewSubsector(): void {
+  if (!confirmSubRoll()) return;
+  const under = subParent === "sector" ? sectorDoc : null;
+  // Which of the sixteen this is comes from what was already open, since a
+  // subsector rolled from the landing page is a subsector and its letter only
+  // says where in a sector it would sit.
+  const letter = subDoc?.letter ?? "A";
+  const density = (el<HTMLSelectElement>("sub-density").value || "standard") as Density;
+  const held = newSubsectorDoc(randomSeed(), letter, density, `Subsector ${letter}`);
+  subFolder = null;
+  if (under !== null) {
+    held.sector = under.name;
+    held.shifts = { ...under.shifts };
+    // Against its letter before it is drawn, so the sector the border of 4.5 is
+    // read from is a sector that already holds it.
+    keepSubsector(under, letter, held);
+    markSectorDirty();
+  }
+  openSubsector(held, under === null ? "landing" : "sector");
+  markSubClean();
+  if (under !== null) subSay(`Rolled another subsector ${letter}.`);
+}
+
+/** Put a document on screen, and the chart it describes with it. */
+function openSubsector(next: SubsectorDoc, parent: "landing" | "sector" = "landing"): void {
+  subDoc = next;
+  subParent = parent;
+  el("sub-home").textContent = parent === "sector" ? "Sector" : "Levels";
+  el("sub-roll").title =
+    parent === "sector" ? `Roll another subsector ${next.letter}` : "Another subsector";
+  // A chart under a sector is saved by that sector, the way a system under a
+  // chart is saved by the chart. AppSpec 4.10.
+  el("sub-save").hidden = parent === "sector";
+  el("sub-dirty").hidden = parent === "sector" || !subDirty;
+  openLevels.sector = parent === "sector";
+
+  setAppView("subsector");
+  el<HTMLInputElement>("sub-name").value = next.name;
+  el<HTMLInputElement>("sub-sector").value = next.sector;
+  el<HTMLSelectElement>("sub-density").value = next.density;
+  el<HTMLInputElement>("sub-people").value = String(next.shifts.population);
+  el<HTMLInputElement>("sub-tech").value = String(next.shifts.tech);
+  openLevels.subsector = true;
+  openLevels.system = false;
+  openLevels.planet = false;
+  drawSubsector();
+  showCrumbs();
+  // The busiest world, which is where a referee's eye goes and what the chart is
+  // usually about.
+  const first = [...(subsector?.worlds ?? [])].sort(
+    (a, b) => b.profile.population - a.profile.population,
+  )[0];
+  selectHex(first?.at ?? null);
+  subSay(`${subsector?.worlds.length ?? 0} systems in eighty hexes.`);
+}
+
+/**
+ * Rebuild the chart from the document and draw it. SubSectorSpec 5.2: nothing
+ * generated is stored, so every edit is a change to the document and then this.
+ */
+function drawSubsector(): void {
+  if (subDoc === null) return;
+  subsector = chartOf(subDoc);
+  // The sector, wearing this chart as it stands. An edit in here can move a
+  // route that crosses the edge, so the border of 4.5 is worked out against the
+  // chart on the screen rather than against the one the sector last rolled.
+  if (subParent === "sector" && sectorDoc !== null) sector = sectorOf(sectorDoc, subDoc);
+  // What is over the edge, where there is a sector above to ask. A chart opened
+  // on its own has no neighbours to know about. SectorSpec 4.5.
+  const around =
+    subParent === "sector" && sector !== null
+      ? aroundSubsector(sector, subDoc.letter)
+      : undefined;
+  chart.render(subsector, around);
+  chart.setMains(el<HTMLInputElement>("sub-mains").checked);
+  // Opened on its own eighty hexes. What is over the edge is there to be found
+  // by going out, not the first thing a referee is shown. SubSectorSpec 4.7.
+  if (drawnChart !== subDoc.seed + subDoc.letter) {
+    drawnChart = subDoc.seed + subDoc.letter;
+    chart.resetView();
+  }
+  showSubsectorAbout();
+  showSubsectorList();
+}
+
+
+function showSubsectorAbout(): void {
+  const about = el("sub-about");
+  about.replaceChildren();
+  if (subsector === null) return;
+  const fact = (term: string, value: string) => {
+    const dt = document.createElement("dt");
+    dt.textContent = term;
+    const dd = document.createElement("dd");
+    dd.textContent = value;
+    about.append(dt, dd);
+  };
+  const inhabited = subsector.worlds.filter((world) => world.profile.population > 0).length;
+  fact("Systems", `${subsector.worlds.length} of 80`);
+  fact("Inhabited", String(inhabited));
+  fact("Density", subsector.density);
+  const lean = [
+    (subDoc?.shifts.population ?? 0) === 0
+      ? ""
+      : `people ${subDoc!.shifts.population > 0 ? "+" : ""}${subDoc!.shifts.population}`,
+    (subDoc?.shifts.tech ?? 0) === 0
+      ? ""
+      : `tech ${subDoc!.shifts.tech > 0 ? "+" : ""}${subDoc!.shifts.tech}`,
+  ].filter((part) => part !== "");
+  if (lean.length > 0) fact("Leaning", lean.join(", "));
+  fact("Seed", subsector.seed);
+  // The Mains are worth a line of their own when they are being looked at: how
+  // many there are, and how far the longest one reaches. SubSectorSpec 3.10.
+  if (el<HTMLInputElement>("sub-mains").checked && subsector.mains.length > 0) {
+    const longest = subsector.mains[0]!;
+    fact("Mains", subsector.mains.length === 1 ? "one" : String(subsector.mains.length));
+    fact("Longest", `${longest.name}, ${longest.hexes.length} worlds`);
+  }
+  const written = subDoc?.overrides.length ?? 0;
+  if (written > 0) fact("Edited", written === 1 ? "one hex" : `${written} hexes`);
+  el("sub-where").textContent = `Subsector ${subsector.letter}`;
+  // The sector alone up here. The seed is a fact in the panel below and does not
+  // need saying twice, and a header that wraps is a header that has stopped
+  // being a header.
+  el("sub-counts").textContent = el<HTMLInputElement>("sub-sector").value.trim();
+}
+
+/** Every world on the chart, down the left, in hex order. */
+function showSubsectorList(): void {
+  const list = el("sub-list");
+  list.replaceChildren();
+  if (subsector === null) return;
+  const peopleOnly = el<HTMLInputElement>("sub-inhabited").checked;
+  for (const world of subsector.worlds) {
+    if (peopleOnly && world.profile.population === 0 && world.at !== hexShown) continue;
+    const row = document.createElement("li");
+    const button = document.createElement("button");
+    button.type = "button";
+    button.dataset["at"] = world.at;
+    const name = document.createElement("span");
+    name.textContent = world.name;
+    const uwp = document.createElement("span");
+    uwp.className = world.profile.population > 0 ? "tree-uwp tree-people" : "tree-uwp";
+    uwp.textContent = world.uwp;
+    const at = document.createElement("span");
+    at.className = "tree-what";
+    at.textContent = world.at;
+    button.append(name, uwp, at);
+    button.addEventListener("click", () => selectHex(world.at));
+    row.append(button);
+    list.append(row);
+  }
+  markSubsectorList();
+}
+
+function markSubsectorList(): void {
+  for (const button of el("sub-list").querySelectorAll("button")) {
+    if (button.dataset["at"] === hexShown) {
+      button.setAttribute("aria-current", "true");
+      button.scrollIntoView({ block: "nearest" });
+    } else {
+      button.removeAttribute("aria-current");
+    }
+  }
+}
+
+/** Select a hex: the chart, the list and the panel all follow it. */
+function selectHex(at: string | null): void {
+  // Another hex is another system, so what was open under this chart is not.
+  if (at !== hexShown) {
+    openLevels.system = false;
+    openLevels.planet = false;
+  }
+  hexShown = at;
+  chart.setSelected(at);
+  markSubsectorList();
+  showHexPanel(at);
+}
+
+/** What is in a hex, and where it is edited. SubSectorSpec 4.3 and 4.4. */
+function showHexPanel(at: string | null): void {
+  const facts = el("sub-facts");
+  const open = el<HTMLButtonElement>("sub-open");
+  facts.replaceChildren();
+  el("sub-note").textContent = "";
+  open.hidden = true;
+  el("sub-globe").hidden = true;
+  el("sub-edit").hidden = true;
+  if (subsector === null || subDoc === null || at === null) {
+    el("sub-what").textContent = "Select a hex";
+    return;
+  }
+  const world = subsector.worlds.find((held) => held.at === at) ?? null;
+  showHexFields(at, world);
+  if (world === null) {
+    el("sub-what").textContent = `${at} — empty`;
+    el("sub-note").textContent = "Nothing here. Most of a subsector is nothing.";
+    return;
+  }
+
+  const row = (term: string, value: string) => {
+    const dt = document.createElement("dt");
+    dt.textContent = term;
+    const dd = document.createElement("dd");
+    dd.textContent = value;
+    facts.append(dt, dd);
+  };
+  el("sub-what").textContent = `${world.name} — ${at}`;
+  row("PBG", `${world.pbg.multiplier}${world.pbg.belts}${world.pbg.gasGiants}`);
+  row("Stars", starsLabel(world.stars));
+  if (world.trade.length > 0) {
+    row("Trade", world.trade.map((code) => `${code.code} ${code.label}`).join(", "));
+  }
+  row("Seed", world.seed);
+  // Where the world actually is, which is its own system's answer rather than
+  // the one a profile alone would guess at. SubSectorSpec 4.3.1.1: a chart that
+  // said 5.77 AU while the system said 1.2 would be two answers about one world.
+  const settings = mainWorldSettings(world);
+  row("Distance", `${settings.orbitAu.toFixed(2)} AU`);
+  const detail = planetDetail(world.seed, world.uwp, settings);
+  el("sub-note").textContent = describeUwp(world.uwp, detail) ?? "";
+  open.hidden = false;
+  showHexGlobe(world, settings);
+}
+
+/**
+ * Where a hex's main world sits and what lights it, by laying out its system.
+ *
+ * Cheap: a system is orbits and counts, not surfaces. The chart avoids doing it
+ * for eighty hexes at once under SystemSpec 11.4, but the one hex being looked
+ * at is worth the truth.
+ */
+function mainWorldSettings(world: ChartWorld): { orbitAu: number; luminosity: number } {
+  const held = generateSystem(world.systemSeed);
+  return worldSettings(held, held.mainWorld.orbitIndex);
+}
+
+/**
+ * The selected world, turning, at the top of the panel. SubSectorSpec 4.3.1.
+ *
+ * The chart draws dots, because eighty globes is a chart that cannot be rolled
+ * and a dot with a key beside it says more at that size anyway. One world at a
+ * time is worth a real picture, and the panel is where a world is looked at
+ * rather than glanced at.
+ *
+ * Drawn where its own system puts it, so this is the same world the system view
+ * shows rather than a near miss: a surface is its climate, and a climate is an
+ * orbit. Laying the system out for one hex is cheap; it is the surface that is
+ * not, which is why this waits a tick and checks the hex is still the one
+ * selected before drawing.
+ */
+function showHexGlobe(
+  world: ChartWorld,
+  settings: { orbitAu: number; luminosity: number },
+): void {
+  const box = el("sub-globe");
+  const wanted = world.at;
+  if (world.profile.size === 0) {
+    // A belt has no globe. There is no sphere here to photograph. SystemSpec 4.3.3.
+    box.hidden = true;
+    return;
+  }
+  setTimeout(() => {
+    if (hexShown !== wanted || subsector === null) return;
+    box.replaceChildren(liveGlobe({ seed: world.seed, uwp: world.uwp, ...settings }));
+    box.hidden = false;
+  }, 0);
+}
+
+/**
+ * The fields a referee writes over a hex with. SubSectorSpec 5.3.
+ *
+ * What is in a field is what the chart is showing, whether that came from the
+ * generator or from them: a box that showed only their own edits would be a box
+ * that is empty on every hex they have not touched yet, and they would be typing
+ * a world's name in from scratch to change one letter of it. What decides
+ * whether anything is stored is whether it still matches what was rolled.
+ */
+function showHexFields(at: string, world: ChartWorld | null): void {
+  if (subDoc === null) return;
+  const box = el("sub-edit");
+  box.hidden = false;
+  const here = el<HTMLInputElement>("sub-here");
+  here.checked = world !== null;
+  el("sub-fields").hidden = world === null;
+  if (world === null) return;
+  el<HTMLInputElement>("sub-e-name").value = world.name;
+  el<HTMLInputElement>("sub-e-uwp").value = world.uwp;
+  el<HTMLSelectElement>("sub-e-bases").value = world.bases;
+  el<HTMLSelectElement>("sub-e-zone").value = world.zone;
+  el<HTMLTextAreaElement>("sub-e-note").value = hexOverride(subDoc, at)?.note ?? "";
+}
+
+/**
+ * Take an edit. Only what differs from what the generator said is kept, under
+ * 5.3.1, so a referee who types a name back to what it already was leaves no
+ * override behind.
+ */
+function editHex(field: HexField, value: string): void {
+  if (subDoc === null || hexShown === null) return;
+  const at = hexShown;
+  const rolled = rolledWorld(at);
+  const same =
+    rolled !== null &&
+    (field === "name"
+      ? rolled.name === value.trim()
+      : field === "uwp"
+        ? rolled.uwp === value.trim().toUpperCase()
+        : field === "bases"
+          ? rolled.bases === value
+          : field === "zone"
+            ? rolled.zone === value
+            : false);
+  setHexOverride(subDoc, at, field, same ? "" : value);
+  markSubDirty();
+  drawSubsector();
+  selectHex(at);
+}
+
+/** What the generator says is in a hex, before anybody wrote on it. */
+function rolledWorld(at: string): ChartWorld | null {
+  if (subDoc === null) return null;
+  const rolled = generateSubsector(subDoc.seed, subDoc.letter, subDoc.density);
+  return rolled.worlds.find((held) => held.at === at) ?? null;
+}
+
+el("sub-here").addEventListener("change", () => {
+  if (subDoc === null || hexShown === null) return;
+  const at = hexShown;
+  const wanted = el<HTMLInputElement>("sub-here").checked;
+  setPresence(subDoc, at, wanted, rolledWorld(at) !== null);
+  markSubDirty();
+  drawSubsector();
+  selectHex(at);
+});
+
+for (const [id, field] of [
+  ["sub-e-name", "name"],
+  ["sub-e-uwp", "uwp"],
+] as const) {
+  // On change rather than on input: a half typed UWP is not a profile, and a
+  // chart redrawn on every keystroke is a chart that fights the typist.
+  el(id).addEventListener("change", (event) => {
+    editHex(field, (event.target as HTMLInputElement).value);
+  });
+}
+for (const [id, field] of [
+  ["sub-e-bases", "bases"],
+  ["sub-e-zone", "zone"],
+] as const) {
+  el(id).addEventListener("change", (event) => {
+    editHex(field, (event.target as HTMLSelectElement).value);
+  });
+}
+el("sub-e-note").addEventListener("change", (event) => {
+  editHex("note", (event.target as HTMLTextAreaElement).value);
+});
+
+/* Saving and loading a subsector. SubSectorSpec 5.5, AppSpec 3.3 and 4.4 --- */
+
+/** The file a subsector is saved as, named for the subsector. AppSpec 4.4. */
+function subsectorFileFor(open: SubsectorDoc): SaveFile {
+  const stem = open.name.replace(/[^A-Za-z0-9 _-]/g, "").trim() || `Subsector ${open.letter}`;
+  return {
+    name: `${stem}${LEVEL_SUFFIX.subsector}`,
+    data: JSON.stringify(open, null, 2),
+  };
+}
+
+/**
+ * The files a subsector save writes: the document, the sector file, and a folder
+ * for every system the referee has worked up. AppSpec 4.4 and 4.6.
+ *
+ * Only what was actually worked on. Eighty folders for eighty hexes nobody has
+ * opened would be eighty folders describing what the seed already describes.
+ */
+async function subsectorFiles(open: SubsectorDoc): Promise<SaveFile[]> {
+  const file = subsectorFileFor(open);
+  const stem = file.name.replace(/\.[a-z]+$/, "");
+  const files: SaveFile[] = [file];
+  if (subsector === null) return files;
+  const chart = subsector;
+  const sector = el<HTMLInputElement>("sub-sector").value.trim();
+  const wants = (id: string) => el<HTMLInputElement>(id).checked;
+  // What the referee wrote about a hex travels with the hex into the sheet.
+  const noteFor = (at: string) => hexOverride(open, at)?.note ?? "";
+
+  // The sector file, since a chart that cannot be handed to a map is a chart
+  // only this application can read. SubSectorSpec 6.1.
+  if (wants("sub-want-sec")) {
+    files.push({ name: `${stem}.sec`, data: subsectorFile(chart, sector) });
+  }
+  const drawn = () => chartSvg(chart, sector, el<HTMLInputElement>("sub-mains").checked);
+  if (wants("sub-want-svg")) files.push({ name: `${stem}.svg`, data: drawn() });
+  if (wants("sub-want-png")) {
+    files.push({ name: `${stem}.png`, data: await svgToPng(drawn()) });
+  }
+  if (wants("sub-want-csv")) files.push({ name: `${stem}.csv`, data: subsectorCsv(chart) });
+  if (wants("sub-want-md")) {
+    files.push({ name: `${stem}.md`, data: subsectorSheetMarkdown(chart, sector, noteFor) });
+  }
+  if (wants("sub-want-html")) {
+    files.push({ name: `${stem}.html`, data: subsectorSheetHtml(chart, sector, noteFor) });
+  }
+  return files;
+}
+
+/** What a save wrote, said in the terms the referee thinks in. */
+function subsectorSaveNote(open: SubsectorDoc, files: readonly SaveFile[]): string {
+  const chart = files[0]!.name;
+  const systems = open.systems.length;
+  const worlds = open.systems.reduce((count, held) => count + held.doc.worlds.length, 0);
+  const worked =
+    systems === 0
+      ? ""
+      : `, holding ${systems === 1 ? "one system" : `${systems} systems`}${
+          worlds === 0 ? "" : ` and ${worlds === 1 ? "one world" : `${worlds} worlds`}`
+        }`;
+  const beside = files.length - 1;
+  const also = beside === 0 ? "" : ` with ${beside === 1 ? "one export" : `${beside} exports`}`;
+  return `${chart}${worked}${also}`;
+}
+
+el("sub-save").addEventListener("click", async () => {
+  if (subDoc === null) return;
+  const held = subDoc;
+  try {
+    const files = await subsectorFiles(held);
+    if (isSupported()) {
+      // Asked for once: a load or an earlier save has already said where this
+      // subsector lives, and AppSpec 3.3.2 has it stay there.
+      subFolder ??= await pickFolder();
+      await saveTo(subFolder, files);
+      markSubClean();
+      subSay(`Saved ${subsectorSaveNote(held, files)} into ${subFolder.name}.`);
+      return;
+    }
+    // The same fallback a planet save has under the planet spec 6.4.1: a browser
+    // that cannot write a folder gets the folder as an archive instead. A
+    // download cannot be written over, so there is no folder to remember.
+    const stem = subsectorFileFor(held).name.replace(/\.[a-z]+$/, "");
+    download(await zipSave(files), `${stem}.zip`);
+    markSubClean();
+    subSay(`Saved ${stem}.zip.`);
+  } catch (error) {
+    if (error instanceof PickerCancelled) return;
+    subSay(error instanceof Error ? error.message : String(error), true);
+  }
+});
+
+/**
+ * Open a subsector from the folder holding it. AppSpec 3.3 and section 5: what
+ * is chosen is the folder, not a file in it, and the folder is the save folder
+ * from that moment on.
+ */
+async function loadSubsector(): Promise<void> {
+  if (!confirmSubDiscard("Load another subsector")) return;
+  try {
+    const { dir, files } = await loadFolder();
+    const found: { name: string; doc: SubsectorDoc }[] = [];
+    const refused: string[] = [];
+    for (const file of files) {
+      try {
+        found.push({ name: file.name, doc: parseSubsectorDoc(file.text) });
+      } catch (error) {
+        refused.push(`${file.name}: ${error instanceof Error ? error.message : String(error)}`);
+      }
+    }
+    if (found.length === 0) {
+      const detail = refused.length === 0 ? "" : ` ${refused[0]!}`;
+      throw new Error(`No subsector in ${dir.name}.${detail}`);
+    }
+    const first = found[0]!;
+    subFolder = dir;
+    openSubsector(first.doc);
+    markSubClean();
+    const others = found.length === 1 ? "" : ` (${found.length - 1} more in the folder)`;
+    const systems = first.doc.systems.length;
+    const worlds = first.doc.systems.reduce((count, one) => count + one.doc.worlds.length, 0);
+    const worked =
+      systems === 0
+        ? ""
+        : ` ${systems === 1 ? "One system" : `${systems} systems`}${
+            worlds === 0 ? "" : ` and ${worlds === 1 ? "one world" : `${worlds} worlds`}`
+          } worked up.`;
+    subSay(`Loaded ${first.name} from ${dir.name}.${others}${worked}`);
+  } catch (error) {
+    if (error instanceof PickerCancelled) return;
+    const message = error instanceof Error ? error.message : String(error);
+    if (currentAppView() === "landing") landingSay(message, true);
+    else subSay(message, true);
+  }
+}
+
+chart.onSelect(selectHex);
+el("sub-inhabited").addEventListener("change", showSubsectorList);
+el("sub-mains").addEventListener("change", () => {
+  chart.setMains(el<HTMLInputElement>("sub-mains").checked);
+  showSubsectorAbout();
+});
+el("sub-roll").addEventListener("click", startNewSubsector);
+
+// Every stored field of 5.1, and every one of them makes the document dirty.
+for (const id of ["sub-density", "sub-people", "sub-tech"]) {
+  el(id).addEventListener("change", () => {
+    if (subDoc === null) return;
+    subDoc.density = el<HTMLSelectElement>("sub-density").value as Density;
+    // A lean is a modifier on the dice, so it is held to what a modifier on 2D
+    // can sensibly be. SubSectorSpec 3.11.1.
+    const lean = (field: string) => {
+      const typed = Math.round(Number(el<HTMLInputElement>(field).value) || 0);
+      const held = Math.max(-SHIFT_LIMIT, Math.min(SHIFT_LIMIT, typed));
+      el<HTMLInputElement>(field).value = String(held);
+      return held;
+    };
+    subDoc.shifts = { population: lean("sub-people"), tech: lean("sub-tech") };
+    markSubDirty();
+    drawSubsector();
+    selectHex(hexShown);
+  });
+}
+el("sub-name").addEventListener("input", () => {
+  if (subDoc === null) return;
+  subDoc.name = el<HTMLInputElement>("sub-name").value;
+  markSubDirty();
+  showCrumbs();
+});
+el("sub-sector").addEventListener("input", () => {
+  if (subDoc === null) return;
+  subDoc.sector = el<HTMLInputElement>("sub-sector").value;
+  markSubDirty();
+  showSubsectorAbout();
+});
+
+el("sub-home").addEventListener("click", () => {
+  // Up to the sector loses nothing, because the sector carries the chart.
+  if (subParent === "sector" && sectorDoc !== null) {
+    keepSubsectorForSector();
+    refreshSector();
+    setAppView("sector");
+    return;
+  }
+  if (!confirmSubDiscard("Leave this subsector")) return;
+  setAppView("landing");
+  landingSay("");
+});
+
+/**
+ * Down a level, from a hex to the system in it. SubSectorSpec section 7 and the
+ * app spec 6.1: the chart hands over the seed, and the system generates itself
+ * from that, so what opens is the system the chart drew.
+ */
+el("sub-open").addEventListener("click", () => {
+  if (subsector === null || subDoc === null || hexShown === null) return;
+  const world = subsector.worlds.find((held) => held.at === hexShown);
+  if (world === undefined) return;
+  openHexSystem(world.at, world.systemSeed, world.name, world.uwp);
+});
+
+/**
+ * Open the system in a hex. SubSectorSpec section 7.
+ *
+ * The one the referee left if they have been in here before, and a fresh one
+ * off the hex's seed if they have not. A system worked on and gone back to is
+ * the system they worked on: the alternative is the level below quietly undoing
+ * itself every time somebody looks at the chart.
+ */
+function openHexSystem(at: string, seed: string, name: string, uwp?: string): void {
+  if (subDoc === null) return;
+  const held = savedSystem(subDoc, at) ?? newSystemDoc(seed, name);
+  // The profile the chart drew, which is not what the seed alone rolls where
+  // the region leans its worlds. AppSpec 1.3.1: the level above fills this in
+  // rather than the level below guessing at it.
+  if (uwp !== undefined && uwp !== "") held.mainWorldUwp = uwp;
+  held.sector = el<HTMLInputElement>("sub-sector").value;
+  held.hex = at;
+  systemFolder = null;
+  openSystem(held);
+  markSystemClean();
+  setSystemParent("subsector");
+  showCrumbs();
+}
+
+/**
+ * Keep the open system against the hex it came out of, so the chart carries it.
+ * Called on the way back up rather than on every keystroke: what is being kept
+ * is the document, and the document is the same object being edited.
+ */
+function keepSystemForChart(): void {
+  if (doc === null || systemParent !== "subsector" || subDoc === null) return;
+  const at = doc.hex.trim();
+  if (at === "") return;
+  keepPlanetForSystem();
+  const had = savedSystem(subDoc, at);
+  keepSystem(subDoc, at, doc);
+  tellChartAboutSystem(subDoc, at, doc);
+  // The chart now holds something its seed alone would not produce, so it has
+  // something to save. AppSpec 4.6.
+  if (had !== doc) markSubDirty();
+}
+
+/* The trail across the levels. AppSpec 6.2 -------------------------------- */
+
+/**
+ * One bar in each level's header, all three drawn from the same state, so that
+ * whichever level is on screen says the same thing about where it sits.
+ *
+ * What is open is remembered rather than worked out from what happens to be in
+ * memory: a system left behind on the way back up to the chart is still open
+ * and can be gone back into, but choosing another hex closes it, because it is
+ * no longer the system that hex holds.
+ */
+const openLevels = { sector: false, subsector: false, system: false, planet: false };
+
+const crumbBars = [
+  { at: "crumbs-planet", bar: createCrumbs() },
+  { at: "crumbs-system", bar: createCrumbs() },
+  { at: "crumbs-sub", bar: createCrumbs() },
+  { at: "crumbs-sector", bar: createCrumbs() },
+];
+for (const { at, bar } of crumbBars) {
+  el(at).append(bar.element);
+  bar.onGo(goToLevel);
+}
+
+function showCrumbs(): void {
+  const trail: Trail = {};
+  if (openLevels.sector) trail.sector = el<HTMLInputElement>("sec-name").value.trim() || "Sector";
+  if (openLevels.subsector) {
+    trail.subsector = el<HTMLInputElement>("sub-name").value.trim() || "Subsector";
+  }
+  if (openLevels.system) trail.system = doc?.name.trim() || "System";
+  if (openLevels.planet) trail.planet = state.planet.name.trim() || "Planet";
+  const view = currentAppView();
+  const here: Level | null = view === "landing" ? null : view;
+  for (const { bar } of crumbBars) bar.render(trail, here);
+}
+
+/** Up the chain, with whatever is unsaved asked about on the way. AppSpec 6.2. */
+function goToLevel(level: Level): void {
+  const view = currentAppView();
+  if (level === view) return;
+  // Moving up the chain keeps what is below, so nothing is asked on the way.
+  // What is carried is put down on the way past, level by level.
+  if (view === "planet" && planetParent === "system") {
+    keepPlanetForSystem();
+    refreshSystem();
+  }
+  if (view === "system" || (view === "planet" && systemParent === "subsector")) {
+    if (level === "subsector") {
+      keepSystemForChart();
+      refreshChart();
+    }
+  }
+  // Put the subsector down against its letter and draw the sector again with it:
+  // a name typed in down there is the subsector's name up here as well.
+  if (view === "subsector" && level === "sector") {
+    keepSubsectorForSector();
+    refreshSector();
+  }
+  if (level === "sector" && openLevels.sector) setAppView("sector");
+  else if (level === "subsector" && openLevels.subsector) setAppView("subsector");
+  else if (level === "system" && openLevels.system) setAppView("system");
+  else if (level === "planet" && openLevels.planet) setAppView("planet");
+  showCrumbs();
+}
+
+/* The sector. SectorSpec section 4 --------------------------------------- */
+
+// Sixteen charts at once: the map in the middle, the letters down the left, and
+// whatever hex is selected on the right. The way down is a subsector.
+
+const sectorMap = createSectorMap();
+el("sec-map").append(sectorMap.element);
+
+let sectorDoc: SectorDoc | null = null;
+let sector: Sector | null = null;
+let sectorFolder: DirectoryHandle | null = null;
+let sectorDirty = false;
+let letterShown: string | null = null;
+let sectorHexShown: string | null = null;
+
+function secSay(message: string, isError = false): void {
+  const status = el("sec-status");
+  status.textContent = message;
+  status.classList.toggle("error", isError);
+}
+
+function markSectorDirty(): void {
+  sectorDirty = true;
+  el("sec-dirty").hidden = false;
+}
+
+function markSectorClean(): void {
+  sectorDirty = false;
+  el("sec-dirty").hidden = true;
+}
+
+/** What a save would lose, asked before anything discards it. */
+function confirmSectorDiscard(action: string): boolean {
+  if (sectorDoc === null || !sectorDirty) return true;
+  return confirm(`${sectorDoc.name || "This sector"} has unsaved changes. ${action} and lose them?`);
+}
+
+function startNewSector(): void {
+  if (!confirmSectorDiscard("Roll another sector")) return;
+  sectorFolder = null;
+  openSector(newSectorDoc(randomSeed(), "New Sector"));
+  markSectorClean();
+}
+
+/** Put a document on screen, and the sector it describes with it. */
+function openSector(next: SectorDoc): void {
+  sectorDoc = next;
+  setAppView("sector");
+  el<HTMLInputElement>("sec-name").value = next.name;
+  el<HTMLSelectElement>("sec-density").value = next.density;
+  el<HTMLInputElement>("sec-people").value = String(next.shifts.population);
+  el<HTMLInputElement>("sec-tech").value = String(next.shifts.tech);
+  openLevels.sector = true;
+  openLevels.subsector = false;
+  openLevels.system = false;
+  openLevels.planet = false;
+  drawSector();
+  sectorMap.resetView();
+  showCrumbs();
+  selectLetter(null);
+  secSay(`${sector?.worlds.length ?? 0} worlds in sixteen subsectors.`);
+}
+
+/** Rebuild the sector from its document and draw it. SectorSpec 5.2. */
+function drawSector(): void {
+  if (sectorDoc === null) return;
+  sector = sectorOf(sectorDoc);
+  sectorMap.render(sector, subsectorNames());
+  showSectorAbout();
+  showSectorList();
+}
+
+function refreshSector(): void {
+  if (sectorDoc === null) return;
+  drawSector();
+  sectorMap.setSelected(letterShown, sectorHexShown);
+  showCrumbs();
+}
+
+function showSectorAbout(): void {
+  const about = el("sec-about");
+  about.replaceChildren();
+  if (sector === null || sectorDoc === null) return;
+  const fact = (term: string, value: string) => {
+    const dt = document.createElement("dt");
+    dt.textContent = term;
+    const dd = document.createElement("dd");
+    dd.textContent = value;
+    about.append(dt, dd);
+  };
+  const inhabited = sector.worlds.filter((world) => world.profile.population > 0).length;
+  fact("Worlds", `${sector.worlds.length} of ${SECTOR_HEXES}`);
+  fact("Inhabited", String(inhabited));
+  fact("Density", sector.density);
+  // What only this level can see. SectorSpec 3.3 and 3.4.
+  fact("Routes", String(sector.routes.length));
+  if (sector.mains.length > 0) {
+    const longest = sector.mains[0]!;
+    fact("Longest Main", `${longest.name}, ${longest.hexes.length} worlds`);
+  }
+  fact("Seed", sector.seed);
+  el("sec-counts").textContent = `${sector.worlds.length} worlds · seed ${sector.seed}`;
+}
+
+/**
+ * What a subsector of the open sector is called. SectorSpec 5.3.
+ *
+ * The referee's name where they have been in and given it one, and its letter
+ * where they have not. A subsector renamed one level down is renamed here: the
+ * name is the subsector's own, and the sector carries the subsector.
+ */
+function subsectorName(letter: string): string {
+  const written = sectorDoc === null ? undefined : savedSubsector(sectorDoc, letter);
+  const name = written?.name.trim() ?? "";
+  return name === "" ? `Subsector ${letter}` : name;
+}
+
+/** What the sixteen are called, for anything that has to show all of them. */
+function subsectorNames(): Map<string, string> {
+  const names = new Map<string, string>();
+  if (sectorDoc === null) return names;
+  for (const held of sectorDoc.subsectors) {
+    const name = held.doc.name.trim();
+    if (name !== "") names.set(held.letter.toUpperCase(), name);
+  }
+  return names;
+}
+
+/** The sixteen down the left, each with what is in it. */
+function showSectorList(): void {
+  const list = el("sec-list");
+  list.replaceChildren();
+  if (sector === null) return;
+  for (const held of sector.subsectors) {
+    const row = document.createElement("li");
+    const button = document.createElement("button");
+    button.type = "button";
+    button.dataset["letter"] = held.letter;
+    const name = document.createElement("span");
+    name.textContent = subsectorName(held.letter);
+    const count = document.createElement("span");
+    count.className = "tree-what";
+    count.textContent = `${held.worlds.length} worlds`;
+    button.append(name, count);
+    button.addEventListener("click", () => selectLetter(held.letter));
+    button.addEventListener("dblclick", () => openSubsectorOf(held.letter));
+    row.append(button);
+    list.append(row);
+  }
+  markSectorList();
+}
+
+function markSectorList(): void {
+  for (const button of el("sec-list").querySelectorAll("button")) {
+    if (button.dataset["letter"] === letterShown) button.setAttribute("aria-current", "true");
+    else button.removeAttribute("aria-current");
+  }
+}
+
+/** Choose a subsector: the map, the list and the panel all follow. */
+function selectLetter(letter: string | null): void {
+  letterShown = letter;
+  sectorHexShown = null;
+  sectorMap.setSelected(letter, null);
+  markSectorList();
+  showSectorPanel();
+}
+
+/** Choose one hex of the sector, which is one world. */
+function selectSectorHex(at: string): void {
+  sectorHexShown = at;
+  letterShown = letterAt(at);
+  sectorMap.setSelected(letterShown, at);
+  markSectorList();
+  showSectorPanel();
+}
+
+/** What is selected, whether that is a subsector or one world in it. */
+function showSectorPanel(): void {
+  const facts = el("sec-facts");
+  const open = el<HTMLButtonElement>("sec-open");
+  facts.replaceChildren();
+  el("sec-note").textContent = "";
+  open.hidden = letterShown === null;
+  if (sector === null || letterShown === null) {
+    el("sec-what").textContent = "Select a subsector";
+    return;
+  }
+  const row = (term: string, value: string) => {
+    const dt = document.createElement("dt");
+    dt.textContent = term;
+    const dd = document.createElement("dd");
+    dd.textContent = value;
+    facts.append(dt, dd);
+  };
+
+  const world =
+    sectorHexShown === null
+      ? undefined
+      : sector.worlds.find((held) => held.at === sectorHexShown);
+  if (world !== undefined) {
+    el("sec-what").textContent = `${world.name} — ${world.at}`;
+    row("Profile", world.uwp);
+    row("Subsector", subsectorName(letterShown));
+    row("Bases", basesLabel(world.bases));
+    row("Zone", zoneLabel(world.zone));
+    row("PBG", `${world.pbg.multiplier}${world.pbg.belts}${world.pbg.gasGiants}`);
+    row("Stars", starsLabel(world.stars));
+    if (world.trade.length > 0) {
+      row("Trade", world.trade.map((code) => `${code.code} ${code.label}`).join(", "));
+    }
+    el("sec-note").textContent = describeUwp(world.uwp, planetDetail(world.seed, world.uwp)) ?? "";
+    open.textContent = "Open the subsector";
+    return;
+  }
+
+  const held = sector.subsectors.find((one) => one.letter === letterShown)!;
+  const inhabited = held.worlds.filter((one) => one.profile.population > 0).length;
+  el("sec-what").textContent = subsectorName(letterShown);
+  row("Worlds", `${held.worlds.length} of 80`);
+  row("Inhabited", String(inhabited));
+  if (held.mains.length > 0) row("Mains", String(held.mains.length));
+  row("Seed", held.seed);
+  const busiest = [...held.worlds].sort(
+    (a, b) => b.profile.population - a.profile.population,
+  )[0];
+  if (busiest !== undefined) row("Busiest", `${busiest.name}, ${busiest.uwp}`);
+  open.textContent = "Open the subsector";
+}
+
+/** Down a level, into one of the sixteen. SectorSpec section 7. */
+function openSubsectorOf(letter: string): void {
+  if (sectorDoc === null) return;
+  letterShown = letter;
+  openSubsector(subsectorIn(sectorDoc, letter), "sector");
+  markSubClean();
+}
+
+/** Keep the open chart against its letter, so the sector carries it. */
+function keepSubsectorForSector(): void {
+  if (subDoc === null || subParent !== "sector" || sectorDoc === null) return;
+  const letter = subDoc.letter;
+  const had = savedSubsector(sectorDoc, letter);
+  keepSystemForChart();
+  keepSubsector(sectorDoc, letter, subDoc);
+  if (had !== subDoc) markSectorDirty();
+}
+
+sectorMap.onPickHex(selectSectorHex);
+sectorMap.onPickSubsector(openSubsectorOf);
+el("sec-open").addEventListener("click", () => {
+  if (letterShown !== null) openSubsectorOf(letterShown);
+});
+el("sec-roll").addEventListener("click", startNewSector);
+el("sec-name").addEventListener("input", () => {
+  if (sectorDoc === null) return;
+  sectorDoc.name = el<HTMLInputElement>("sec-name").value;
+  markSectorDirty();
+  showCrumbs();
+});
+for (const id of ["sec-density", "sec-people", "sec-tech"]) {
+  el(id).addEventListener("change", () => {
+    if (sectorDoc === null) return;
+    const lean = (field: string) => {
+      const typed = Math.round(Number(el<HTMLInputElement>(field).value) || 0);
+      const held = Math.max(-SHIFT_LIMIT, Math.min(SHIFT_LIMIT, typed));
+      el<HTMLInputElement>(field).value = String(held);
+      return held;
+    };
+    sectorDoc.density = el<HTMLSelectElement>("sec-density").value as Density;
+    sectorDoc.shifts = { population: lean("sec-people"), tech: lean("sec-tech") };
+    markSectorDirty();
+    refreshSector();
+  });
+}
+el("sec-home").addEventListener("click", () => {
+  if (!confirmSectorDiscard("Leave this sector")) return;
+  setAppView("landing");
+  landingSay("");
+});
+
+/* Saving and loading a sector. AppSpec 4.1.2 ----------------------------- */
+
+function sectorFileFor(open: SectorDoc): SaveFile {
+  const stem = open.name.replace(/[^A-Za-z0-9 _-]/g, "").trim() || "Sector";
+  return { name: `${stem}${LEVEL_SUFFIX.sector}`, data: JSON.stringify(open, null, 2) };
+}
+
+el("sec-save").addEventListener("click", async () => {
+  if (sectorDoc === null) return;
+  const held = sectorDoc;
+  try {
+    keepSubsectorForSector();
+    const files: SaveFile[] = [sectorFileFor(held)];
+    if (sector !== null) {
+      const stem = sectorFileFor(held).name.replace(/\.[a-z]+$/, "");
+      // The whole sector as one file a map can read, which is the export this
+      // level exists to make possible. SectorSpec 6.1.
+      files.push({ name: `${stem}.sec`, data: sectorFile(sector, held.name) });
+    }
+    if (isSupported()) {
+      sectorFolder ??= await pickFolder();
+      await saveTo(sectorFolder, files);
+      markSectorClean();
+      secSay(`Saved ${files[0]!.name} into ${sectorFolder.name}.`);
+      return;
+    }
+    const stem = sectorFileFor(held).name.replace(/\.[a-z]+$/, "");
+    download(await zipSave(files), `${stem}.zip`);
+    markSectorClean();
+    secSay(`Saved ${stem}.zip.`);
+  } catch (error) {
+    if (error instanceof PickerCancelled) return;
+    secSay(error instanceof Error ? error.message : String(error), true);
+  }
+});
+
+async function loadSector(): Promise<void> {
+  if (!confirmSectorDiscard("Load another sector")) return;
+  try {
+    const { dir, files } = await loadFolder();
+    const found: { name: string; doc: SectorDoc }[] = [];
+    for (const file of files) {
+      try {
+        found.push({ name: file.name, doc: parseSectorDoc(file.text) });
+      } catch {
+        // Not a sector. Something else in the folder, and AppSpec 4.9 leaves it.
+      }
+    }
+    if (found.length === 0) throw new Error(`No sector in ${dir.name}.`);
+    const first = found[0]!;
+    sectorFolder = dir;
+    openSector(first.doc);
+    markSectorClean();
+    const worked = first.doc.subsectors.length;
+    const also =
+      worked === 0
+        ? ""
+        : ` ${worked === 1 ? "One subsector" : `${worked} subsectors`} worked up.`;
+    secSay(`Loaded ${first.name} from ${dir.name}.${also}`);
+  } catch (error) {
+    if (error instanceof PickerCancelled) return;
+    const message = error instanceof Error ? error.message : String(error);
+    if (currentAppView() === "landing") landingSay(message, true);
+    else secSay(message, true);
+  }
+}
+
+wireLanding({
+  planetNew: startNewPlanet,
+  planetLoad: loadPlanet,
+  systemNew: startNewSystem,
+  systemLoad: loadSystem,
+  subsectorNew: startNewSubsector,
+  subsectorLoad: loadSubsector,
+  sectorNew: startNewSector,
+  sectorLoad: loadSector,
+});
+
 /* Start ------------------------------------------------------------------ */
 
-showPlanet();
-regenerate();
-placeStarport();
-placeCities();
-markSettled();
-markClean();
-// Not an error on either path: a browser without the API saves as a download
-// rather than writing back into the folder it came from. Spec 6.4.1.
-if (isSupported()) {
-  say(`Seed ${state.planet.seed}. Sea level ${state.seaLevel.toFixed(3)}.`);
-} else {
-  say(`Seed ${state.planet.seed}. This browser saves as a zip download.`);
-}
+// The window opens on the landing page with nothing generated. The planet in
+// state is the one the module built to have something to hold, and it is thrown
+// away and rolled again the moment New is pressed. AppSpec 2.5.
+setAppView("landing");

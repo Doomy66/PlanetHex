@@ -43,8 +43,10 @@ body {
 .left-collapsed .panel-left { padding: 10px 0; overflow: hidden; }
 .left-collapsed .panel-body,
 .left-collapsed .panel-head h1,
+.left-collapsed .panel-head .home,
 .left-collapsed .panel-head .help-open,
-.left-collapsed .panel-head .dirty { display: none; }
+.left-collapsed .panel-head .dirty,
+.left-collapsed .crumbs-row { display: none; }
 .left-collapsed .panel-head { justify-content: center; }
 
 .collapse {
@@ -506,6 +508,803 @@ label.inline input { width: auto; margin: 0; accent-color: var(--accent); }
 #save-summary { margin: 12px 0 0; }
 /* All and None are the coarse strokes, so they sit away from Save and Cancel. */
 #save-all { margin-left: auto; }
+
+/* The landing page. AppSpec 2 ------------------------------------------- */
+
+/* One attribute on the body says which of the two the window is showing, so
+   neither has to know the other is there and nothing is hidden twice. */
+body[data-view="landing"] .layout { display: none; }
+body[data-view="planet"] .landing { display: none; }
+
+.landing {
+  position: relative;
+  height: 100vh;
+  overflow: auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 32px 24px;
+  isolation: isolate;
+}
+
+/* The backdrop ----------------------------------------------------------- */
+
+/* Stars and a planet's limb, out of gradients rather than out of an image
+   file. The application draws worlds; a landing page that had to download one
+   would be saying something odd about it. */
+.sky {
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  overflow: hidden;
+  background:
+    radial-gradient(1100px 620px at 50% 118%, #1d2740 0%, rgba(20, 22, 26, 0) 70%),
+    radial-gradient(800px 500px at 82% -10%, #241f2e 0%, rgba(20, 22, 26, 0) 68%),
+    var(--bg);
+}
+
+/* Two layers of stars at different sizes, so the field has depth rather than
+   one even sprinkle. Tiled, so it covers whatever the window turns out to be. */
+.sky-stars {
+  position: absolute;
+  inset: -20%;
+  background-image:
+    radial-gradient(1.4px 1.4px at 18% 22%, #ffffff 0%, transparent 100%),
+    radial-gradient(1.1px 1.1px at 71% 9%, #dce6ff 0%, transparent 100%),
+    radial-gradient(1.6px 1.6px at 43% 61%, #ffffff 0%, transparent 100%),
+    radial-gradient(1px 1px at 88% 44%, #cdd8f5 0%, transparent 100%),
+    radial-gradient(1.2px 1.2px at 7% 78%, #ffffff 0%, transparent 100%),
+    radial-gradient(1px 1px at 59% 86%, #e7edff 0%, transparent 100%),
+    radial-gradient(1.5px 1.5px at 31% 37%, #fff3d6 0%, transparent 100%),
+    radial-gradient(1px 1px at 95% 71%, #ffffff 0%, transparent 100%);
+  background-size: 340px 320px;
+  opacity: 0.55;
+  animation: drift 260s linear infinite;
+}
+
+/* A world's edge coming up from the bottom of the page: a lit limb, an
+   atmosphere above it, and the dark of the world below. */
+.sky-limb {
+  position: absolute;
+  left: 50%;
+  /* Far enough down that its lit rim passes under the cards rather than
+     through the words above them. */
+  bottom: -132vmin;
+  width: 190vmin;
+  height: 190vmin;
+  transform: translateX(-50%);
+  border-radius: 50%;
+  /* Dark, with the light only along the rim: a world at night, not a grey
+     wash the cards have to compete with. */
+  background:
+    radial-gradient(circle at 50% 4%, rgba(224, 179, 65, 0.2) 0%, rgba(224, 179, 65, 0) 16%),
+    radial-gradient(circle at 44% 7%, #22314a 0%, #141922 16%, #0d1015 30%);
+  box-shadow:
+    inset 0 1px 0 rgba(233, 214, 160, 0.28),
+    0 -30px 110px rgba(120, 150, 220, 0.1);
+}
+
+@keyframes drift {
+  from { transform: translate3d(0, 0, 0); }
+  to { transform: translate3d(-340px, -320px, 0); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sky-stars { animation: none; }
+}
+
+/* The card --------------------------------------------------------------- */
+
+.landing-card { width: 100%; max-width: 660px; }
+
+.landing-head { text-align: center; margin: 0 0 26px; }
+.landing-logo {
+  display: block;
+  margin: 0 auto 10px;
+  border-radius: 14px;
+  /* A little of the gold the title is in, so the mark and the name read as one
+     thing rather than two stacked. */
+  box-shadow: 0 0 0 1px rgba(224, 179, 65, 0.18), 0 8px 26px rgba(0, 0, 0, 0.45);
+}
+.landing-card h1 {
+  font-size: clamp(34px, 7vw, 52px);
+  line-height: 1;
+  margin: 0;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  /* The gold this application marks a user's own choices in, running into the
+     text colour: the name is the one place it can be spent freely. */
+  background: linear-gradient(100deg, var(--text) 18%, var(--accent) 62%, #f4dfa6 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+.landing-lead {
+  color: var(--muted);
+  margin: 12px auto 0;
+  font-size: 15px;
+  max-width: 34ch;
+}
+/* What the thing actually is, for somebody who has arrived without being told. */
+.landing-what {
+  color: var(--muted);
+  margin: 14px auto 0;
+  max-width: 56ch;
+  line-height: 1.6;
+}
+
+/* Help, the release notes, and a way to say something. Quiet, at the foot, and
+   out of the way of the four things the page is for. */
+.landing-links {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 6px 18px;
+  margin-top: 22px;
+  color: var(--muted);
+}
+.landing-links a,
+.landing-links .linky {
+  color: var(--muted);
+  background: none;
+  border: 0;
+  padding: 0;
+  font: inherit;
+  text-decoration: none;
+  border-bottom: 1px solid transparent;
+  cursor: pointer;
+}
+.landing-links a:hover,
+.landing-links .linky:hover { color: var(--text); border-bottom-color: var(--accent); }
+.landing-version { color: #6a7280; }
+
+/* The same links inside the help, where somebody reading about the application
+   is most likely to have something to say about it. */
+.help-links { display: flex; align-items: center; gap: 16px; margin-right: auto; color: var(--muted); }
+.help-links a { color: var(--muted); text-decoration: none; border-bottom: 1px solid transparent; }
+.help-links a:hover { color: var(--text); border-bottom-color: var(--accent); }
+
+/* Four cards rather than four rows. A level is a thing to be chosen, and a
+   choice reads better as a card than as a line of a table. AppSpec 2.1. */
+.levels {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.level {
+  display: grid;
+  grid-template-columns: 52px minmax(0, 1fr);
+  grid-template-areas:
+    "icon what"
+    "act  act";
+  align-items: start;
+  gap: 4px 14px;
+  padding: 18px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background:
+    linear-gradient(180deg, rgba(40, 46, 58, 0.72) 0%, rgba(24, 27, 33, 0.82) 100%);
+  backdrop-filter: blur(3px);
+  transition:
+    border-color 140ms ease,
+    transform 140ms ease,
+    box-shadow 140ms ease;
+}
+
+/* The card lifts and its edge takes the accent, so the thing under the pointer
+   is obvious without anything moving on the page. */
+.level:hover,
+.level:focus-within {
+  border-color: rgba(224, 179, 65, 0.55);
+  transform: translateY(-2px);
+  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.35);
+}
+
+.level-icon { grid-area: icon; width: 52px; height: 52px; overflow: visible; }
+.ic-body { fill: #6f8cc0; }
+.ic-edge { fill: none; stroke: rgba(223, 227, 234, 0.5); stroke-width: 1.4; }
+.ic-line { fill: none; stroke: rgba(223, 227, 234, 0.6); stroke-width: 1.3; }
+.ic-orbit { fill: none; stroke: rgba(150, 170, 210, 0.55); stroke-width: 1.2; }
+.ic-star { fill: var(--accent); }
+.ic-hex { fill: rgba(40, 52, 74, 0.6); stroke: rgba(150, 170, 210, 0.5); stroke-width: 1.2; }
+.ic-grid { fill: rgba(40, 52, 74, 0.5); stroke: rgba(150, 170, 210, 0.45); stroke-width: 1.1; }
+.level:hover .ic-body,
+.level:focus-within .ic-body { fill: #86a3d8; }
+
+.level-what { grid-area: what; min-width: 0; }
+/* The level's name, which is a heading here rather than the small capitals a
+   heading is in the left panel: this is the thing being chosen between. */
+.level-what h2 {
+  font-size: 19px;
+  margin: 0;
+  color: var(--text);
+  text-transform: none;
+  letter-spacing: 0;
+}
+.level-what p { margin: 4px 0 0; color: var(--muted); }
+
+.level .actions { grid-area: act; margin-top: 14px; display: flex; gap: 8px; }
+.level .actions button { min-width: 74px; }
+
+/* A level that is specified and not built. Quieter than the rest rather than
+   absent, for the reason the markup gives. */
+.level-soon { opacity: 0.62; }
+.level-soon:hover,
+.level-soon:focus-within { transform: none; border-color: var(--line); box-shadow: none; }
+.level-soon-note {
+  color: var(--muted);
+  border: 1px dashed var(--line);
+  border-radius: 999px;
+  padding: 3px 12px;
+  font-size: 12px;
+}
+
+@media (max-width: 620px) {
+  .levels { grid-template-columns: minmax(0, 1fr); }
+}
+
+/* Back to the levels, AppSpec 2.4. Quiet, because leaving the planet is not
+   something a user should reach for by accident. */
+.home {
+  flex: none;
+  margin-left: auto;
+  padding: 2px 8px;
+  font-size: 11px;
+  color: var(--muted);
+  background: transparent;
+  border: 1px solid var(--line);
+  border-radius: 3px;
+  cursor: pointer;
+}
+.home:hover { color: var(--text); border-color: var(--muted); background: transparent; }
+/* The help button keeps the far end of the header; with the home button there
+   too, only the first of them pushes. */
+.home + .help-open { margin-left: 6px; }
+
+/* How long it takes to get anywhere from here. SystemSpec 4.9. */
+.travel { border-top: 1px solid var(--line); margin-top: 8px; padding-top: 8px; }
+.travel-rate { display: flex; align-items: center; gap: 6px; font-size: 0.85rem; color: var(--muted); }
+.travel-rate input { width: 5em; }
+.travel-note { font-size: 0.78rem; color: var(--muted); margin: 6px 0 0; }
+#sys-travel-list dd { font-variant-numeric: tabular-nums; }
+
+/* A jump shadow: the sphere round a mass that a ship cannot jump from. Filled
+   rather than outlined, because it is a volume rather than a boundary. */
+.map-shadow { fill: rgba(120, 140, 190, 0.13); stroke: rgba(140, 165, 220, 0.35); stroke-width: 1; vector-effect: non-scaling-stroke; }
+.map-shadow-star { fill: rgba(150, 130, 90, 0.15); stroke: rgba(210, 180, 120, 0.4); }
+
+/* The chart's own marks, on the strip, against the world they are about. */
+.orbit-naval { fill: #e6ebf2; }
+.orbit-scout { fill: #9fb0c4; }
+.orbit-travel { fill: none; stroke: #e0b341; stroke-width: 1.6; stroke-dasharray: 3 3; }
+.orbit-red { stroke: #e24b4a; }
+
+/* A base is a mark beside the world it is at rather than a body of its own. */
+.map-base { stroke: #0d0f13; stroke-width: 1; }
+.map-naval { fill: #e6ebf2; }
+.map-scout { fill: #9fb0c4; }
+
+/* Where a hex is edited. The fields sit under what the hex says it is, so a
+   referee reads the world and then writes over it. */
+.sub-edit { display: grid; gap: 6px; border-top: 1px solid var(--line); padding-top: 8px; }
+.sub-edit .sys-written { margin: 0; }
+#sub-fields { display: grid; gap: 6px; }
+#sub-fields[hidden] { display: none; }
+
+/* The trail across the levels. AppSpec 6.2 -------------------------------- */
+
+.crumbs { display: flex; align-items: baseline; gap: 2px; flex-wrap: wrap; min-width: 0; }
+.crumbs-row { padding: 2px 8px 6px; border-bottom: 1px solid var(--line); }
+.crumb {
+  background: none;
+  border: 0;
+  padding: 1px 4px;
+  border-radius: 3px;
+  font: inherit;
+  font-size: 0.85em;
+  color: var(--text);
+  cursor: pointer;
+  max-width: 12em;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.crumb:hover:not(:disabled) { background: #232a34; text-decoration: underline; }
+.crumb:disabled { cursor: default; }
+/* A level that is not open is still shown, so the bar says where you are in the
+   four whichever one you came in at. */
+.crumb-shut { color: var(--muted); opacity: 0.55; }
+.crumb[aria-current="true"] { font-weight: 600; color: var(--select); }
+.crumb-tick { color: var(--muted); font-size: 0.85em; }
+
+/* The sector map. SectorSpec section 4 ----------------------------------- */
+
+body[data-view="sector"] .layout,
+body[data-view="sector"] .landing,
+body[data-view="sector"] .system,
+body[data-view="sector"] .subsector { display: none; }
+body[data-view="landing"] .sector,
+body[data-view="planet"] .sector,
+body[data-view="system"] .sector,
+body[data-view="subsector"] .sector { display: none; }
+
+.sector {
+  height: 100vh;
+  display: grid;
+  grid-template-columns: 240px minmax(0, 1fr) 330px;
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  grid-template-areas:
+    "head head head"
+    "tree map  side"
+    "strip strip strip";
+  gap: 10px;
+  padding: 10px 14px 12px;
+  overflow: hidden;
+}
+
+.sec-map {
+  grid-area: map;
+  min-height: 0;
+  min-width: 0;
+  background: #0a0c10;
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  overflow: hidden;
+}
+/* The map fills the panel: the viewBox is matched to the panel's shape, so a
+   wide panel shows more map rather than a margin down both ends. */
+.sectormap { width: 100%; height: 100%; display: block; }
+
+/* A thousand hexes at once, so the grid is barely there and the worlds carry
+   the map. SectorSpec 4.2. */
+.sec-cell {
+  fill: none;
+  stroke: #262c36;
+  stroke-width: 0.6;
+  vector-effect: non-scaling-stroke;
+}
+.sec-wet { fill: #3f7fc4; }
+.sec-dusty { fill: #b08b5e; }
+.sec-airless { fill: #8d96a2; }
+.sec-empty { fill: none; stroke: #6d7784; stroke-width: 1.2; }
+.sec-name { fill: #dfe3ea; font-size: 15px; text-anchor: middle; }
+/* What a hex holds once the view is close enough for it to fit. SectorSpec
+   4.4.1: the map becomes the chart rather than showing a smaller one. */
+.sec-at { fill: #59636f; font-size: 11px; text-anchor: middle; font-variant-numeric: tabular-nums; }
+.sec-port { fill: #dbe3ec; font-size: 14px; text-anchor: middle; font-weight: 600; }
+.sec-close .sec-name { font-size: 13px; fill: #f0f4f9; }
+.sec-close .sec-cell { stroke: #39414d; }
+/* The letters are for finding a subsector at a glance, and at this range the
+   glance has already happened. */
+.sec-close .sec-letter { opacity: 0; }
+.sectormap { cursor: grab; }
+.sectormap:active { cursor: grabbing; }
+.sec-route { stroke: #35608f; stroke-width: 1.6; opacity: 0.5; }
+.sec-xboat { stroke: #6aa6e8; stroke-width: 3; opacity: 0.85; }
+.sec-hex { cursor: pointer; }
+.sec-hex:hover .sec-world { stroke: var(--accent); stroke-width: 2.5; }
+
+/* The sixteen, marked out and lettered. A double click opens one. */
+.sec-frame { cursor: pointer; }
+.sec-box { fill: transparent; stroke: #454d5c; stroke-width: 1.6; vector-effect: non-scaling-stroke; }
+.sec-frame:hover .sec-box,
+.sec-frame:focus .sec-box { stroke: var(--accent); fill: rgba(224, 179, 65, 0.05); }
+.sec-frame:focus { outline: none; }
+.sec-letter {
+  fill: rgba(223, 227, 234, 0.16);
+  font-size: 150px;
+  font-weight: 700;
+  text-anchor: middle;
+  dominant-baseline: middle;
+  pointer-events: none;
+}
+.sec-chosen { fill: rgba(224, 179, 65, 0.06); stroke: var(--accent); stroke-width: 2.5; vector-effect: non-scaling-stroke; }
+.sec-pick { fill: none; stroke: var(--select); stroke-width: 3; vector-effect: non-scaling-stroke; }
+
+/* The subsector chart. SubSectorSpec section 4 --------------------------- */
+
+body[data-view="subsector"] .layout,
+body[data-view="subsector"] .landing,
+body[data-view="subsector"] .system { display: none; }
+body[data-view="landing"] .subsector,
+body[data-view="planet"] .subsector,
+body[data-view="system"] .subsector { display: none; }
+
+.subsector {
+  height: 100vh;
+  display: grid;
+  grid-template-columns: 260px minmax(0, 1fr) 330px;
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  grid-template-areas:
+    "head head head"
+    "tree model side"
+    "strip strip strip";
+  gap: 10px;
+  padding: 10px 14px 12px;
+  overflow: hidden;
+}
+
+.sub-chart {
+  grid-area: model;
+  min-height: 0;
+  min-width: 0;
+  background: #0d0f13;
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  overflow: hidden;
+}
+/* The chart fills the panel, the way the sector map does: the viewBox is matched
+   to the panel's shape rather than letterboxed inside it. */
+.chart { width: 100%; height: 100%; display: block; cursor: grab; }
+.chart:active { cursor: grabbing; }
+.sub-chart { background: #0a0c10; }
+
+/* Every part of the panel folds away, so the panel itself is what scrolls and
+   nothing has to be pinned to the foot of it. The list of worlds is the one
+   thing long enough to need a limit of its own: capped, it leaves the sections
+   under it reachable without a scroll of forty rows first. */
+.subsector #sub-list { max-height: 42vh; overflow: auto; }
+.chart-legend { flex: none; margin-top: 10px; }
+.chart-legend summary {
+  cursor: pointer;
+  font-weight: 600;
+  font-size: 0.78rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin-bottom: 6px;
+}
+
+.chart-key {
+  flex: none;
+  border-top: 1px solid var(--line);
+  padding-top: 8px;
+  margin: 0;
+  display: grid;
+  gap: 3px;
+  font-size: 0.82rem;
+  color: var(--muted);
+}
+.chart-key li { display: flex; align-items: center; gap: 7px; }
+.chart-key svg { width: 16px; height: 16px; flex: none; overflow: visible; }
+
+/* A chart hex, and what is drawn in it. The grid is thin and even and the same
+   everywhere: the published charts let the worlds carry all the weight. */
+.chart-cell {
+  fill: transparent;
+  stroke: #39414d;
+  stroke-width: 1;
+  vector-effect: non-scaling-stroke;
+}
+.chart-hex { cursor: pointer; }
+.chart-hex:hover .chart-cell { fill: #191e26; }
+.chart-hex:focus { outline: none; }
+.chart-hex:focus .chart-cell { fill: #1f252e; }
+
+.chart-at {
+  fill: #59636f;
+  font-size: 11px;
+  text-anchor: middle;
+  font-variant-numeric: tabular-nums;
+}
+.chart-port { fill: #dbe3ec; font-size: 14px; text-anchor: middle; font-weight: 600; }
+.chart-name { fill: #f0f4f9; font-size: 13px; text-anchor: middle; }
+.chart-loud { font-weight: 700; letter-spacing: 0.03em; }
+
+/* The colour the charts never had: water and air is blue, dry with air is tan,
+   an airless rock is grey, and a world nobody lives on is hollow. The globe is
+   drawn over this as soon as there is one. */
+.chart-wet { fill: #3f7fc4; }
+.chart-dusty { fill: #b08b5e; }
+.chart-airless { fill: #8d96a2; }
+.chart-empty { fill: none; stroke: #7b8694; stroke-width: 1.6; }
+.chart-rock { fill: #9aa5b2; }
+.chart-globe { pointer-events: none; }
+
+.chart-naval { fill: #e6ebf2; }
+.chart-scout { fill: #9fb0c4; }
+.chart-giant { fill: #d7b273; }
+.chart-giant-ring { fill: none; stroke: #d7b273; stroke-width: 1.4; }
+
+/* The chart's own settings, two to a row inside a section that folds away, so
+   four of them cost one line of panel rather than half the header - and nothing
+   at all once the chart is rolled and the referee has moved on to reading it. */
+.sub-settings { display: grid; gap: 5px; margin: 0 0 4px; }
+.sub-settings label {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.85rem;
+}
+.sub-settings select,
+.sub-settings input { width: 7.5em; margin: 0; }
+
+.sub-choices { border-top: 0; padding-top: 0; }
+.sub-choices label { display: flex; align-items: center; gap: 6px; cursor: pointer; }
+
+/* What is just outside the chart: there to say the edge is an edge rather than
+   an end, and quiet enough that the chart is still what is being read. */
+.chart-around { opacity: 0.32; pointer-events: none; }
+.chart-faint { filter: saturate(0.5); }
+
+/* A Main washed behind the hexes it runs through. Low enough to read the chart
+   through, distinct enough to follow across it. */
+.chart-main > * { stroke: none; }
+.chart-main-0 > * { fill: rgba(90, 160, 220, 0.16); }
+.chart-main-1 > * { fill: rgba(200, 150, 90, 0.16); }
+.chart-main-2 > * { fill: rgba(140, 200, 140, 0.15); }
+.chart-main-3 > * { fill: rgba(190, 130, 200, 0.15); }
+.chart-main-4 > * { fill: rgba(220, 200, 120, 0.14); }
+/* The key's swatch has no chart behind it to tint, so it shows solid. */
+.chart-key .chart-main-0 > * { fill: rgba(90, 160, 220, 0.55); }
+
+/* The routes. Under the worlds, over the grid. The express network is the
+   heavier line, because it is the one that runs whatever else is happening. */
+.chart-route { stroke: #3d6ea8; stroke-width: 2; opacity: 0.75; }
+.chart-xboat { stroke: #6aa6e8; stroke-width: 3.4; opacity: 0.9; }
+
+/* A travel zone is a ring around the world, not around the hex: the warning is
+   about the world, and the hex is only where it is. */
+.chart-zone { fill: none; stroke: #e0b341; stroke-width: 1.6; stroke-dasharray: 5 5; }
+.chart-red { stroke: #e24b4a; }
+.chart-select { fill: none; stroke: var(--select); stroke-width: 2.5; vector-effect: non-scaling-stroke; }
+
+/* The system view. SystemSpec section 8 ---------------------------------- */
+
+body[data-view="system"] .layout,
+body[data-view="system"] .landing { display: none; }
+body[data-view="landing"] .system,
+body[data-view="planet"] .system { display: none; }
+
+/* The same shape as the planet view: a panel each side, the thing itself in
+   the middle, and a strip along the bottom. */
+.system {
+  height: 100vh;
+  display: grid;
+  grid-template-columns: 260px minmax(0, 1fr) 330px;
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  grid-template-areas:
+    "head head head"
+    "tree model side"
+    "strip strip strip";
+  gap: 10px;
+  padding: 10px 14px 12px;
+  overflow: hidden;
+}
+
+.system-head { grid-area: head; display: flex; align-items: baseline; gap: 12px; }
+.system-head h1 { margin: 0; }
+.sys-stars { color: var(--accent); }
+.sys-counts { color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.system-actions { margin-left: auto; display: flex; gap: 6px; align-items: center; }
+
+.sys-name {
+  width: 190px;
+  font-size: 15px;
+  letter-spacing: 0.04em;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 3px;
+  color: var(--text);
+  padding: 2px 6px;
+  margin: 0;
+}
+.sys-name:hover { border-color: var(--line); }
+.sys-name:focus { border-color: var(--muted); background: var(--bg); }
+.sys-where { display: flex; align-items: center; gap: 5px; margin: 0; color: var(--muted); }
+.sys-where input { width: 104px; margin: 0; }
+.sys-where:last-of-type input { width: 58px; }
+
+.sys-tree-panel,
+.sys-side {
+  min-height: 0;
+  overflow: auto;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  padding: 10px 12px;
+}
+.sys-tree-panel { grid-area: tree; }
+.sys-side { grid-area: side; display: flex; flex-direction: column; gap: 10px; }
+.sys-tree-panel h2 { margin: 0 0 6px; }
+.sys-tree-panel h2 + dl { margin-bottom: 14px; }
+
+/* Most of a system is empty rock, and a referee working on the places people
+   are should be able to put the rest away. */
+.sys-only {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 6px;
+  margin: 0 0 8px;
+  white-space: nowrap;
+}
+.sys-only input { flex: none; width: auto; margin: 0; }
+
+/* The tree: the system's bodies in order, a giant's moons indented under it. */
+.sys-tree { list-style: none; margin: 0; padding: 0; }
+.sys-tree ul { list-style: none; margin: 0; padding: 0 0 0 14px; border-left: 1px solid var(--line); }
+.sys-tree li { margin: 0; }
+.sys-tree button {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  width: 100%;
+  text-align: left;
+  padding: 3px 6px;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 3px;
+}
+.sys-tree button:hover { background: #262b33; }
+.sys-tree button[aria-current="true"] { border-color: var(--select); color: var(--text); }
+.sys-tree .tree-what { color: var(--muted); font-size: 11px; margin-left: auto; }
+.sys-tree .tree-none { color: var(--muted); padding: 4px 6px; }
+.sys-tree .tree-uwp { color: var(--muted); font-size: 11px; }
+.sys-tree .tree-people { color: var(--accent); }
+
+.sys-model {
+  grid-area: model;
+  min-height: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #0d0f13;
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  padding: 6px;
+}
+/* The model is turned by dragging and zoomed by the wheel, so the browser must
+   not take either gesture for a scroll. */
+.orbitmap {
+  width: 100%;
+  height: 100%;
+  display: block;
+  cursor: grab;
+  touch-action: none;
+}
+.orbitmap:active { cursor: grabbing; }
+.orbitmap:focus { outline: none; }
+
+/* A line on the drawing is a line on the page: the zoom moves the orbits apart
+   and must not fatten what is drawn round them. */
+.map-path { fill: none; stroke: #2a313c; stroke-width: 1.2; vector-effect: non-scaling-stroke; }
+/* Sized in the drawing's own units, which are about a third of a pixel once it
+   is scaled into the panel. */
+.map-au { fill: #59616e; font-size: 26px; text-anchor: middle; }
+.map-zone-label { fill: #5dcaa5; font-size: 26px; text-anchor: middle; letter-spacing: 0.08em; }
+.map-zone { fill: none; stroke: rgba(93, 202, 165, 0.1); }
+.map-star { stroke: rgba(0, 0, 0, 0.4); stroke-width: 1; }
+.map-hit { fill: transparent; }
+.map-body { cursor: pointer; }
+.map-body:hover .map-hit { fill: rgba(255, 255, 255, 0.05); }
+.map-body:focus { outline: none; }
+.map-body:focus .map-hit { fill: rgba(255, 255, 255, 0.08); }
+.map-world { fill: #9fb6cf; }
+.map-giant { fill: #c8a06a; }
+.map-rock { fill: #7d8796; }
+/* An orbit with nothing in it is still a place on the diagram: a mark small
+   enough to read as empty and big enough to click. */
+.map-nothing { fill: #39414d; }
+.map-edge {
+  fill: none;
+  stroke: rgba(0, 0, 0, 0.5);
+  stroke-width: 1;
+  vector-effect: non-scaling-stroke;
+}
+.map-edge-main { stroke: var(--accent); stroke-width: 2.5; }
+.map-ring {
+  fill: none;
+  stroke: #c8a06a;
+  stroke-width: 2;
+  opacity: 0.65;
+  vector-effect: non-scaling-stroke;
+}
+.map-select { fill: none; stroke: var(--select); stroke-width: 2; vector-effect: non-scaling-stroke; }
+
+/* The strip along the bottom: what is in what order, and how far out. */
+.sys-strip { grid-area: strip; }
+.sys-diagram {
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  background: var(--panel);
+  padding: 4px;
+  display: flex;
+  align-items: center;
+  overflow-x: auto;
+}
+.orbits { width: 100%; min-width: 520px; height: auto; max-height: 150px; display: block; }
+
+.orbit-axis { stroke: var(--line); stroke-width: 2; }
+.orbit-tick { stroke: var(--line); stroke-width: 1.5; }
+.orbit-star { stroke: rgba(0, 0, 0, 0.35); stroke-width: 1; }
+.orbit-companion { opacity: 0.95; }
+
+.orbit-zone { fill: rgba(93, 202, 165, 0.09); }
+.orbit-zone-label {
+  fill: #5dcaa5;
+  font-size: 11px;
+  text-anchor: middle;
+  letter-spacing: 0.08em;
+}
+
+.orbit-hit { fill: transparent; }
+.orbit { cursor: pointer; }
+.orbit:hover .orbit-hit { fill: rgba(255, 255, 255, 0.04); }
+.orbit:focus { outline: none; }
+.orbit:focus .orbit-hit { fill: rgba(255, 255, 255, 0.07); }
+
+.orbit-world { fill: #9fb6cf; }
+.orbit-main { fill: var(--accent); }
+.orbit-giant { fill: #c8a06a; }
+.orbit-ring { fill: none; stroke: #c8a06a; stroke-width: 1.5; opacity: 0.7; }
+.orbit-belt { fill: var(--muted); }
+.orbit-select { fill: none; stroke: var(--select); stroke-width: 1.5; }
+.orbit-globe { image-rendering: auto; }
+.orbit-edge { fill: none; stroke: rgba(0, 0, 0, 0.5); stroke-width: 1; }
+.orbit-edge-main { stroke: var(--accent); stroke-width: 2; }
+
+/* The moons of a gas giant, marked under it on the strip. SystemSpec 4.5.1. */
+.orbit-moon { fill: #7d8796; cursor: pointer; }
+.orbit-moon:hover { fill: var(--text); }
+.orbit-moon-people { fill: var(--accent); }
+.orbit-moon-select { fill: none; stroke: var(--select); stroke-width: 1.2; }
+.orbit-moon-more { fill: var(--muted); font-size: 9px; text-anchor: middle; }
+
+.orbit-au { fill: var(--muted); font-size: 11px; text-anchor: middle; }
+.orbit-label { fill: var(--muted); font-size: 10px; text-anchor: middle; opacity: 0.75; }
+
+/* The body being looked at: its globe at the top of the panel, the rest under. */
+.sys-globe {
+  width: 100%;
+  max-width: 220px;
+  align-self: center;
+  aspect-ratio: 1;
+  border-radius: 50%;
+  overflow: hidden;
+  background: #0b0d10;
+  flex: none;
+}
+.sys-globe img { display: block; width: 100%; height: 100%; }
+.sys-globe canvas { display: block; cursor: grab; }
+.sys-globe canvas:active { cursor: grabbing; }
+
+/* The name of the body, and the way into it, on one line: the button says
+   what it opens by sitting beside it. */
+.sys-title { display: flex; align-items: baseline; gap: 10px; margin: 0 0 8px; }
+.sys-title h2 { flex: 1; min-width: 0; }
+.sys-title .sys-open { flex: none; margin: 0; padding: 3px 10px; }
+.sys-detail h2 { margin: 0 0 8px; color: var(--text); text-transform: none; letter-spacing: 0; font-size: 14px; }
+.sys-facts { display: grid; grid-template-columns: auto 1fr; gap: 2px 12px; margin: 0; }
+.sys-facts dt { color: var(--muted); }
+.sys-facts dd { margin: 0; }
+.sys-note { color: var(--muted); margin: 8px 0 0; }
+.sys-written { display: block; margin: 10px 0 0; color: var(--muted); }
+.sys-written textarea { margin-top: 4px; }
+
+
+/* The moons of a gas giant, each a world that can be opened. SystemSpec 4.5.1. */
+.sys-moons { list-style: none; margin: 8px 0 0; padding: 0; display: flex; flex-wrap: wrap; gap: 6px; }
+.sys-moons:empty { margin: 0; }
+.sys-moons button {
+  display: flex;
+  gap: 8px;
+  align-items: baseline;
+  padding: 4px 9px;
+  background: transparent;
+  border: 1px solid var(--line);
+}
+.sys-moons button:hover { background: #262b33; border-color: var(--muted); }
+.sys-moons .moon-uwp { color: var(--muted); font-size: 12px; }
+.sys-moons .moon-people { color: var(--accent); font-size: 12px; }
 
 /* Help, Spec 4.8 --------------------------------------------------------- */
 

@@ -98,6 +98,24 @@ function hexOffsets(e1: Pt2, e2: Pt2): readonly Pt2[] {
   ];
 }
 
+/**
+ * A grid with nothing in it, for a window that is not showing a planet.
+ *
+ * The application opens on the landing page of AppSpec 2, where no planet has
+ * been chosen and none may be generated: AppSpec 2.5 has a user who opens the
+ * landing page and closes it again roll nothing. Something has to hold the shape
+ * of a grid until then, and this is the one that costs nothing to hold.
+ *
+ * Nothing draws it. It is replaced by a real grid before a planet is on screen.
+ */
+export const EMPTY_GRID: Grid = {
+  size: 0,
+  cells: [],
+  net: [],
+  netWidth: 0,
+  netHeight: 0,
+};
+
 export function buildGrid(size: number): Grid {
   if (!Number.isInteger(size) || size < 1) {
     throw new Error(`Grid size must be a positive whole number, got ${size}`);

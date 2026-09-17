@@ -9,7 +9,7 @@ import {
   type SaveFile,
 } from "./files";
 import { readZip } from "./zip";
-import { newPlanet } from "../planet";
+import { newPlanet, parsePlanet } from "../planet";
 
 /**
  * The folder a save writes into, stubbed. Spec 6.4.1: whatever the dialogue of
@@ -78,7 +78,7 @@ describe("saving a planet to a folder", () => {
       "Regina-48.png",
       "Regina-6.png",
       "Regina-96.png",
-      "Regina.json",
+      "Regina.planet",
     ]);
   });
 
@@ -90,7 +90,7 @@ describe("saving a planet to a folder", () => {
 
     await saveTo(handle, saveOf(planet));
 
-    expect([...written.keys()]).toEqual(["Regina.json"]);
+    expect([...written.keys()]).toEqual(["Regina.planet"]);
   });
 
   it("writes the planet as the JSON a load can read back", async () => {
@@ -99,7 +99,7 @@ describe("saving a planet to a folder", () => {
 
     await saveTo(handle, saveOf(planet));
 
-    expect(JSON.parse(written.get("Regina.json") as string)).toEqual(planet);
+    expect(JSON.parse(written.get("Regina.planet") as string)).toEqual(planet);
   });
 
   // A format writes text, and text has to arrive as the bytes it was written as.
@@ -132,7 +132,7 @@ describe("saving a planet as an archive", () => {
       "Regina-48.png",
       "Regina-6.png",
       "Regina-96.png",
-      "Regina.json",
+      "Regina.planet",
     ]);
   });
 
@@ -140,7 +140,7 @@ describe("saving a planet as an archive", () => {
     const planet = { ...newPlanet(), name: "Regina", narrative: "A world." };
 
     const entries = await entriesOf(saveOf(planet));
-    const json = entries.find((entry) => entry.name === "Regina.json");
+    const json = entries.find((entry) => entry.name === "Regina.planet");
 
     expect(JSON.parse(new TextDecoder().decode(json!.data))).toEqual(planet);
   });
@@ -149,5 +149,54 @@ describe("saving a planet as an archive", () => {
     const entries = await entriesOf([{ name: "Regina.csv", data: "hex\r\nF00R00C00\r\n" }]);
 
     expect(new TextDecoder().decode(entries[0]!.data)).toBe("hex\r\nF00R00C00\r\n");
+  });
+});
+
+describe("what a planet's files are named", () => {
+  // AppSpec 4.2.1. Where the world is, not what it is called.
+  it("names a world of a system for its place in it", () => {
+    const planet = { ...newPlanet(), name: "Earth", designation: "Sol-3" };
+    expect(stemFor(planet)).toBe("Sol-3");
+  });
+
+  it("names a world with no system for itself", () => {
+    // 4.2.4: a planet rolled on its own has no orbit to be named for, and this
+    // application began with nothing else.
+    expect(stemFor({ ...newPlanet(), name: "Hadley", designation: null })).toBe("Hadley");
+  });
+
+  it("treats a blank designation as none at all", () => {
+    expect(stemFor({ ...newPlanet(), name: "Hadley", designation: "  " })).toBe("Hadley");
+  });
+
+  it("cleans a designation the way it cleans a name", () => {
+    expect(stemFor({ ...newPlanet(), name: "Earth", designation: "Sol/3: ?" })).toBe("Sol3");
+  });
+
+  it("closes up the spaces in a designation", () => {
+    // AppSpec 4.2.1.1.1: a designation is a token, so a belt reads as "Regina
+    // Belt-1" and files as Regina-Belt-1.
+    expect(stemFor({ ...newPlanet(), name: "Kadrin", designation: "Regina Belt-1" })).toBe(
+      "Regina-Belt-1",
+    );
+  });
+
+  it("leaves the spaces in a name, which is prose", () => {
+    expect(stemFor({ ...newPlanet(), name: "New Hope", designation: null })).toBe("New Hope");
+  });
+
+  it("carries the designation through a save and back", () => {
+    const planet = { ...newPlanet(), name: "Earth", designation: "Sol-3" };
+    const back = parsePlanet(JSON.stringify(planet));
+    expect(back.designation).toBe("Sol-3");
+    expect(stemFor(back)).toBe("Sol-3");
+  });
+
+  it("reads a save written before designations as a planet of its own", () => {
+    const planet = { ...newPlanet(), name: "Hadley" } as Record<string, unknown>;
+    delete planet["designation"];
+    const back = parsePlanet(JSON.stringify(planet));
+    expect(back.designation).toBeNull();
+    expect(stemFor(back)).toBe("Hadley");
   });
 });

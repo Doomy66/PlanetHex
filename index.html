@@ -15,7 +15,392 @@
     <link rel="alternate icon" href="./favicon.ico" sizes="16x16 32x32 48x48" />
     <title>PlanetHex</title>
   </head>
-  <body>
+  <body data-view="landing">
+    <!-- The landing page. AppSpec 2: four rows, one per level, smallest first,
+         each with New and Load. The application opens here rather than in a
+         planet, because there are four things a user might have come to do and
+         no way to guess which. AppSpec 1.2.1. -->
+    <section id="landing" class="landing">
+      <!-- The backdrop. Stars and a planet's limb, drawn in the stylesheet
+           rather than shipped as an image: the application draws worlds, and a
+           landing page that had to download one would be odd. -->
+      <div class="sky" aria-hidden="true">
+        <div class="sky-stars"></div>
+        <div class="sky-limb"></div>
+      </div>
+
+      <div class="landing-card">
+        <header class="landing-head">
+          <img class="landing-logo" src="./icon.svg" alt="" width="72" height="72" />
+          <h1>PlanetHex</h1>
+          <p class="landing-lead">A world, a system, a subsector, a sector.<br />Start where you meant to.</p>
+          <p class="landing-what">
+            A Traveller generator that works at four levels and keeps them in
+            step. Everything comes from a seed, so a world found on a subsector is
+            the same world opened on its own — the surface is rebuilt rather than
+            stored, and what you write over it is all that is kept.
+          </p>
+        </header>
+
+        <ul class="levels">
+          <li class="level level-planet">
+            <svg class="level-icon" viewBox="0 0 48 48" aria-hidden="true"><circle cx="24" cy="24" r="13" class="ic-body" /><path d="M11 24c4 3 22 3 26 0" class="ic-line" /><path d="M24 11c-5 4-5 22 0 26" class="ic-line" /><circle cx="24" cy="24" r="13" class="ic-edge" /></svg>
+            <div class="level-what">
+              <h2>Planet</h2>
+              <p>One world, its surface, and the globe it turns on.</p>
+            </div>
+            <div class="actions">
+              <button id="landing-planet-new" type="button">New</button>
+              <button id="landing-planet-load" type="button">Load</button>
+            </div>
+          </li>
+          <li class="level level-system">
+            <svg class="level-icon" viewBox="0 0 48 48" aria-hidden="true"><ellipse cx="24" cy="24" rx="20" ry="8" class="ic-orbit" /><ellipse cx="24" cy="24" rx="12" ry="5" class="ic-orbit" /><circle cx="24" cy="24" r="4.5" class="ic-star" /><circle cx="44" cy="24" r="2.6" class="ic-body" /><circle cx="12" cy="22" r="2" class="ic-body" /></svg>
+            <div class="level-what">
+              <h2>System</h2>
+              <p>A star or two, its orbits, and the worlds in them.</p>
+            </div>
+            <div class="actions">
+              <button id="landing-system-new" type="button">New</button>
+              <button id="landing-system-load" type="button">Load</button>
+            </div>
+          </li>
+          <li class="level level-subsector">
+            <svg class="level-icon" viewBox="0 0 48 48" aria-hidden="true"><path d="M8 17l7-4 7 4v8l-7 4-7-4z" class="ic-hex" /><path d="M22 9l7-4 7 4v8l-7 4-7-4z" class="ic-hex" /><path d="M22 25l7-4 7 4v8l-7 4-7-4z" class="ic-hex" /><circle cx="15" cy="21" r="2.4" class="ic-body" /><circle cx="29" cy="13" r="2" class="ic-body" /><circle cx="29" cy="29" r="2.8" class="ic-body" /></svg>
+            <div class="level-what">
+              <h2>Subsector</h2>
+              <p>Eighty hexes of star systems, drawn as a map.</p>
+            </div>
+            <div class="actions">
+              <button id="landing-sub-new" type="button">New</button>
+              <button id="landing-sub-load" type="button">Load</button>
+            </div>
+          </li>
+          <!-- The sector is specified and not built. On screen rather than left
+               off, because a landing page showing only what exists says the
+               application is a planet generator, and SystemSpec, SubSectorSpec
+               and AppSpec all say it is not going to stay one. -->
+          <li class="level level-sector">
+            <svg class="level-icon" viewBox="0 0 48 48" aria-hidden="true"><path d="M6 12h10v10H6zM19 12h10v10H19zM32 12h10v10H32M6 26h10v10H6zM19 26h10v10H19zM32 26h10v10H32z" class="ic-grid" /><circle cx="11" cy="17" r="1.6" class="ic-body" /><circle cx="24" cy="31" r="1.6" class="ic-body" /><circle cx="37" cy="17" r="1.6" class="ic-body" /><circle cx="24" cy="17" r="1.6" class="ic-body" /><circle cx="37" cy="31" r="1.6" class="ic-body" /></svg>
+            <div class="level-what">
+              <h2>Sector</h2>
+              <p>Sixteen subsectors, and the worlds in all of them.</p>
+            </div>
+            <div class="actions">
+              <button id="landing-sector-new" type="button">New</button>
+              <button id="landing-sector-load" type="button">Load</button>
+            </div>
+          </li>
+        </ul>
+
+        <p id="landing-status" class="status" role="status"></p>
+
+        <footer class="landing-links">
+          <a id="landing-notes" href="#" target="_blank" rel="noreferrer noopener">Release notes</a>
+          <a id="landing-suggest" href="#" target="_blank" rel="noreferrer noopener">Suggest something</a>
+          <span id="landing-version" class="landing-version"></span>
+        </footer>
+      </div>
+    </section>
+
+    <!-- The sector map. SectorSpec section 4: sixteen subsectors marked out on
+         one chart of 1,280 hexes, with what is in a hex on the right and the way
+         down into a subsector on the left. -->
+    <section id="sector-view" class="sector">
+      <header class="system-head">
+        <span id="crumbs-sector" class="crumbs-mount"></span>
+        <input id="sec-name" class="sys-name" type="text" autocomplete="off" aria-label="Sector name" />
+        <span id="sec-counts" class="sys-counts"></span>
+        <span id="sec-dirty" class="dirty" hidden>unsaved</span>
+        <span class="system-actions">
+          <button id="sec-roll" type="button" title="Another sector">Roll</button>
+          <button id="sec-save" type="button">Save</button>
+          <button id="sec-home" class="home" type="button" title="Back to the levels">Levels</button>
+        </span>
+      </header>
+
+      <aside class="sys-tree-panel">
+        <h2>Sector</h2>
+        <dl id="sec-about" class="sys-facts"></dl>
+
+        <details class="chart-legend" id="sec-generation" open>
+          <summary>Generation</summary>
+          <div class="sub-settings">
+            <label>Density
+              <select id="sec-density">
+                <option value="rift">Rift</option>
+                <option value="sparse">Sparse</option>
+                <option value="standard" selected>Standard</option>
+                <option value="dense">Dense</option>
+              </select>
+            </label>
+            <label>People
+              <input id="sec-people" type="number" min="-3" max="3" step="1" value="0" />
+            </label>
+            <label>Tech
+              <input id="sec-tech" type="number" min="-3" max="3" step="1" value="0" />
+            </label>
+          </div>
+        </details>
+
+        <details class="chart-legend" id="sec-subsectors" open>
+          <summary>Subsectors</summary>
+          <ul id="sec-list" class="sys-tree"></ul>
+        </details>
+      </aside>
+
+      <div class="sec-map" id="sec-map"></div>
+
+      <aside class="sys-side">
+        <div class="sys-detail">
+          <div class="sys-title">
+            <h2 id="sec-what">Select a hex</h2>
+            <button id="sec-open" class="sys-open" type="button" hidden>Open</button>
+          </div>
+          <dl id="sec-facts" class="sys-facts"></dl>
+          <p id="sec-note" class="sys-note"></p>
+        </div>
+      </aside>
+
+      <div class="sys-strip">
+        <p id="sec-status" class="status" role="status"></p>
+      </div>
+    </section>
+
+    <!-- The subsector chart. SubSectorSpec section 4: the eighty hexes in the
+         middle, what is in them down the left, and whatever hex is selected on
+         the right. -->
+    <section id="subsector-view" class="subsector">
+      <header class="system-head">
+        <span id="crumbs-sub" class="crumbs-mount"></span>
+        <input id="sub-name" class="sys-name" type="text" autocomplete="off" aria-label="Subsector name" />
+        <span id="sub-where" class="sys-stars"></span>
+        <span id="sub-counts" class="sys-counts"></span>
+        <span id="sub-dirty" class="dirty" hidden>unsaved</span>
+        <span class="system-actions">
+          <label class="sys-where">Sector<input id="sub-sector" type="text" autocomplete="off" /></label>
+          <button id="sub-roll" type="button" title="Another subsector">Roll</button>
+          <button id="sub-save" type="button">Save</button>
+          <button id="sub-home" class="home" type="button" title="Back to the levels">Levels</button>
+        </span>
+      </header>
+
+      <aside class="sys-tree-panel">
+        <h2>Subsector</h2>
+        <dl id="sub-about" class="sys-facts"></dl>
+
+        <!-- What the subsector is generated from. Here rather than in the
+             header because these are settings rather than actions: how thickly
+             it is settled, and which way it leans. The letter is not among them:
+             which of the sixteen this is comes from the sector it was opened
+             out of, or from the seed it was rolled with. -->
+        <details class="chart-legend" id="sub-generation" open>
+          <summary>Generation</summary>
+          <div class="sub-settings">
+          <label>Density
+            <select id="sub-density">
+              <option value="rift">Rift</option>
+              <option value="sparse">Sparse</option>
+              <option value="standard" selected>Standard</option>
+              <option value="dense">Dense</option>
+            </select>
+          </label>
+          <!-- Which way the region leans. SubSectorSpec 3.11: a modifier on the
+               dice every world here is rolled with, not a number written over
+               the answer. -->
+          <label>People
+            <input id="sub-people" type="number" min="-3" max="3" step="1" value="0" />
+          </label>
+          <label>Tech
+            <input id="sub-tech" type="number" min="-3" max="3" step="1" value="0" />
+          </label>
+          </div>
+        </details>
+        <details class="chart-legend sub-worlds" id="sub-worlds" open>
+          <summary>Worlds</summary>
+          <label class="sys-only">
+            <input id="sub-inhabited" type="checkbox" />
+            Inhabited only
+          </label>
+          <label class="sys-only">
+            <input id="sub-mains" type="checkbox" />
+            Show Mains
+          </label>
+          <ul id="sub-list" class="sys-tree"></ul>
+        </details>
+
+        <!-- What a save writes beside the document. SubSectorSpec 6.5. -->
+        <details class="chart-legend" id="sub-files">
+          <summary>Files to save</summary>
+          <ul class="chart-key sub-choices">
+            <li><label><input id="sub-want-sec" type="checkbox" checked /> Sector file, for a map</label></li>
+            <li><label><input id="sub-want-png" type="checkbox" checked /> Subsector as a PNG</label></li>
+            <li><label><input id="sub-want-svg" type="checkbox" /> Subsector as an SVG</label></li>
+            <li><label><input id="sub-want-csv" type="checkbox" /> Table as a CSV</label></li>
+            <li><label><input id="sub-want-md" type="checkbox" /> Sheet, Markdown</label></li>
+            <li><label><input id="sub-want-html" type="checkbox" /> Sheet, HTML</label></li>
+          </ul>
+        </details>
+
+        <!-- Foldable, because a key is read once and then known. -->
+        <details class="chart-legend" open>
+          <summary>Key</summary>
+        <ul id="sub-key" class="chart-key">
+          <li><svg viewBox="0 0 16 16" aria-hidden="true"><circle class="chart-wet" cx="8" cy="8" r="6" /></svg>Water and air</li>
+          <li><svg viewBox="0 0 16 16" aria-hidden="true"><circle class="chart-dusty" cx="8" cy="8" r="6" /></svg>Dry, with air</li>
+          <li><svg viewBox="0 0 16 16" aria-hidden="true"><circle class="chart-airless" cx="8" cy="8" r="6" /></svg>Airless</li>
+          <li><svg viewBox="0 0 16 16" aria-hidden="true"><circle class="chart-empty" cx="8" cy="8" r="5.5" /></svg>Nobody there</li>
+          <li><svg viewBox="0 0 16 16" aria-hidden="true"><circle class="chart-rock" cx="4" cy="5" r="1.4" /><circle class="chart-rock" cx="9" cy="4" r="1.4" /><circle class="chart-rock" cx="6" cy="9" r="1.4" /><circle class="chart-rock" cx="11" cy="10" r="1.4" /></svg>Asteroid belt</li>
+          <li><svg viewBox="0 0 16 16" aria-hidden="true"><circle class="chart-wet" cx="8" cy="8" r="3" /><circle class="chart-wet" cx="8" cy="8" r="6" opacity="0.25" /></svg>Dot size is population</li>
+          <li><svg viewBox="0 0 16 16" aria-hidden="true"><polygon class="chart-naval" points="8,2 9.6,6.4 14,6.4 10.5,9.2 11.8,13.6 8,11 4.2,13.6 5.5,9.2 2,6.4 6.4,6.4" /></svg>Naval base</li>
+          <li><svg viewBox="0 0 16 16" aria-hidden="true"><polygon class="chart-scout" points="8,3 14,12.5 2,12.5" /></svg>Scout base</li>
+          <li><svg viewBox="0 0 16 16" aria-hidden="true"><circle class="chart-giant" cx="8" cy="8" r="3.2" /><ellipse class="chart-giant-ring" cx="8" cy="8" rx="6.4" ry="2" /></svg>Gas giant to skim</li>
+          <li><svg viewBox="0 0 16 16" aria-hidden="true"><circle class="chart-zone" cx="8" cy="8" r="6" /></svg>Amber zone</li>
+          <li><svg viewBox="0 0 16 16" aria-hidden="true"><line class="chart-xboat" x1="1" y1="8" x2="15" y2="8" /></svg>X-boat route</li>
+          <li><svg viewBox="0 0 16 16" aria-hidden="true"><line class="chart-route" x1="1" y1="8" x2="15" y2="8" /></svg>Trade route</li>
+          <li><svg viewBox="0 0 16 16" aria-hidden="true"><g class="chart-main chart-main-0"><rect x="1" y="3" width="14" height="10" rx="2" /></g></svg>A Main, jump-1 throughout</li>
+        </ul>
+        </details>
+      </aside>
+
+      <div class="sub-chart" id="sub-chart"></div>
+
+      <aside class="sys-side">
+        <!-- The world itself, turning, where there is room to look at it. -->
+        <div id="sub-globe" class="sys-globe" hidden></div>
+        <div class="sys-detail">
+          <div class="sys-title">
+            <h2 id="sub-what">Select a hex</h2>
+            <button id="sub-open" class="sys-open" type="button" hidden>Open</button>
+          </div>
+          <dl id="sub-facts" class="sys-facts"></dl>
+          <p id="sub-note" class="sys-note"></p>
+
+          <!-- What the referee says over what was rolled. SubSectorSpec 5.3:
+               only what they change is stored, so an empty field here is a
+               field that is not in the document at all. -->
+          <div id="sub-edit" class="sub-edit" hidden>
+            <label class="sys-only">
+              <input id="sub-here" type="checkbox" />
+              A system in this hex
+            </label>
+            <div id="sub-fields">
+              <label class="sys-written">Name<input id="sub-e-name" type="text" autocomplete="off" /></label>
+              <label class="sys-written">Profile<input id="sub-e-uwp" type="text" autocomplete="off" maxlength="9" /></label>
+              <label class="sys-written">Bases
+                <select id="sub-e-bases">
+                  <option value="">None</option>
+                  <option value="N">Naval</option>
+                  <option value="S">Scout</option>
+                  <option value="A">Naval and scout</option>
+                </select>
+              </label>
+              <label class="sys-written">Zone
+                <select id="sub-e-zone">
+                  <option value="">Green</option>
+                  <option value="A">Amber</option>
+                  <option value="R">Red</option>
+                </select>
+              </label>
+              <label class="sys-written">Notes
+                <textarea id="sub-e-note" rows="2" placeholder="What a referee wants to write here"></textarea>
+              </label>
+            </div>
+          </div>
+        </div>
+      </aside>
+
+      <div class="sys-strip">
+        <p id="sub-status" class="status" role="status"></p>
+      </div>
+    </section>
+
+    <!-- The system view. SystemSpec section 8: the star or stars at one end, the
+         orbits laid out from it, and a panel for whatever orbit is selected.
+         Read only, at this stage: nothing here edits a system. -->
+    <!-- The system view. SystemSpec section 8, laid out the way the planet view
+         is: what is in the system down the left, the system itself in the
+         middle, the body being looked at on the right, and the orbits in order
+         along the bottom. -->
+    <!-- The system view. SystemSpec section 8, laid out the way the planet view
+         is: what is in the system down the left, the system itself in the
+         middle, the body being looked at on the right, and the orbits in order
+         along the bottom. -->
+    <section id="system" class="system">
+      <header class="system-head">
+        <span id="crumbs-system" class="crumbs-mount"></span>
+        <input id="sys-name" class="sys-name" type="text" autocomplete="off" aria-label="System name" />
+        <span id="sys-stars" class="sys-stars"></span>
+        <span id="sys-counts" class="sys-counts"></span>
+        <span id="sys-dirty" class="dirty" hidden>unsaved</span>
+        <span class="system-actions">
+          <label class="sys-where">Sector<input id="sys-sector" type="text" autocomplete="off" /></label>
+          <label class="sys-where">Hex<input id="sys-hex" type="text" autocomplete="off" placeholder="0000" maxlength="5" /></label>
+          <!-- The star the system turns round. SystemSpec 2.6: change it and
+               the orbits are laid out again, because a different star lights
+               them differently. -->
+          <label class="sys-where">Star
+            <select id="sys-star-class"></select>
+          </label>
+          <label class="sys-where">Size
+            <select id="sys-star-size"></select>
+          </label>
+          <button id="sys-roll" type="button" title="Another system">Roll</button>
+          <button id="sys-save" type="button">Save</button>
+          <button id="sys-home" class="home" type="button" title="Back to the levels">Levels</button>
+        </span>
+      </header>
+
+      <!-- Everything the system holds, in order, with a gas giant's moons under
+           it. The one place a moon can be reached without knowing which giant
+           it belongs to. -->
+      <aside class="sys-tree-panel">
+        <h2>Bodies</h2>
+        <label class="sys-only">
+          <input id="sys-inhabited" type="checkbox" />
+          Inhabited only
+        </label>
+        <ul id="sys-tree" class="sys-tree"></ul>
+      </aside>
+
+      <div class="sys-model" id="sys-model"></div>
+
+      <aside class="sys-side">
+        <div id="sys-globe" class="sys-globe" hidden></div>
+        <div class="sys-detail">
+          <div class="sys-title">
+            <h2 id="sys-what">Select a body</h2>
+            <button id="sys-travel" class="sys-open" type="button" hidden>Travel times</button>
+            <button id="sys-open" class="sys-open" type="button" hidden>Open</button>
+          </div>
+          <dl id="sys-facts" class="sys-facts"></dl>
+
+          <!-- How long it takes to get anywhere from here. SystemSpec 4.9. -->
+          <div id="sys-travel-panel" class="travel" hidden>
+            <label class="travel-rate">
+              Acceleration
+              <input id="sys-gees" type="number" min="0.1" max="10" step="0.1" value="1" />
+              G
+            </label>
+            <dl id="sys-travel-list" class="sys-facts"></dl>
+            <p class="travel-note">
+              Time to arrive at rest, and in brackets burning the whole way.
+            </p>
+          </div>
+          <p id="sys-note" class="sys-note"></p>
+          <ul id="sys-moons" class="sys-moons"></ul>
+          <label class="sys-written">Notes
+            <textarea id="sys-written" rows="2" placeholder="What a referee wants to write here"></textarea>
+          </label>
+        </div>
+      </aside>
+
+      <div class="sys-strip">
+        <div id="sys-diagram" class="sys-diagram"></div>
+        <p id="sys-status" class="status" role="status"></p>
+      </div>
+    </section>
+
     <main class="layout">
       <section class="panel panel-left" id="left-panel">
         <header class="panel-head">
@@ -29,8 +414,13 @@
           ></button>
           <h1>PlanetHex</h1>
           <span id="dirty" class="dirty" hidden>unsaved</span>
+          <button id="home" class="home" type="button" title="Back to the levels">Levels</button>
           <button id="help" class="help-open" type="button" title="Help and licence (F1 or ?)">?</button>
         </header>
+
+        <!-- The trail sits under the panel's own heading here rather than in it:
+             the left panel is narrow, and four levels need the width. -->
+        <div id="crumbs-planet" class="crumbs-row"></div>
 
         <div id="left-body" class="panel-body">
 
@@ -95,6 +485,18 @@
               <label class="grow">Mean temp&deg;C<input id="p-temp" type="number" step="1" autocomplete="off" /></label>
             </div>
             <div id="orbit-note" class="hint under"></div>
+            <!-- What the world orbits. Spec 6.15.13: the orbit above means
+                 nothing without it, since the same distance is a furnace round
+                 one star and a cinder round another. -->
+            <div class="row fields">
+              <label class="grow">Star
+                <select id="p-star-class"></select>
+              </label>
+              <label class="grow">Size
+                <select id="p-star-size"></select>
+              </label>
+            </div>
+            <div id="star-note" class="hint under"></div>
             <!-- Impacts. A count rather than a rate, because it is what the surface
                  carries now and not what fell on it. Spec 6.15.12. -->
             <div class="row fields">
@@ -533,7 +935,7 @@
           <dd>
             The world as one line of a sector file, tab separated, with the trade
             codes worked out from the profile. Paste it into a sector file among
-            its neighbours and the world appears on the chart. Bases, travel zone,
+            its neighbours and the world appears on the map. Bases, travel zone,
             and stars are left blank, because PlanetHex describes the world and not
             the system; the population multiplier, belts, and gas giants are rolled
             from the seed.
@@ -607,6 +1009,13 @@ SOFTWARE.</pre>
         </p>
       </div>
       <div class="actions help-actions">
+        <!-- The same three as the landing page, so the way to say something is
+             wherever the user is when they think of it. AppSpec 2.6.1. -->
+        <span class="help-links">
+          <a id="help-notes" href="#" target="_blank" rel="noreferrer noopener">Release notes</a>
+          <a id="help-suggest" href="#" target="_blank" rel="noreferrer noopener">Suggest something</a>
+          <span id="help-version" class="landing-version"></span>
+        </span>
         <button id="help-done" type="button">Close</button>
       </div>
     </dialog>

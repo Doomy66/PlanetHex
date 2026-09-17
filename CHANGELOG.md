@@ -4,6 +4,114 @@ The version in [package.json](package.json) is what the Windows installer of
 `npm run package` names itself after, so it is the one number that reaches a
 user. Dates are the day the release was tagged.
 
+## 2.0.0 — 2026-09-17
+
+A major number, because PlanetHex was one thing and is now four. Up to 1.5 it
+generated a planet. It still does, and the save format has not moved, so a planet
+file from 1.5 opens and is the same world. The one thing that reads differently
+is a world tidally locked to its star, which is now drawn and described by the
+model below rather than by latitude. The planet is now the bottom of a chain that runs
+sector, subsector, system, planet, and every level of it generates the same way:
+from a seed, with nothing stored that can be derived.
+
+- **Four levels, and one rule holding them together.** A world found on a
+  subsector chart is the same world opened on its own from its seed. That is the
+  whole of it, and it is what makes the levels navigable rather than merely
+  stacked: going down never invents anything, going up never loses anything, and a
+  seed passed to somebody else reproduces what you were looking at. Each level is
+  its own spec — `AppSpec.md` for the chain, then `SystemSpec.md` and
+  `SubSectorSpec.md` beside the planet's.
+  - **A level bar** at the top of every view, showing which levels are open and
+    what each one is called, so the chain is visible from inside it.
+  - **A landing page** that says what this is and lets you start at whichever
+    level you meant to, rather than at a planet you have to work upwards from.
+- **The system level.** A star or two, the orbits they light, and what sits in
+  them.
+  - **Orbits laid out from the star**, spaced the way the solar system's are, with
+    a habitable zone worked out from what the star puts out. Worlds, asteroid
+    belts, gas giants and their moons, each rolled from its own seed and wearing
+    the main world's social digits where 6.6 says it should.
+  - **Drawn twice, because there are two questions.** A schematic strip along the
+    foot for what is where in what order, and a model in the middle that is to
+    scale in distance, leans, turns and zooms. The main world is marked as the main
+    world in both, with the same base and travel-zone marks the chart above uses.
+  - **The star is selectable**, and fills the panel with the system: class and
+    size, what it puts out, how wide it is, its jump shadow and how long crossing
+    that takes at a gravity, how many orbits sit inside that shadow and so cannot
+    jump from where they are, where the habitable zone runs, and the counts of what
+    the orbits hold.
+  - **Jump shadows**, a hundred diameters from the star and from every gas giant,
+    drawn on the model and given as a distance and a time.
+  - **Travel times** between any two bodies, at an acceleration you set, given
+    both rest to rest and burning the whole way through.
+  - **The star can be changed**, and the system is laid out again rather than
+    repainted: a different star lights different orbits, so the habitable zone and
+    everything beyond it moves. A planet opened from a system carries its star
+    with it, and a planet on its own says which star it orbits itself.
+- **The subsector level.** Eighty hexes, generated and drawn as a chart a referee
+  can read at a glance.
+  - **A standard-looking chart**: coloured dots sized by population, base and
+    zone marks, a key, and no gaps between the hexes.
+  - **X-boat routes and trade routes**, under those names and by those rules,
+    with **Mains** — the jump-1 connected chains — available as an overlay.
+  - **Amber zones that mean something**, two or three to a subsector, each with a
+    stated reason, and never on a world nobody lives on.
+  - **Density and lean.** How thickly the region is settled, and which way its
+    population and tech lean, as modifiers on the dice rather than numbers written
+    over the answer. Raising the density only ever adds systems; it never moves
+    the ones already there.
+  - **The edge is an edge, not an end.** With a sector above it, a chart shows the
+    worlds within two hexes of its border lowlighted, and the routes that cross it.
+  - **Exports**: the chart as a PNG or an SVG, the table as a CSV, a subsector
+    sheet in Markdown or HTML, and a Traveller sector file a mapping tool can read.
+- **The sector level.** Sixteen subsectors, 32 by 40 hexes, and the two things
+  only this level can see: a route that crosses a subsector's border, and a Main
+  that runs past one.
+  - **Zoom that changes what is drawn.** Out, it is a sector map; going in far
+    enough, the hexes fill out into the same detail a subsector chart shows.
+  - **A subsector you have worked on is the subsector the sector shows**, carrying
+    its own density, lean and every hex you wrote on, with the sector's routes and
+    Mains worked out again over what is actually there.
+  - **Rolling a subsector inside a sector stays inside the sector**: it rolls that
+    letter again, in the same slot, wearing the sector's name and lean.
+- **Saving: one document per level.** The level you opened is the file, and it
+  carries the levels below it that you worked on — a sector file holds the
+  subsectors you visited, which hold the systems, which hold the worlds. So there
+  is one Save per chain, at the top of it, and moving up a level asks nothing
+  because nothing is lost. Each level has its own extension: `.sector`,
+  `.subsector`, `.system`, `.planet`, and opening the wrong one at the wrong level
+  says so instead of opening something else under the right name.
+- **What a child says about itself, the levels above hear.** A world renamed in
+  the system view is renamed on the chart; a subsector renamed is renamed on the
+  sector map and in its list. What a parent knows — density, lean, which star,
+  which hex, which designation — flows the other way.
+- **Physics where the game was arbitrary, and the game's own answer where it was
+  not.**
+  - **A tidally locked world gets its own temperature model.** Its temperature
+    runs from the point under its star to the point opposite, not from equator to
+    pole, so it is scorched at one point, frozen over a hemisphere, and habitable
+    in a ring between them — and the ice goes on the dark side as one cap rather
+    than two. Reading a locked world by latitude described somewhere that does not
+    exist on it.
+  - **A star's orbits move with the star.** The ladder is held in
+    sunlight-equivalent distance and multiplied out by the root of the luminosity,
+    because that is what the inverse square law says and what the sky looks like: a
+    dim star's system is compact, not a cold copy of the Sun's. Two limits do not
+    scale, being nothing to do with light — the Roche limit at the inner end and
+    how far a disc of planets reaches at the outer.
+  - **The Imperium settled the good stars.** A system with people in it draws a
+    star from a different weighting than an empty one, leaning to F, G and K: a red
+    dwarf's habitable orbit is inside the reach of its own tides, and nobody put
+    three billion people there while a G was going spare. Locked worlds went from
+    half a sector to a fifth of the worlds anybody lives on, which is where a
+    locked world is worth something. O and B drop to the trace Traveller's own
+    table leaves them, and its two blank size columns are honoured, because it is
+    right about both.
+- **Somewhere to say what it should do instead.** The header links to a new GitHub
+  issue with the version, the level and the seed already filled in, because a
+  report that names the seed is a report that can be reproduced.
+- **It is called a subsector.** Not a chart, anywhere a user can see.
+
 ## 1.5.1 — 2026-09-13
 
 - **A city is drawn as its limits, and nothing else.** Two lines cut from how

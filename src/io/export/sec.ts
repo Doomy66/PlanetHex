@@ -16,10 +16,11 @@ import type { Planet } from "../../planet";
  * its header rather than by position: a file without one is guessed at, and a
  * file with one is read.
  *
- * Three columns PlanetHex has nothing behind are left as the format's own
- * placeholder rather than filled with invention. Bases and travel zone are
- * blank, and allegiance is Na, non-aligned, which is what an unclaimed world is.
- * PBG is the exception, and trade.ts says why.
+ * Bases, travel zone and stars were the format's own placeholder while PlanetHex
+ * modelled a world and nothing around it. A subsector knows all three under
+ * SubSectorSpec 3.5 to 3.7, so the line takes them where they are offered and
+ * leaves them blank where they are not. Allegiance is Na, non-aligned, which is
+ * what an unclaimed world is. PBG is rolled from the seed, and trade.ts says why.
  */
 
 /** The columns, in the order the format lists them. */
@@ -28,22 +29,47 @@ const COLUMNS = ["Hex", "Name", "UWP", "Bases", "Remarks", "Zone", "PBG", "Alleg
 /** Where a world with no hex of its own is put, so the line is still a line. */
 const NO_HEX = "0000";
 
-export function sectorLine(planet: Planet): string {
+/**
+ * What a level above a planet knows about it that the planet does not.
+ * SubSectorSpec 6.1.1: the line keeps its shape and takes these where they are
+ * offered rather than assuming them blank.
+ */
+export interface SectorLineExtras {
+  /** The world's name, where something above it has named it. */
+  readonly name?: string;
+  readonly bases?: string;
+  readonly zone?: string;
+  readonly stars?: string;
+  readonly pbg?: string;
+  readonly allegiance?: string;
+}
+
+export function sectorLine(planet: Planet, extras: SectorLineExtras = {}): string {
+  return `${sectorHeader()}${worldLine(planet, extras)}`;
+}
+
+/** The header row the format is identified by, on its own. */
+export function sectorHeader(): string {
+  return `${COLUMNS.join("\t")}\n`;
+}
+
+/** One world as one line, with no header. What a whole chart is made of. */
+export function worldLine(planet: Planet, extras: SectorLineExtras = {}): string {
   const codes = tradeCodes(planet.uwp).map((code) => code.code);
   const fields = [
     parseSectorHex(planet.hex) === null ? NO_HEX : planet.hex.trim(),
     // A tab separated file cannot hold a tab, and a world named across two lines
     // is not a world this format can carry either.
-    flatten(planet.name) || "Unnamed",
+    flatten(extras.name ?? planet.name) || "Unnamed",
     planet.uwp.trim().toUpperCase(),
-    "",
+    extras.bases ?? "",
     codes.join(" "),
-    "",
-    formatPbg(pbgFor(planet.seed, planet.uwp)),
-    "Na",
-    "",
+    extras.zone ?? "",
+    extras.pbg ?? formatPbg(pbgFor(planet.seed, planet.uwp)),
+    extras.allegiance ?? "Na",
+    extras.stars ?? "",
   ];
-  return `${COLUMNS.join("\t")}\n${fields.join("\t")}\n`;
+  return `${fields.join("\t")}\n`;
 }
 
 /**

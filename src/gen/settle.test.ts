@@ -30,6 +30,10 @@ const detail = (over: Partial<PlanetDetail> = {}) =>
     pressureAtm: 1,
     axialTiltDeg: 23.4,
     population: 1e9,
+    // A world that turns: the locked model of 5.7.7 is a different world.
+    rotationHours: 24,
+    orbitAu: 1,
+    climate: { luminosity: 1 } as PlanetDetail["climate"],
     ...over,
   }) as PlanetDetail;
 

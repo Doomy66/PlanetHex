@@ -2,6 +2,8 @@
 
 A browser application that generates planet surfaces procedurally and shows them two ways at once: as a flat Traveller-style hex map, and as a rotating sphere.
 
+This document is the specification for one planet. [SubSectorSpec.md](SubSectorSpec.md) is its companion, numbered the same way, for the eighty hex chart a world sits on.
+
 ## Contents
 
 1. [Purpose](#1-purpose)
@@ -473,6 +475,14 @@ A browser application that generates planet surfaces procedurally and shows them
 
 5.4.6 Ice is drawn, not generated. It does not move a height, and it does not change sea level: the water counted by 5.2 is counted whether it is frozen or not.
 
+5.4.7 A world locked to its star of 6.12.3 gets one cap rather than two, and it goes on the side that never sees the sun. Neither lever of 5.4.2 is saying anything about such a world: it has no tilt worth the name, and both of its poles sit on the terminator at the same temperature as each other. What it has instead is a hemisphere in permanent night, and that is where its ice is.
+
+5.4.7.1 The cap is centred on the point furthest from the star and reaches back towards the terminator as far as the temperature of 5.7.7 allows, which on a cold enough world is the whole night half. It cannot reach past the terminator, because past it there is sunlight.
+
+5.4.7.2 It is read against the temperature of the dark side rather than against the world's mean. A locked world's mean is an average of two places nobody would call the same world, and it can sit a hundred kelvin above the face the ice is actually on.
+
+5.4.7.3 The water ceiling of 5.4.4 still binds, halved: one cap reaching to a given angle covers half of what two poleward caps of the same reach would.
+
 ### 5.5 Points of interest
 
 5.5.1 A starport is drawn red and a comment pale grey, on the map of 4.3.4, on the globe of 4.4.8, and in the patch of 4.5.7.3. The two kinds of 6.5.2 are told apart by colour alone, so which is which can be seen at a glance across the whole map rather than read one hex at a time.
@@ -542,6 +552,23 @@ A browser application that generates planet surfaces procedurally and shows them
 5.7.5 The caps of 5.4 are drawn as ice rather than as pale ground. Frozen water is white, and it is white over sea and over land alike, so the cap reads as a sheet rather than as terrain seen through frost. This is the one thing the two views deliberately disagree about, and 5.4.5 gives the reason the map does it the other way: a map has to keep the terrain legible under the ice and a photograph does not.
 
 5.7.6 What does not change between the views: the coastline, the ice edge, the heights, the hex readout of 4.5.6, and the grey heightmap of 6.21. The view is paint. Nothing under it moves.
+
+### 5.7.7 Temperature on a locked world
+
+5.7.7.1 A world locked to its star by 6.12.3 is not banded by latitude at all, and reading 5.7.3 over it describes somewhere that does not exist. It takes its sunlight on one face for ever. The only axis that means anything on it runs from the point under its star to the point opposite, and its own two poles sit on the terminator at the same temperature as each other.
+
+5.7.7.2 So a locked world is modelled with that axis as its polar axis: the star overhead at the north pole, endless night at the south, and everything that reads a latitude reading the angle to the star instead. It is the same sphere with its labels changed. Modelling it any other way would mean carrying a longitude through every part of 5.4, 5.8 and 6.24 for the one case that needs it, and a locked world's real poles are the least interesting places on it.
+
+5.7.7.3 The flux at the point under the star is four times the world's average rather than equal to it, and temperature goes as the fourth root of flux, so that point sits at the square root of two times the mean. From there it falls as the fourth root of the cosine of the angle to the star, and over the whole night half there is no sunlight and no gradient: it is level, and it is cold.
+
+5.7.7.4 Air rubs the difference out, as it does in 5.7.3.3, and harder. Moving heat round to a face that never sees the sun is the one job a deep atmosphere is unambiguously good at, so the contrast is divided down by a pressure half the figure the latitude model uses. A locked world under a bar or two is warm all over; one under nothing is a furnace facing an icebox.
+
+5.7.7.5 The contrast scales with the world's mean rather than being a fixed number of degrees, because the fall-off from the substellar point is a ratio. A world twice as warm has twice the spread across it.
+
+5.7.7.6 The profile has zero mean by construction, as 5.7.3.5 does. A locked world is the temperature 6.15 worked out, spread very differently over the surface.
+
+5.7.7.7 The description of 4.6 gives both ends rather than the mean alone, because the mean of a locked world is an average of two places and describes neither.
+
 
 ### 5.8 What the ground is
 
@@ -629,6 +656,7 @@ A browser application that generates planet surfaces procedurally and shows them
 | UWP | The Universal World Profile, see 6.7. |
 | Narrative text | Free prose about the world, written by the user. Plain text, no length limit. |
 | Points of interest | The hex attachments of 6.5, each with its kind, name, narrative, and the point of 2.4.8 it sits on. |
+| Star | The star the world orbits: its output relative to the Sun, and its label, see 6.15.13. Absent means the Sun. |
 | Seed | Required. Without it the surface cannot be rebuilt on load. |
 | Detail | The detail level of 2.2.1, stored as its row count. |
 
@@ -813,7 +841,11 @@ A browser application that generates planet surfaces procedurally and shows them
 
 6.14.3 This grid has nothing to do with the surface grid of section 2. A sector hex is one star system on a chart; a surface hex is a piece of ground on one planet. Nothing in generation reads either location field, so under 6.11 they stay user owned, and a world's place in the setting cannot change its terrain.
 
-6.14.4 Saves written before this was settled carried a single free text location. Load splits one on a trailing four digit group, so a file that followed the convention by hand arrives in the two fields and one that did not keeps its text in the sector field. Nothing is discarded either way.
+6.14.5 A world of a system also carries its designation - which body of which system it is, "Sol-3" or "Regina Belt-1" - written in by the system that handed it down. It is what the world's files are named for, under the app spec 4.2.1: a world named Earth is still Sol-3 on disk, because the name is what people call it and the designation is which world it is.
+
+6.14.5.1 Null for a world with no system, which is named for itself. A planet rolled on its own is a whole document at the level this application began with, and is not missing anything by having no designation.
+
+6.14.6 Saves written before this was settled carried a single free text location. Load splits one on a trailing four digit group, so a file that followed the convention by hand arrives in the two fields and one that did not keeps its text in the sector field. Nothing is discarded either way.
 
 
 ### 6.15 World settings
@@ -877,6 +909,22 @@ A browser application that generates planet surfaces procedurally and shows them
 6.15.12.2 An empty field returns the world to what the seed rolled, under 6.15.3. A typed zero is a different thing: a referee saying this world's record has been wiped, whatever its air and water work out to. The two are held apart the way the other settings hold them apart, so the field shows what the seed rolls alongside whatever has been typed over it.
 
 6.15.12.3 The field is capped. Past twenty thousand the layer costs a fifth of a redraw at the finest level for a surface that saturated thousands of impacts earlier, so the ceiling sits where the pictures stop improving rather than where the arithmetic stops working. Under it the field shows how much ground is inside a rim, since a count alone does not say what a world looks like: a thousand small craters and a thousand large ones are different surfaces.
+
+6.15.13 **The star.** A world's orbit is a distance, and a distance means nothing on its own: the same tenth of an AU is a furnace around one star and a cinder around another. So a planet carries the output of the star it orbits, relative to the Sun, and every figure 6.15 derives from its orbit is worked out on the pair.
+
+6.15.13.1 Absent means the Sun. Every world generated before this existed was worked out against the Sun, so a save that says nothing about a star is read as saying that, and comes back the world it always was. Nothing in an old file changes, and nothing in an old file has to be rewritten.
+
+6.15.13.2 It is here rather than in the system a world came from because a save has to hold everything its surface is built from. A world lifted out of its system and opened on its own must come up the same world, and its climate cannot be worked out without knowing what is shining on it. [SystemSpec.md](SystemSpec.md) 5.2.2 is what writes it; this clause is why it has somewhere to write it to.
+
+6.15.13.3 A world on its own can be given one. A star is a system's business where there is a system, but a planet rolled from the landing page has no system to ask and no reason to be stuck around the Sun — a world of a red dwarf is a different world, and saying so is a field rather than a feature.
+
+6.15.13.3.1 Chosen as a spectral class and a size, which is how a referee says it, rather than as a number. A G2 V is a star; 1.00 is an answer to a question nobody asked.
+
+6.15.13.3.2 A world of a system shows the star it orbits and cannot change it there. The system is where a star is chosen, and two places to set one would be two answers to one question.
+
+6.15.13.4 The label is stored beside the output. They answer different questions: the output is what the climate is worked out from and the only figure generation reads, and the label is what a referee wrote down, what a sector line carries, and what the field shows. A save that has the one without the other is read as the Sun.
+
+6.15.13.5 Changing the star moves the world. Everything 6.15 derives from an orbit is derived again, so a world whose profile asks for a temperate climate sits at 1.25 AU around a G, 0.18 around an M, and 5.59 around an A — the inverse square, arrived at rather than stated.
 
 ### 6.16 Trade classifications
 

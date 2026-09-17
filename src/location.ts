@@ -1,6 +1,6 @@
 /**
  * Where a planet sits in the setting: a sector name and a four digit hex within
- * it, which is Traveller convention. Spec.md 6.14.
+ * it, which is Traveller convention. PlanetSpec.md 6.14.
  *
  * This grid is nothing to do with the surface grid of section 2. A sector is a
  * flat 32 by 40 chart of star systems, one hex per system, and the four digits
@@ -14,8 +14,10 @@ export const SECTOR_COLS = 32;
 export const SECTOR_ROWS = 40;
 
 /** Columns and rows per subsector: four across and four down make the sixteen. */
-const SUB_COLS = 8;
-const SUB_ROWS = 10;
+export const SUB_COLS = 8;
+export const SUB_ROWS = 10;
+/** The sixteen subsectors of a sector, A to P. SubSectorSpec 2.2. */
+export const SUBSECTOR_LETTERS = "ABCDEFGHIJKLMNOP";
 
 export interface SectorHex {
   /** 1 to SECTOR_COLS. */
@@ -56,6 +58,27 @@ export function subsectorLetter(hex: SectorHex): string {
   return String.fromCharCode(65 + down * 4 + across);
 }
 
+/**
+ * The eighty hexes of one subsector, in reading order: across the top row, then
+ * the next, as a chart is read. SubSectorSpec 2.1.1 and 2.2.2.
+ *
+ * Sector-absolute, so a hex of subsector G is numbered where subsector G is on
+ * the sector chart rather than from its own corner. 2.2.2.1 gives the reason:
+ * the referee who writes down 1914 wants to find 1914 later.
+ */
+export function subsectorHexes(letter: string): SectorHex[] {
+  const at = Math.max(0, SUBSECTOR_LETTERS.indexOf(letter.toUpperCase()));
+  const acrossFrom = (at % 4) * SUB_COLS;
+  const downFrom = Math.floor(at / 4) * SUB_ROWS;
+  const out: SectorHex[] = [];
+  for (let row = 1; row <= SUB_ROWS; row++) {
+    for (let col = 1; col <= SUB_COLS; col++) {
+      out.push({ col: acrossFrom + col, row: downFrom + row });
+    }
+  }
+  return out;
+}
+
 export interface PlanetLocation {
   readonly sector: string;
   /** As the user typed it, so a half-finished entry is not thrown away. */
@@ -67,6 +90,21 @@ export interface PlanetLocation {
  * it. Empty when neither field has been filled in, and it says what it has when
  * only one of them has been.
  */
+/**
+ * How many jumps apart two hexes are. SubSectorSpec 3.9.1.1.
+ *
+ * The chart's columns are offset against each other, so a step sideways is also
+ * half a step up or down, and counting rows and columns separately gets it
+ * wrong. Rows are counted in halves instead: a sideways step pays for half a row
+ * of the vertical distance for free, and only what is left over costs a jump.
+ */
+export function hexDistance(a: SectorHex, b: SectorHex): number {
+  const across = Math.abs(b.col - a.col);
+  const halves = (hex: SectorHex) => hex.row * 2 + (hex.col % 2 === 0 ? 1 : 0);
+  const down = Math.abs(halves(b) - halves(a));
+  return down <= across ? across : across + (down - across) / 2;
+}
+
 export function formatLocation(location: PlanetLocation): string {
   const sector = location.sector.trim();
   const hex = parseSectorHex(location.hex);

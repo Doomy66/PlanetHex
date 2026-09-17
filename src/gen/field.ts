@@ -5,7 +5,7 @@ import { reduceCoord } from "../grid/coord";
 import { hashString } from "./rng";
 
 /**
- * The height field, built by repeated subdivision. Spec.md section 3.
+ * The height field, built by repeated subdivision. PlanetSpec.md section 3.
  *
  * Level 0 is the twelve icosahedron corners, each given a random height. Every
  * later level halves the lattice spacing, and each new point is the midpoint of

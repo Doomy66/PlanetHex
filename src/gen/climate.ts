@@ -55,8 +55,47 @@ const RUNAWAY_K = 150;
 const ALBEDO_ROCK = 0.1;
 const ALBEDO_CLOUD = 0.3;
 
-/** Orbits outside this are not worth drawing; the model has nothing to say there. */
+/**
+ * Orbits outside this are not worth drawing; the model has nothing to say there.
+ * Around a Sun-like star. Both ends scale with the square root of the star's
+ * output under orbitLimitsFor, since everything here that turns light into a
+ * distance does: twice as far for four times the light.
+ */
 const ORBIT_LIMITS_AU = { near: 0.05, far: 50 } as const;
+
+/**
+ * The Sun, which is what a world with no star of its own is taken to orbit.
+ *
+ * Every figure in this file was written against it, and every world generated
+ * before systems existed is a world around a star nobody named. PlanetSpec
+ * 6.15.13: a planet with no luminosity of its own gets this one, and comes out
+ * the world it always was.
+ */
+export const SUN_LUMINOSITY = 1;
+
+/** How far a star's light reaches, relative to the Sun's. */
+function reachOf(luminosity: number): number {
+  return Math.sqrt(Math.max(luminosity, 0) || SUN_LUMINOSITY);
+}
+
+/** The orbits worth drawing around a star of this output. */
+export function orbitLimitsFor(luminosity: number): { near: number; far: number } {
+  const reach = reachOf(luminosity);
+  return { near: ORBIT_LIMITS_AU.near * reach, far: ORBIT_LIMITS_AU.far * reach };
+}
+
+/**
+ * A main sequence star's mass from its output, in solar masses. The mass-
+ * luminosity relation, which is a power of about 3.5 over most of the sequence.
+ *
+ * Rough, and wrong for giants and white dwarfs, whose mass has come loose from
+ * their brightness. It is used for the length of a year and for how far tides
+ * reach, where being out by a third is not worth a second stellar model. The
+ * clamp keeps a supergiant from being given the mass of a small galaxy.
+ */
+export function stellarMassFor(luminosity: number): number {
+  return clamp(Math.pow(Math.max(luminosity, 0) || SUN_LUMINOSITY, 1 / 3.5), 0.08, 30);
+}
 
 /**
  * Where a world sits when the profile says nothing about it. Log-uniform, because
@@ -99,6 +138,35 @@ const POLE_CONTRAST_K = 90;
  * above so that Earth comes out at about 47K and Venus at a couple.
  */
 const HEAT_TRANSPORT_ATM = 2.2;
+
+/**
+ * How much hotter the point under the star runs than the world's mean on a
+ * locked world with no air at all, as a share of that mean. PlanetSpec 5.7.7.
+ *
+ * A locked world takes its sunlight on one face for ever, so the flux at the
+ * point under the star is four times the world's average rather than the same
+ * as it. Temperature goes as the fourth root of flux, so that point sits at the
+ * square root of two times the mean, and everything from there to the terminator
+ * falls off as the fourth root of the cosine of the angle to the star.
+ */
+const LOCKED_PEAK = Math.SQRT2;
+
+/**
+ * The average of that fall-off over the whole sphere, which is what has to be
+ * taken off it for the profile to leave the world's mean alone. Half of the
+ * integral of mu to the quarter from nought to one, the night half contributing
+ * nothing.
+ */
+const LOCKED_SHAPE_MEAN = 0.4;
+
+/**
+ * The pressure at which air has carried a fair share of a locked world's heat
+ * round to its night side. Lower than the figure above, because the day-night
+ * difference is what a thick atmosphere works hardest against: a locked world
+ * under a bar or two is warm all over, and one under nothing is a furnace facing
+ * an icebox.
+ */
+const LOCKED_TRANSPORT_ATM = 1;
 
 /** Obliquity spreads, in degrees. See 6.12.3 for where the three populations come from. */
 const SETTLED_SIGMA_DEG = 1;
@@ -181,9 +249,23 @@ export function greenhouseFor(pressureAtm: number, atmosphere: number): number {
   return GREENHOUSE_AT_1ATM_K * Math.pow(pressureAtm, GREENHOUSE_EXPONENT) + runaway;
 }
 
-/** Mean surface temperature at a given orbit, in kelvin. */
-export function temperatureAt(orbitAu: number, albedo: number, greenhouseK: number): number {
-  const bare = (EQUILIBRIUM_AT_1AU_K * Math.pow(1 - albedo, 0.25)) / Math.sqrt(orbitAu);
+/**
+ * Mean surface temperature at a given orbit, in kelvin.
+ *
+ * The light a world gets is the star's output over the square of the distance,
+ * and the temperature that leaves goes as the fourth root of it, so a star ten
+ * thousand times the Sun's output warms a world as much from a hundred times
+ * further out.
+ */
+export function temperatureAt(
+  orbitAu: number,
+  albedo: number,
+  greenhouseK: number,
+  luminosity = SUN_LUMINOSITY,
+): number {
+  const bare =
+    (EQUILIBRIUM_AT_1AU_K * Math.pow(1 - albedo, 0.25) * Math.pow(reachOf(luminosity), 0.5)) /
+    Math.sqrt(orbitAu);
   return bare + greenhouseK;
 }
 
@@ -196,13 +278,16 @@ export function orbitForTemperature(
   meanTempK: number,
   albedo: number,
   greenhouseK: number,
+  luminosity = SUN_LUMINOSITY,
 ): number {
   const bare = meanTempK - greenhouseK;
   // Air alone cannot hold a world above the greenhouse figure with no sun on it,
   // so a temperature at or under that is only reachable out at the far limit.
-  if (bare <= 0) return ORBIT_LIMITS_AU.far;
-  const root = (EQUILIBRIUM_AT_1AU_K * Math.pow(1 - albedo, 0.25)) / bare;
-  return clamp(root * root, ORBIT_LIMITS_AU.near, ORBIT_LIMITS_AU.far);
+  const limits = orbitLimitsFor(luminosity);
+  if (bare <= 0) return limits.far;
+  const root =
+    (EQUILIBRIUM_AT_1AU_K * Math.pow(1 - albedo, 0.25) * Math.pow(reachOf(luminosity), 0.5)) / bare;
+  return clamp(root * root, limits.near, limits.far);
 }
 
 /**
@@ -231,11 +316,17 @@ export function targetTemperatureK(seed: string, profile: Uwp | null): number | 
   return null;
 }
 
-/** Where a world sits when nothing about it says. Log-uniform over the range. */
-export function bareOrbitAu(seed: string): number {
+/**
+ * Where a world sits when nothing about it says. Log-uniform over the range, and
+ * the range moves out with the star: a bare rock around a bright star is where
+ * one around the Sun would be, times the reach of its light.
+ */
+export function bareOrbitAu(seed: string, luminosity = SUN_LUMINOSITY): number {
   const fraction = fractionFor(seed, "orbit");
   return (
-    BARE_ORBIT_AU.near * Math.pow(BARE_ORBIT_AU.far / BARE_ORBIT_AU.near, fraction)
+    BARE_ORBIT_AU.near *
+    Math.pow(BARE_ORBIT_AU.far / BARE_ORBIT_AU.near, fraction) *
+    reachOf(luminosity)
   );
 }
 
@@ -245,13 +336,17 @@ export function bareOrbitAu(seed: string): number {
  * makes this a near step rather than a slope: everything inside half an AU is
  * settled and everything past three quarters of one is essentially free.
  */
-export function despinFor(orbitAu: number): number {
-  return clamp01(Math.pow(DESPIN_REACH_AU / orbitAu, DESPIN_FALLOFF));
+export function despinFor(orbitAu: number, luminosity = SUN_LUMINOSITY): number {
+  // Tides are the star's mass, not its light, so the reach moves with the cube
+  // root of the mass rather than with the brightness. It is why the worlds in a
+  // red dwarf's habitable zone are locked: warm there means very close in.
+  const reach = DESPIN_REACH_AU * Math.pow(stellarMassFor(luminosity), 1 / 3);
+  return clamp01(Math.pow(reach / orbitAu, DESPIN_FALLOFF));
 }
 
-/** How long a year lasts at this orbit, in hours, around a Sun-like star. */
-export function orbitalPeriodHours(orbitAu: number): number {
-  return Math.pow(orbitAu, 1.5) * YEAR_AT_1AU_HOURS;
+/** How long a year lasts at this orbit, in hours. Kepler's third, with the mass. */
+export function orbitalPeriodHours(orbitAu: number, luminosity = SUN_LUMINOSITY): number {
+  return (Math.pow(orbitAu, 1.5) * YEAR_AT_1AU_HOURS) / Math.sqrt(stellarMassFor(luminosity));
 }
 
 /**
@@ -279,13 +374,18 @@ export function obliquityFor(seed: string, despin: number): number {
  * the logarithm because the two ends are three orders of magnitude apart and a
  * straight average between them would mean nothing.
  */
-export function rotationHoursFor(seed: string, orbitAu: number, despin: number): number {
+export function rotationHoursFor(
+  seed: string,
+  orbitAu: number,
+  despin: number,
+  luminosity = SUN_LUMINOSITY,
+): number {
   const primordial = logNormal(
     PRIMORDIAL_MEDIAN_HOURS,
     PRIMORDIAL_SPREAD,
     fractionFor(seed, "rotation"),
   );
-  const locked = orbitalPeriodHours(orbitAu);
+  const locked = orbitalPeriodHours(orbitAu, luminosity);
   return Math.exp(lerp(Math.log(primordial), Math.log(locked), despin));
 }
 
@@ -304,8 +404,12 @@ export function isRetrograde(obliquityDeg: number): boolean {
 }
 
 /** Whether tides have brought the world's day and year into step. */
-export function isTidallyLocked(rotationHours: number, orbitAu: number): boolean {
-  return rotationHours >= orbitalPeriodHours(orbitAu) * 0.95;
+export function isTidallyLocked(
+  rotationHours: number,
+  orbitAu: number,
+  luminosity = SUN_LUMINOSITY,
+): boolean {
+  return rotationHours >= orbitalPeriodHours(orbitAu, luminosity) * 0.95;
 }
 
 /**
@@ -332,6 +436,44 @@ export function latitudeContrastK(seasonalTiltDeg: number, pressureAtm: number):
 }
 
 /**
+ * How much hotter the point under the star runs than the world's mean, in
+ * kelvin. PlanetSpec 5.7.7, and the locked world's answer to latitudeContrastK.
+ *
+ * It scales with the mean rather than being a fixed number of degrees, because
+ * the fall-off from the substellar point is a ratio: a world twice as warm has
+ * twice the spread across it. Air rubs it out the way it rubs out the pole to
+ * equator contrast, and harder, since moving heat round to a face that never
+ * sees the sun is the one job a thick atmosphere is unambiguously good at.
+ */
+export function lockedContrastK(meanTempK: number, pressureAtm: number): number {
+  const bare = ((LOCKED_PEAK - 1) * meanTempK) / (1 - LOCKED_SHAPE_MEAN);
+  return bare / (1 + Math.max(0, pressureAtm) / LOCKED_TRANSPORT_ATM);
+}
+
+/**
+ * The mean temperature at one angle from the star, in kelvin. PlanetSpec 5.7.7.
+ *
+ * `cosStar` is the cosine of the angle between the place and the point under the
+ * star: one directly under it, nought on the terminator, minus one at the far
+ * side. The shape is the fourth root of the sunlight falling there, which is
+ * nought over the whole night half, and it is written so that its average over
+ * the sphere is nought - so a locked world's mean is still the number 6.15
+ * worked out, spread very differently over the surface.
+ *
+ * Nothing here is symmetric, which is the point. A turning world is warm in a
+ * belt and cold at two ends; a locked one is scorched at one point, frozen over
+ * a whole hemisphere, and habitable only in a ring between them.
+ */
+export function temperatureAtStar(
+  meanTempK: number,
+  contrastK: number,
+  cosStar: number,
+): number {
+  const lit = Math.max(clamp(cosStar, -1, 1), 0);
+  return meanTempK + contrastK * (Math.pow(lit, 0.25) - LOCKED_SHAPE_MEAN);
+}
+
+/**
  * The mean temperature at one latitude, in kelvin, from the world's own mean and
  * the contrast above. The shape is the second Legendre polynomial, which is what
  * annual sunlight actually varies as, and it is written so that its average over
@@ -351,12 +493,20 @@ export function temperatureAtLatitude(
 
 /** What the user may have overruled. Absent or null means the rolled value stands. */
 export interface ClimateOverrides {
+  /**
+   * The output of the star the world orbits, relative to the Sun. Null for a
+   * world whose star nobody has named, which is taken to be a Sun. PlanetSpec
+   * 6.15.13.
+   */
+  readonly luminosity?: number | null;
   readonly orbitAu?: number | null;
   readonly obliquityDeg?: number | null;
   readonly rotationHours?: number | null;
 }
 
 export interface Climate {
+  /** The star's output, as it was read: what every figure below was worked out on. */
+  readonly luminosity: number;
   readonly orbitAu: number;
   readonly meanTempK: number;
   readonly obliquityDeg: number;
@@ -381,22 +531,23 @@ export function climateFor(
 ): Climate {
   const albedo = albedoFor(hydrographicsPct, pressureAtm);
   const greenhouseK = greenhouseFor(pressureAtm, profile?.atmosphere ?? 0);
+  const luminosity = overrides.luminosity ?? SUN_LUMINOSITY;
 
   const target = targetTemperatureK(seed, profile);
   const rolled =
-    target === null ? bareOrbitAu(seed) : orbitForTemperature(target, albedo, greenhouseK);
-  const orbitAu = clamp(
-    overrides.orbitAu ?? rolled,
-    ORBIT_LIMITS_AU.near,
-    ORBIT_LIMITS_AU.far,
-  );
+    target === null
+      ? bareOrbitAu(seed, luminosity)
+      : orbitForTemperature(target, albedo, greenhouseK, luminosity);
+  const limits = orbitLimitsFor(luminosity);
+  const orbitAu = clamp(overrides.orbitAu ?? rolled, limits.near, limits.far);
 
-  const despin = despinFor(orbitAu);
+  const despin = despinFor(orbitAu, luminosity);
   return {
+    luminosity,
     orbitAu,
     // Read off the orbit rather than kept from the draw, so an edited orbit
     // carries its temperature with it instead of contradicting it.
-    meanTempK: temperatureAt(orbitAu, albedo, greenhouseK),
+    meanTempK: temperatureAt(orbitAu, albedo, greenhouseK, luminosity),
     obliquityDeg: clamp(
       overrides.obliquityDeg ?? obliquityFor(seed, despin),
       0,
@@ -404,7 +555,7 @@ export function climateFor(
     ),
     rotationHours: Math.max(
       0.1,
-      overrides.rotationHours ?? rotationHoursFor(seed, orbitAu, despin),
+      overrides.rotationHours ?? rotationHoursFor(seed, orbitAu, despin, luminosity),
     ),
     albedo,
     greenhouseK,

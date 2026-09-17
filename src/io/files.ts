@@ -3,7 +3,7 @@ import { parsePlanet } from "../planet";
 import { buildZip, readZip, type ZipEntry } from "./zip";
 
 /**
- * Local saves through the File System Access API. Spec.md 6.4.1.
+ * Local saves through the File System Access API. PlanetSpec.md 6.4.1.
  *
  * A save is a folder rather than a single file: the planet's JSON, and the map
  * images of 6.4.5 beside it. A file handle cannot reach the folder it came from,
@@ -32,14 +32,51 @@ export interface FileHandle extends WritableFile {
 export interface DirectoryHandle {
   readonly name: string;
   getFileHandle(name: string, options?: { create?: boolean }): Promise<FileHandle>;
+  /**
+   * What is in the folder. AppSpec 5.6: a level above the planet is loaded by
+   * picking its folder, and a folder cannot be read without listing it.
+   */
+  values?(): AsyncIterableIterator<FileHandle | DirectoryHandle>;
+  getDirectoryHandle?(
+    name: string,
+    options?: { create?: boolean },
+  ): Promise<DirectoryHandle>;
 }
 interface PickerWindow {
   showDirectoryPicker?(options: unknown): Promise<DirectoryHandle>;
   showOpenFilePicker?(options: unknown): Promise<FileHandle[]>;
 }
 
+/**
+ * What each level's document is called on disk. AppSpec 4.1.1.
+ *
+ * JSON inside, but named for what it is: a folder of saves says at a glance
+ * which file is the chart and which are the worlds, and a referee looking for
+ * their subsector does not have to open three files called something.json to
+ * find out which one it is.
+ */
+export const LEVEL_SUFFIX = {
+  planet: ".planet",
+  system: ".system",
+  subsector: ".subsector",
+  sector: ".sector",
+} as const;
+
+/** Every suffix a document of this application can wear, including the old one. */
+const DOCUMENT_SUFFIXES = [...Object.values(LEVEL_SUFFIX), ".json"];
+
+/** Whether a file is one of this application's documents. */
+export function isDocument(name: string): boolean {
+  return DOCUMENT_SUFFIXES.some((suffix) => name.toLowerCase().endsWith(suffix));
+}
+
 const PICKER_OPTIONS = {
-  types: [{ description: "Planet", accept: { "application/json": [".json"] } }],
+  types: [
+    {
+      description: "PlanetHex document",
+      accept: { "application/json": DOCUMENT_SUFFIXES },
+    },
+  ],
 };
 
 export function isSupported(): boolean {
@@ -83,19 +120,59 @@ export interface SaveFile {
   readonly data: string | Blob;
 }
 
-/** The name a planet's files are built on. Spec 6.4.1. */
+/**
+ * The name a planet's files are built on. Spec 6.4.1, AppSpec 4.2.1.
+ *
+ * Where the world is, not what it is called: a world of a system is named for
+ * its place in that system, so the third world of Sol is Sol-3 whatever its
+ * inhabitants call it. A world with no system has no place to be named for and
+ * keeps its own name, which is AppSpec 4.2.4 - a planet rolled on its own is
+ * still a planet, and this application began with nothing else.
+ */
 export function stemFor(planet: Planet): string {
-  return sanitise(planet.name);
+  const designation = (planet.designation ?? "").trim();
+  if (designation === "") return sanitise(planet.name);
+  // A designation is a token rather than prose, so its spaces close up: the
+  // first belt of Regina is "Regina Belt-1" to read and Regina-Belt-1 on disk.
+  // A world's own name is left as it is written - a planet called New Hope is
+  // New Hope.json, because that one is prose and prose has spaces in it.
+  const token = sanitise(designation)
+    .replace(/\s+/g, "-")
+    .replace(/-+/g, "-")
+    .replace(/^-|-$/g, "");
+  return token === "" ? sanitise(planet.name) : token;
 }
 
-/** The planet's own JSON, which every save writes whatever else it does. */
+/** The planet's own document, which every save writes whatever else it does. */
 export function planetFile(planet: Planet): SaveFile {
-  return { name: `${stemFor(planet)}.json`, data: JSON.stringify(planet, null, 2) };
+  return {
+    name: `${stemFor(planet)}${LEVEL_SUFFIX.planet}`,
+    data: JSON.stringify(planet, null, 2),
+  };
 }
 
-/** The chosen files, written into a folder already chosen. */
+/**
+ * The chosen files, written into a folder already chosen.
+ *
+ * A name with slashes in it is a path: the folders are made as it goes. That is
+ * what lets one save write a level and its saved children in one pass, which is
+ * the shape of folder the app spec section 4 asks for at every level, and it is
+ * also exactly how a name behaves inside the archive of the fallback.
+ */
 export async function saveTo(dir: DirectoryHandle, files: readonly SaveFile[]): Promise<void> {
-  for (const file of files) await write(dir, file.name, file.data);
+  for (const file of files) {
+    const steps = file.name.split("/").filter((step) => step !== "");
+    const name = steps.pop();
+    if (name === undefined) continue;
+    let into = dir;
+    for (const step of steps) into = await folderIn(into, step);
+    await write(into, name, file.data);
+  }
+}
+
+async function folderIn(dir: DirectoryHandle, name: string): Promise<DirectoryHandle> {
+  if (!dir.getDirectoryHandle) throw new Error("This browser cannot make folders.");
+  return dir.getDirectoryHandle(name, { create: true });
 }
 
 async function write(dir: DirectoryHandle, name: string, data: string | Blob): Promise<void> {
@@ -118,6 +195,36 @@ export async function load(): Promise<{ planet: Planet; name: string }> {
   if (!handle) throw new PickerCancelled();
   const text = await (await handle.getFile()).text();
   return { planet: parsePlanet(text), name: handle.name };
+}
+
+/**
+ * Every document sitting in a folder, with its text. Shallow: a level's save is
+ * one document under the app spec 4.1.2, so what is in the folder is what there
+ * is to read, and the levels below are reached by opening what is in it.
+ */
+export async function readFolder(dir: DirectoryHandle): Promise<{ name: string; text: string }[]> {
+  if (!dir.values) throw new Error("This browser cannot read a folder.");
+  const out: { name: string; text: string }[] = [];
+  for await (const entry of dir.values()) {
+    const handle = entry as FileHandle;
+    if (typeof handle.getFile !== "function") continue;
+    if (!isDocument(handle.name)) continue;
+    out.push({ name: handle.name, text: await (await handle.getFile()).text() });
+  }
+  return out.sort((a, b) => a.name.localeCompare(b.name));
+}
+
+/**
+ * Ask for a folder and read what is in it. AppSpec 3.3: what is chosen is the
+ * folder holding a level's data, not a file inside it, and the folder is the
+ * save folder from that moment on.
+ */
+export async function loadFolder(): Promise<{
+  dir: DirectoryHandle;
+  files: { name: string; text: string }[];
+}> {
+  const dir = await pickFolder();
+  return { dir, files: await readFolder(dir) };
 }
 
 /* The fallback, for a browser without the API above --------------------- */

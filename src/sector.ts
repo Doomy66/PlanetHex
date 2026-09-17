@@ -1,0 +1,179 @@
+/**
+ * The sector record, and the thing a sector save file holds. SectorSpec
+ * section 5.
+ *
+ * A sector is a seed, a name, a density, a lean, and whatever the referee has
+ * worked up under it. No world is stored: load rebuilds all sixteen charts from
+ * the seed, exactly as a subsector rebuilds its eighty hexes and a planet its
+ * surface.
+ *
+ * It carries the subsectors somebody has worked on, each of those carrying its
+ * own worked up systems and their worlds, under the app spec 4.1.2 — one
+ * document for the level you opened, all the way down.
+ */
+
+import {
+  DEFAULT_DENSITY,
+  DENSITIES,
+  type Density,
+} from "./gen/subsector";
+import { generateSector, subsectorSeedFor, type Sector } from "./gen/sector";
+import type { Subsector } from "./gen/subsector";
+import { newSubsectorDoc, parseSubsectorDoc, subsectorOf, type SubsectorDoc } from "./subsector";
+import { SUBSECTOR_LETTERS } from "./location";
+
+export interface SectorDoc {
+  /** Which level this document is, under the app spec 4.1. */
+  readonly level: "sector";
+  readonly version: 1;
+  name: string;
+  seed: string;
+  density: Density;
+  /** Which way the whole sector leans. The subsector spec 3.11. */
+  shifts: { population: number; tech: number };
+  /** The subsectors somebody has worked on, by letter. SectorSpec 5.3. */
+  subsectors: { letter: string; doc: SubsectorDoc }[];
+}
+
+export function newSectorDoc(
+  seed: string,
+  name = "",
+  density: Density = DEFAULT_DENSITY,
+): SectorDoc {
+  return {
+    level: "sector",
+    version: 1,
+    name,
+    seed,
+    density,
+    shifts: { population: 0, tech: 0 },
+    subsectors: [],
+  };
+}
+
+/** The worked up subsector under a letter, or undefined where nobody has been. */
+export function savedSubsector(doc: SectorDoc, letter: string): SubsectorDoc | undefined {
+  return doc.subsectors.find((held) => held.letter === letter)?.doc;
+}
+
+/** Put a subsector under a letter, replacing whatever was there. */
+export function keepSubsector(doc: SectorDoc, letter: string, held: SubsectorDoc): void {
+  const rest = doc.subsectors.filter((one) => one.letter !== letter);
+  doc.subsectors = [...rest, { letter, doc: held }].sort((a, b) =>
+    a.letter.localeCompare(b.letter),
+  );
+}
+
+/**
+ * The document a subsector of this sector opens as. SectorSpec 7.1.
+ *
+ * The one the referee left if they have been in it, and a fresh one off the
+ * letter's own seed if they have not — wearing the sector's density and lean,
+ * because those are the sector's and a chart pulled out of it should look like
+ * the rest of the sector rather than like a chart rolled from nowhere.
+ */
+export function subsectorIn(doc: SectorDoc, letter: string): SubsectorDoc {
+  const held = savedSubsector(doc, letter);
+  if (held !== undefined) return held;
+  const fresh = newSubsectorDoc(
+    subsectorSeedFor(doc.seed, letter),
+    letter,
+    doc.density,
+    `Subsector ${letter}`,
+  );
+  fresh.sector = doc.name;
+  fresh.shifts = { ...doc.shifts };
+  return fresh;
+}
+
+/**
+ * The sector a document describes: generated from its seed, with the charts the
+ * referee has worked on laid over the top. SectorSpec 5.2.
+ *
+ * Laid over rather than merged: a worked chart carries its own density, lean and
+ * written hexes, and it is that chart which goes into the sector. So a subsector
+ * turned up to dense shows more systems on the sector map, and the routes and
+ * Mains of 3.3 and 3.4 are worked out again over the worlds that are now there.
+ *
+ * `open` is the chart being looked at this moment, which wins over the stored
+ * one: an edit shows on the sector without having to be put away first.
+ */
+export function sectorOf(doc: SectorDoc, open?: SubsectorDoc): Sector {
+  const worked = new Map<string, Subsector>();
+  for (const held of doc.subsectors) worked.set(held.letter.toUpperCase(), subsectorOf(held.doc));
+  if (open !== undefined) worked.set(open.letter.toUpperCase(), subsectorOf(open));
+  return generateSector(doc.seed, doc.density, doc.shifts, worked);
+}
+
+/**
+ * Reads a sector document back, or throws saying why not. The same contract the
+ * planet spec 6.4.3 sets: a document that cannot produce the sector it claims to
+ * be fails loudly rather than opening a different one under the right name.
+ */
+export function parseSectorDoc(text: string): SectorDoc {
+  let raw: unknown;
+  try {
+    raw = JSON.parse(text);
+  } catch {
+    throw new Error("That file is not valid JSON.");
+  }
+  if (typeof raw !== "object" || raw === null) throw new Error("That file is not a sector.");
+  const r = raw as Record<string, unknown>;
+  if (r["level"] !== "sector") {
+    throw new Error(`That file is a ${describeLevel(r["level"])}, not a sector.`);
+  }
+  if (r["version"] !== 1) {
+    throw new Error(`Save version ${String(r["version"])} is not one this build understands.`);
+  }
+  if (typeof r["seed"] !== "string" || r["seed"] === "") {
+    throw new Error("The save has no seed, so its sector cannot be rebuilt.");
+  }
+  const density = r["density"];
+  return {
+    level: "sector",
+    version: 1,
+    name: typeof r["name"] === "string" ? r["name"] : "Unnamed",
+    seed: r["seed"],
+    density:
+      typeof density === "string" && density in DENSITIES ? (density as Density) : DEFAULT_DENSITY,
+    shifts: parseShifts(r["shifts"]),
+    subsectors: parseSubsectors(r["subsectors"]),
+  };
+}
+
+function describeLevel(level: unknown): string {
+  return typeof level === "string" && level !== "" ? level : "planet or something else";
+}
+
+/** How far a sector leans, held to what a modifier on 2D can sensibly be. */
+function parseShifts(raw: unknown): { population: number; tech: number } {
+  const held = typeof raw === "object" && raw !== null ? (raw as Record<string, unknown>) : {};
+  const one = (key: string) => {
+    const value = held[key];
+    if (typeof value !== "number" || !Number.isFinite(value)) return 0;
+    return Math.max(-3, Math.min(3, Math.round(value)));
+  };
+  return { population: one("population"), tech: one("tech") };
+}
+
+/**
+ * The charts carried in a sector document. One that cannot be read is left out
+ * rather than taking the sector down with it: the letter still has a seed, and
+ * the seed still makes a chart.
+ */
+function parseSubsectors(raw: unknown): { letter: string; doc: SubsectorDoc }[] {
+  if (!Array.isArray(raw)) return [];
+  const out: { letter: string; doc: SubsectorDoc }[] = [];
+  for (const entry of raw) {
+    if (typeof entry !== "object" || entry === null) continue;
+    const r = entry as Record<string, unknown>;
+    const letter = typeof r["letter"] === "string" ? r["letter"].toUpperCase() : "";
+    if (!SUBSECTOR_LETTERS.includes(letter) || letter === "") continue;
+    try {
+      out.push({ letter, doc: parseSubsectorDoc(JSON.stringify(r["doc"])) });
+    } catch {
+      // Left out.
+    }
+  }
+  return out.sort((a, b) => a.letter.localeCompare(b.letter));
+}

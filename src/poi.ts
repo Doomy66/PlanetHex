@@ -8,7 +8,7 @@ import {
 import { nearestCell, type CellId, type Grid } from "./grid/grid";
 
 /**
- * Points of interest: the hex attachments of Spec.md 6.5.
+ * Points of interest: the hex attachments of PlanetSpec.md 6.5.
  *
  * A POI is user data rather than generated data, so a save carries it explicitly.
  * It is keyed by the lattice name of 2.4.8, which carries the depth it was placed
