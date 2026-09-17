@@ -1,8 +1,26 @@
 import { describe, expect, it } from "vitest";
-import { luminosityOf, starLabel, starsFor, starsLabel, type SpectralClass } from "./star";
+import {
+  luminosityOf,
+  starLabel,
+  starsFor,
+  starsLabel,
+  type SpectralClass,
+  type StarSize,
+} from "./star";
+import { parseUwp, rollUwp, seedFrom } from "../planet";
 
 /** Enough seeds that the rare draws come up. */
 const SEEDS = Array.from({ length: 2000 }, (_, i) => `system-${i}`);
+
+/** The population digit of the world a system's seed rolls for itself. */
+const populationOf = (seed: string): number =>
+  parseUwp(rollUwp(seedFrom(seed, "world")))?.population ?? 0;
+
+const EMPTY = SEEDS.filter((seed) => populationOf(seed) === 0);
+const SETTLED = SEEDS.filter((seed) => populationOf(seed) >= 6);
+
+const shareOf = (seeds: readonly string[], want: readonly SpectralClass[]): number =>
+  seeds.filter((seed) => want.includes(starsFor(seed).primary.spectral)).length / seeds.length;
 
 describe("starsFor", () => {
   it("gives the same stars to the same seed", () => {
@@ -37,19 +55,56 @@ describe("starsFor", () => {
     }
   });
 
-  it("leans towards the small and the long-lived", () => {
+  it("leaves an empty system the sky's own star", () => {
     // SystemSpec 2.2: most of the sky is K and M dwarfs, and a chart where every
     // third system is a blue giant is a chart nobody believes.
-    const count = new Map<SpectralClass, number>();
-    for (const seed of SEEDS) {
-      const { spectral } = starsFor(seed).primary;
-      count.set(spectral, (count.get(spectral) ?? 0) + 1);
+    expect(EMPTY.length).toBeGreaterThan(50);
+    expect(shareOf(EMPTY, ["M"])).toBeGreaterThan(0.4);
+    expect(shareOf(EMPTY, ["M", "K"])).toBeGreaterThan(0.7);
+  });
+
+  it("puts a settled world round a star worth settling", () => {
+    // SystemSpec 2.2.2. A red dwarf's habitable orbit is a tenth of an AU out,
+    // inside the reach of its tides, so the world in it is locked and flared on.
+    // Nobody built a class A starport there while a G was going spare.
+    expect(SETTLED.length).toBeGreaterThan(50);
+    expect(shareOf(SETTLED, ["G", "K", "F"])).toBeGreaterThan(0.7);
+    expect(shareOf(SETTLED, ["M"])).toBeLessThan(0.15);
+    // And it is a lean rather than a rule: the awkward ones still happen.
+    expect(shareOf(SETTLED, ["M"])).toBeGreaterThan(0);
+  });
+
+  it("keeps a settled world off a supergiant and a cinder", () => {
+    // SystemSpec 2.2.2: a supergiant has a few million years to live and a white
+    // dwarf has already killed everything it had.
+    const sizes = new Map<StarSize, number>();
+    for (const seed of SETTLED) {
+      const { size } = starsFor(seed).primary;
+      sizes.set(size, (sizes.get(size) ?? 0) + 1);
     }
-    const m = count.get("M") ?? 0;
-    const o = count.get("O") ?? 0;
-    expect(m / SEEDS.length).toBeGreaterThan(0.35);
-    expect(m).toBeGreaterThan(count.get("G") ?? 0);
-    expect(o / SEEDS.length).toBeLessThan(0.03);
+    expect((sizes.get("V") ?? 0) / SETTLED.length).toBeGreaterThan(0.85);
+    expect((sizes.get("Ia") ?? 0) + (sizes.get("Ib") ?? 0)).toBe(0);
+  });
+
+  it("keeps O and B to the trace Traveller's own table leaves them", () => {
+    // In Book 6 they cannot be rolled without the referee adding a modifier to
+    // reach them. A sector of 1,280 hexes still holds a handful, which is what a
+    // landmark is for.
+    expect(shareOf(SEEDS, ["O", "B"])).toBeLessThan(0.02);
+    expect(shareOf(EMPTY, ["O", "B"])).toBeLessThan(0.01);
+  });
+
+  it("never draws a size its class cannot be", () => {
+    // Traveller's blank columns, and it is right about both: a K or M subgiant
+    // would have to be older than the universe, and a subdwarf hotter than an F
+    // is not a thing the sky contains.
+    for (const seed of SEEDS) {
+      for (const star of [starsFor(seed).primary, starsFor(seed).companion]) {
+        if (star === null) continue;
+        if (star.size === "IV") expect(["K", "M"], seed).not.toContain(star.spectral);
+        if (star.size === "VI") expect(["O", "B", "A"], seed).not.toContain(star.spectral);
+      }
+    }
   });
 });
 

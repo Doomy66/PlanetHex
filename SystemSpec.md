@@ -56,7 +56,21 @@ This document sits under [SubSectorSpec.md](SubSectorSpec.md) and over [PlanetSp
 
 2.2 The draw is weighted towards the small and the long-lived. Most of the sky is K and M dwarfs, and a chart where every third system is a blue giant is a chart nobody believes.
 
-2.2.1 Weighted rather than uniform, and weighted rather than accurate. A truly representative draw would make M dwarfs three systems in four and leave a subsector with nothing to look at. The weighting leans towards the real distribution and stops short of it, which is the same compromise the planet spec makes wherever a real distribution is dull.
+2.2.1 An empty system gets the sky's own draw, which is near enough the real distribution and near enough Traveller's own table: both are mostly M and K. O and B are a trace rather than a fortieth. In Book 6 they cannot be rolled at all without the referee adding a modifier to reach them, and at a trace a sector of 1,280 hexes still holds a handful, which is what a landmark is for.
+
+2.2.2 A system with a settled world in it gets a different draw, leaning towards F, G and K. The sky is mostly red dwarfs and the Imperium is mostly not, because those are not the same question.
+
+2.2.2.1 The reason is in 3.2.2. A red dwarf's habitable orbit is a tenth of an AU out, inside the reach of its own tides, so the world in it is tidally locked with one face scorched and the other frozen, and the star flares across the lit one. Nobody put a class A starport and three billion people there while a G was going spare a parsec away. The systems a chart gives people to are the comfortable ones and the red dwarfs are the quiet hexes between them, which is a truer picture of a settled sector than an even draw and a better one to play in.
+
+2.2.2.2 G and K lead it rather than F and A, because an F burns out in a couple of billion years and an A in a few hundred million, and the Imperium has been at this for longer than that.
+
+2.2.2.3 Blended by the population digit rather than switched, so a mining camp is somewhere a mining camp would be and a hive world is somewhere worth living. Full weight by population 6.
+
+2.2.2.4 The size is leaned the same way, and very nearly always comes out the main sequence. A supergiant has a few million years to live and a white dwarf has already killed everything it had, so neither is where anybody builds a starport. A subgiant is allowed, being a star visibly on its way off the sequence and a good line for a referee to use.
+
+2.2.2.5 Read off the system's own seed and not handed in, so a star is still a function of the seed alone and the chart and the system cannot disagree about it. The profile read is the one the system's main world rolls for itself, before any lean the referee has put on the chart under the subsector spec 3.11: the star does not know about that, and a subsector turned up to teeming should not quietly reclass its suns.
+
+2.2.3 Two size and class pairs are not drawn at all, which is Traveller's blank columns, and it is right about both. There is no K or M subgiant, because a star that small takes longer to leave the main sequence than the universe has existed. There is no subdwarf hotter than an F. Either draw falls back to the main sequence.
 
 2.3 A companion is drawn for roughly one system in three. Where there is one it has its own class and size, drawn under the same weighting, and it is never larger than the primary.
 

@@ -11,6 +11,7 @@
  */
 
 import { valueFor } from "./rng";
+import { parseUwp, rollUwp, seedFrom } from "../planet";
 
 /** Spectral class, hottest first. */
 export type SpectralClass = "O" | "B" | "A" | "F" | "G" | "K" | "M";
@@ -43,24 +44,60 @@ export interface Stars {
 }
 
 /**
- * How often each class comes up, out of a hundred.
+ * How often each class comes up in an empty system, out of a hundred.
+ * SystemSpec 2.2.
  *
- * Leaning towards the real distribution and stopping short of it, which is
- * SystemSpec 2.2.1: three systems in four being an M dwarf is the truth and
- * makes a dull subsector, and a chart full of blue giants is a lie.
+ * Near enough the real sky, and near enough Traveller's own table, which is
+ * mostly M and K too. O and B are a trace rather than a fortieth: in Book 6 they
+ * cannot be rolled at all without the referee adding a modifier to reach them,
+ * and a sector still holds a handful at this rate, which is what a landmark is
+ * for.
  */
-const CLASS_WEIGHTS: Readonly<Record<SpectralClass, number>> = {
-  M: 45,
+const SKY_CLASS_WEIGHTS: Readonly<Record<SpectralClass, number>> = {
+  M: 62,
   K: 22,
-  G: 14,
-  F: 9,
-  A: 6,
-  B: 3,
-  O: 1,
+  G: 8,
+  F: 4,
+  A: 3.5,
+  B: 0.45,
+  O: 0.05,
 };
 
-/** How often each luminosity class comes up. The main sequence is most of it. */
-const SIZE_WEIGHTS: Readonly<Record<StarSize, number>> = {
+/**
+ * How often each class comes up under a world somebody settled. SystemSpec
+ * 2.2.2.
+ *
+ * The sky is mostly red dwarfs and the Imperium is mostly not, because the two
+ * are not the same question. A red dwarf's habitable orbit is a tenth of an AU
+ * out, inside the reach of its tides, so the world in it is locked, half of it
+ * frozen and half of it scorched, and flares wash the lit face. Nobody put a
+ * class A starport and three billion people there while a K or a G was going
+ * spare a parsec away. So the systems the chart gives people to are the
+ * comfortable ones, and the red dwarfs are the empty hexes between them - which
+ * is both a truer picture of a settled sector and a better one to play in.
+ *
+ * G and K lead, not F and A: those burn out in an age or two and the Imperium
+ * has been at this for a long time.
+ */
+const SETTLED_CLASS_WEIGHTS: Readonly<Record<SpectralClass, number>> = {
+  M: 7,
+  K: 31,
+  G: 34,
+  F: 19,
+  A: 7,
+  B: 1.6,
+  O: 0.4,
+};
+
+/**
+ * The population digit at which a world's star is drawn wholly from the settled
+ * weights above. Below it the two are blended, so a mining camp is somewhere a
+ * mining camp would be and a hive world is somewhere worth living.
+ */
+const SETTLED_AT = 6;
+
+/** How often each luminosity class comes up in an empty system. */
+const SKY_SIZE_WEIGHTS: Readonly<Record<StarSize, number>> = {
   V: 80,
   D: 8,
   VI: 4,
@@ -69,6 +106,24 @@ const SIZE_WEIGHTS: Readonly<Record<StarSize, number>> = {
   II: 0.6,
   Ib: 0.3,
   Ia: 0.1,
+};
+
+/**
+ * And under a settled world, which is very nearly always the main sequence.
+ * SystemSpec 2.2.2: a supergiant has a few million years to live and a white
+ * dwarf has already killed everything it had, so neither is where somebody
+ * builds a starport. A subgiant is a star on its way off the sequence and is
+ * allowed, because it is a good line for a referee to use.
+ */
+const SETTLED_SIZE_WEIGHTS: Readonly<Record<StarSize, number>> = {
+  V: 94,
+  IV: 3,
+  III: 1.4,
+  VI: 1,
+  D: 0.5,
+  II: 0.1,
+  Ib: 0,
+  Ia: 0,
 };
 
 /**
@@ -124,6 +179,8 @@ const CLASS_TEMPERATURE_K: Readonly<Record<SpectralClass, number>> = {
   K: 4450,
   M: 3200,
 };
+
+const clamp01 = (v: number): number => (v < 0 ? 0 : v > 1 ? 1 : v);
 
 const SUN_TEMPERATURE_K = 5772;
 export const SUN_RADIUS_KM = 695_700;
@@ -181,9 +238,63 @@ export function luminosityOf(spectral: SpectralClass, size: StarSize): number {
   return Math.min(LUMINOSITY_LIMITS.bright, Math.max(LUMINOSITY_LIMITS.dim, raw));
 }
 
+/**
+ * How settled the world in this system is, 0 to 1. SystemSpec 2.2.2.
+ *
+ * Read off the system's own seed, not handed in, so a star is still a function
+ * of the seed alone and the chart and the system cannot disagree about it. The
+ * profile read here is the one the system's main world rolls for itself, before
+ * any lean the referee has put on the chart: the star does not know about that,
+ * and a subsector turned up to teeming should not quietly reclass its suns.
+ */
+function settledness(seed: string): number {
+  const profile = parseUwp(rollUwp(seedFrom(seed, "world")));
+  if (profile === null) return 0;
+  return clamp01(profile.population / SETTLED_AT);
+}
+
+/** Two weightings blended, for a world part of the way to being settled. */
+function leaning<T extends string>(
+  sky: Readonly<Record<T, number>>,
+  settled: Readonly<Record<T, number>>,
+  lean: number,
+): Record<T, number> {
+  const held = {} as Record<T, number>;
+  for (const key of Object.keys(sky) as T[]) {
+    held[key] = sky[key] * (1 - lean) + settled[key] * lean;
+  }
+  return held;
+}
+
+/**
+ * Sizes Traveller does not allow with a class, and is right not to. A K or M
+ * subgiant would have to be older than the universe to have left the sequence,
+ * and a subdwarf hotter than an F is not a thing the sky contains. Both fall
+ * back to the main sequence, which is what the table's blank column means.
+ */
+function sizeAllowed(spectral: SpectralClass, size: StarSize): boolean {
+  if (size === "IV" && (spectral === "K" || spectral === "M")) return false;
+  if (size === "VI" && (spectral === "O" || spectral === "B" || spectral === "A")) return false;
+  return true;
+}
+
 function starAt(seed: string, stream: string, index: number): Star {
-  const spectral = pick<SpectralClass>(seed, `${stream}-class`, CLASS_WEIGHTS, index);
-  const size = pick<StarSize>(seed, `${stream}-size`, SIZE_WEIGHTS, index);
+  // A companion is drawn from the sky rather than from the settling: a red dwarf
+  // second sun is both commonplace and no trouble to anybody.
+  const lean = stream === "primary" ? settledness(seed) : 0;
+  const spectral = pick<SpectralClass>(
+    seed,
+    `${stream}-class`,
+    leaning(SKY_CLASS_WEIGHTS, SETTLED_CLASS_WEIGHTS, lean),
+    index,
+  );
+  const drawn = pick<StarSize>(
+    seed,
+    `${stream}-size`,
+    leaning(SKY_SIZE_WEIGHTS, SETTLED_SIZE_WEIGHTS, lean),
+    index,
+  );
+  const size = sizeAllowed(spectral, drawn) ? drawn : "V";
   // The subclass is the label's, not the model's: luminosity is by class, and a
   // G2 and a G7 are the same star to everything downstream. It is drawn anyway
   // because a chart of bare letters reads as a placeholder.
