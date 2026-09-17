@@ -48,7 +48,7 @@ export interface LandingHandlers {
   systemNew(): void;
   /** Pick the folder a system lives in and open it. AppSpec 3.3. */
   systemLoad(): void | Promise<void>;
-  /** Roll a new subsector and open its chart. SubSectorSpec section 4. */
+  /** Roll a new subsector and open its subsector. SubSectorSpec section 4. */
   subsectorNew(): void;
   /** Pick the folder a subsector lives in and open it. AppSpec 3.3. */
   subsectorLoad(): void | Promise<void>;

@@ -12,24 +12,24 @@ import { formatSectorHex, subsectorHexes } from "./location";
 
 const SEED = "REGINA42";
 
-/** A document and the chart it makes, with a hex that holds a world. */
+/** A document and the subsector it makes, with a hex that holds a world. */
 function opened() {
   const doc = newSubsectorDoc(SEED, "C", "standard", "Regina");
-  const chart = subsectorOf(doc);
-  const world = chart.worlds[0]!;
-  return { doc, chart, world };
+  const subsector = subsectorOf(doc);
+  const world = subsector.worlds[0]!;
+  return { doc, subsector, world };
 }
 
 describe("a subsector document", () => {
-  it("rebuilds the chart from the seed and nothing else", () => {
+  it("rebuilds the subsector from the seed and nothing else", () => {
     // SubSectorSpec 5.2: no generated world is stored.
-    const { doc, chart } = opened();
-    expect(chart.worlds).toEqual(generateSubsector(SEED, "C", "standard").worlds);
-    expect(JSON.stringify(doc)).not.toContain(chart.worlds[0]!.uwp);
+    const { doc, subsector } = opened();
+    expect(subsector.worlds).toEqual(generateSubsector(SEED, "C", "standard").worlds);
+    expect(JSON.stringify(doc)).not.toContain(subsector.worlds[0]!.uwp);
   });
 
   it("saves as its seed and nothing else until something is edited", () => {
-    // 5.3.1: a chart read and not edited carries no overrides at all.
+    // 5.3.1: a subsector read and not edited carries no overrides at all.
     const { doc } = opened();
     expect(doc.overrides).toEqual([]);
     const back = parseSubsectorDoc(JSON.stringify(doc));
@@ -101,10 +101,10 @@ describe("what a referee writes over a hex", () => {
 
   it("puts a system into a hex the density left empty", () => {
     // 5.3.4: dropping written work to a slider is what this prevents.
-    const { doc, chart } = opened();
+    const { doc, subsector } = opened();
     const empty = subsectorHexes("C")
       .map(formatSectorHex)
-      .find((at) => !chart.worlds.some((world) => world.at === at))!;
+      .find((at) => !subsector.worlds.some((world) => world.at === at))!;
     setPresence(doc, empty, true, false);
     const after = subsectorOf(doc);
     expect(after.worlds.some((world) => world.at === empty)).toBe(true);
@@ -156,10 +156,10 @@ describe("which way a region leans", () => {
     return subsectorOf(doc);
   };
   const average = (
-    chart: ReturnType<typeof leaning>,
+    subsector: ReturnType<typeof leaning>,
     of: "population" | "tech" | "government" | "law",
   ) =>
-    chart.worlds.reduce((sum, world) => sum + world.profile[of], 0) / chart.worlds.length;
+    subsector.worlds.reduce((sum, world) => sum + world.profile[of], 0) / subsector.worlds.length;
 
   it("settles a region when it is leaned towards people", () => {
     expect(average(leaning(2, 0), "population")).toBeGreaterThan(
@@ -190,7 +190,7 @@ describe("which way a region leans", () => {
 
   it("leaves the worlds where they are", () => {
     // A lean changes what is on a world, not which hexes hold one: a referee who
-    // has annotated a chart and then settles the region keeps their chart.
+    // has annotated a subsector and then settles the region keeps their subsector.
     const flat = leaning(0, 0);
     const high = leaning(3, 3);
     expect(high.worlds.map((world) => world.at)).toEqual(flat.worlds.map((world) => world.at));

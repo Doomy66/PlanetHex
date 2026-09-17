@@ -29,7 +29,7 @@ describe("generateSystem", () => {
 
   it("shows the profile the seed rolls and nothing else", () => {
     // The claim the whole level is built to keep. SystemSpec 1.6.1: the system
-    // reads its main world's profile and does not write it, so the chart above
+    // reads its main world's profile and does not write it, so the subsector above
     // and the system agree by construction rather than by being checked.
     for (const seed of SEEDS) {
       const system = generateSystem(seed);
@@ -38,7 +38,7 @@ describe("generateSystem", () => {
     }
   });
 
-  it("takes its belts and gas giants from the chart's own figures", () => {
+  it("takes its belts and gas giants from the subsector's own figures", () => {
     // SystemSpec 1.6.3: PBG is the contract between the two levels, and this
     // level honours it rather than restating it.
     for (const seed of SEEDS) {
@@ -51,7 +51,7 @@ describe("generateSystem", () => {
 
   it("places every one of them where there are orbits to spare", () => {
     // The shortfall of StarSystem.placed is for the extreme stars only. A system
-    // with room must come out holding exactly what the chart says it holds.
+    // with room must come out holding exactly what the subsector says it holds.
     const roomy = SEEDS.map((seed) => generateSystem(seed)).filter(
       (system) => system.orbits.length >= system.pbg.belts + system.pbg.gasGiants + 1,
     );
@@ -66,7 +66,7 @@ describe("generateSystem", () => {
 
   it("puts the main world in one orbit and only one", () => {
     // Other worlds there may be, under section 6, but exactly one of them is the
-    // world the chart drew and the sector line describes. SystemSpec 1.5. It is
+    // world the subsector drew and the sector line describes. SystemSpec 1.5. It is
     // not always a planet: a size zero profile is a belt, and the orbit holds
     // that belt rather than a world and a belt separately. 4.3.
     for (const seed of SEEDS) {
@@ -264,11 +264,11 @@ describe("a main world that is a belt", () => {
 });
 
 describe("the bases", () => {
-  // SystemSpec 4.6. The chart draws a mark for them; the system has to know
+  // SystemSpec 4.6. The subsector draws a mark for them; the system has to know
   // where they are, and the two have to agree without being told.
   const systems = SEEDS.map((seed) => generateSystem(seed));
 
-  it("agrees with the chart about which system has what", () => {
+  it("agrees with the subsector about which system has what", () => {
     for (const system of systems) {
       const profile = parseUwp(system.mainWorld.uwp)!;
       expect(system.bases.letter, system.seed).toBe(basesFor(system.mainWorld.seed, profile));
@@ -570,7 +570,7 @@ describe("how far out a system reaches", () => {
 
   it("keeps a supergiant's orbits inside a disc rather than a light year", () => {
     // SystemSpec 3.1.4.2 and 3.1.6: a star with no room between the limits gets
-    // the one orbit it needs for the world the chart put in the hex, and no run
+    // the one orbit it needs for the world the subsector put in the hex, and no run
     // of orbits stretching most of the way to the next star.
     expect(discOrbitsFor("SUPERGIANT", 1e6).length).toBe(1);
     for (const orbit of discOrbitsFor("SEED", 60)) {

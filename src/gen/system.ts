@@ -4,7 +4,7 @@
  *
  * The direction everything here runs in is SystemSpec 1.6. The main world's
  * profile is read and never written: it is `rollUwp` of its own seed, which is
- * what the chart above already drew and what a user clicking a hex has to find.
+ * what the subsector above already drew and what a user clicking a hex has to find.
  * The star and its orbits are rolled in their own right, and the world is then
  * placed in the best orbit they turn out to offer and told where it ended up.
  *
@@ -186,13 +186,13 @@ export interface StarSystem {
    * The bases, as the Bases column writes them, and which orbit they are in.
    * SystemSpec 4.7: a base is somewhere, and the somewhere is the main world -
    * a naval base is a station in its orbit and a scout way station is a field on
-   * it. Derived from the main world's seed the same way the chart derives it, so
+   * it. Derived from the main world's seed the same way the subsector derives it, so
    * the two agree without either being told.
    */
   readonly bases: { readonly letter: string; readonly orbitIndex: number };
   /**
    * The travel zone, as the Zone column writes it: "A" for amber, "" for green.
-   * Derived from the main world's profile the way the chart derives it, for the
+   * Derived from the main world's profile the way the subsector derives it, for the
    * reason the bases are - what both levels can work out, neither owns. Nothing
    * here ever writes a red: that is the referee's, under SubSectorSpec 3.6.4.
    */
@@ -202,7 +202,7 @@ export interface StarSystem {
    *
    * The same as the figures above in all but the extreme systems. A star whose
    * orbits have been swept away, or which reaches nowhere, can have fewer orbits
-   * than the chart's counts ask for, and there is nowhere to put the rest: the
+   * than the subsector's counts ask for, and there is nowhere to put the rest: the
    * counts were drawn from a seed under the planet spec 6.16.2 without anything
    * knowing what star they would have to fit around. Placing what fits and
    * saying so beats stacking two gas giants in one orbit.
@@ -283,7 +283,7 @@ export function discOrbitsFor(
   const room = orbitsFor(luminosity).filter(
     (orbit) => orbit.au >= roche && orbit.au <= DISC_REACHES_AU,
   );
-  // The chart above has put a world in this hex, so there has to be somewhere
+  // The subsector above has put a world in this hex, so there has to be somewhere
   // for it to go even around a star with no room for one. The innermost orbit
   // stands, and the world in it is somewhere nobody should be.
   if (room.length === 0) return orbitsFor(luminosity).slice(0, 1);
@@ -373,7 +373,7 @@ export function generateSystem(seed: string, given?: Stars): StarSystem {
       : { kind: "world", main: true, seed: worldSeed, uwp },
   );
 
-  // The counts are the chart's, under SystemSpec 1.6.3, and this level places
+  // The counts are the subsector's, under SystemSpec 1.6.3, and this level places
   // exactly that many rather than rolling its own opinion of how many there are.
   const free = laid.filter((orbit) => orbit.index !== home.index);
   const outer = free.filter((orbit) => orbit.sunEquivalentAu >= SNOW_LINE).map((o) => o.index);
@@ -400,7 +400,7 @@ export function generateSystem(seed: string, given?: Stars): StarSystem {
   }
 
   // Everything still empty may hold a world of its own. SystemSpec 4.4 and 6.1:
-  // the orbits the chart's figures did not claim are where the rest of a system
+  // the orbits the subsector's figures did not claim are where the rest of a system
   // is, and most of what is there is rock nobody has been to.
   const homeProfile = parseUwp(uwp);
   for (const orbit of laid) {
@@ -484,7 +484,7 @@ export function worldsOf(system: StarSystem): readonly {
  * A belt is usually nobody's, and then it has no profile and nothing to open.
  * Where the belt is the main world it carries one, and everything that reads a
  * profile off an orbit has to find it there too - otherwise the same body is a
- * world to the chart above and a rock to the system. SystemSpec 4.3.2.
+ * world to the subsector above and a rock to the system. SystemSpec 4.3.2.
  */
 export function worldIn(
   content: OrbitContent,
@@ -633,7 +633,7 @@ export function namesOf(system: StarSystem, given?: string): SystemNames {
   }
 
   // One more name than there are named places: the first is the system's, and
-  // the main world's. A chart above can hand that one down, since the chart is
+  // the main world's. A subsector above can hand that one down, since the subsector is
   // what named the world in the first place - SubSectorSpec 3.4 - and a world
   // must not be called two things depending on which level is looking at it.
   const drawn = settlementNames(`${system.seed}:names`, named.length + 1);
@@ -652,7 +652,7 @@ export function namesOf(system: StarSystem, given?: string): SystemNames {
  * the designation it was given before anybody went there. SystemSpec 7.3.4.
  *
  * A world with millions on it has been called something for centuries. A mining
- * crew of forty has a contract number and a shift rota, and the chart said
+ * crew of forty has a contract number and a shift rota, and the subsector said
  * Corrise-8b.
  */
 const NAMED_AT_ALL = 0.15;

@@ -6,18 +6,18 @@ import {
   HEX_WIDE,
   COLUMN_STEP,
   PAD,
-} from "../chartlayout";
+} from "../hexlayout";
 import { SECTOR_COLS, SECTOR_ROWS, SUB_COLS, SUB_ROWS } from "../location";
 import type { Sector } from "../gen/sector";
-import type { ChartWorld } from "../gen/subsector";
+import type { SubsectorWorld } from "../gen/subsector";
 import { boxFor, pointIn, wholeOf, zoomedAt, type Box, type View } from "./viewbox";
 
 /**
  * The sector map: thirty-two hexes across and forty down, with its sixteen
  * subsectors marked out on it. SectorSpec section 4.
  *
- * The same hexes in the same places as a subsector chart — the arithmetic is
- * shared through chartlayout — over sixteen times the area. What changes is what
+ * The same hexes in the same places as a subsector map — the arithmetic is
+ * shared through hexlayout — over sixteen times the area. What changes is what
  * a hex can hold at that size: a world is a dot and nothing else, because a
  * thousand names is not a map, and the names are one level down where there is
  * room for them.
@@ -32,18 +32,18 @@ const NAMED_FROM = 9;
  * How far the view goes in and out. SectorSpec 4.4.
  *
  * One is the whole sector on the page. Four is one subsector filling it, which
- * is the same hexes at the same size the chart of section 4 draws them at, so
+ * is the same hexes at the same size the subsector of section 4 draws them at, so
  * going in far enough and opening the subsector show the same thing.
  */
 const ZOOM = { out: 1, in: 4.4 };
 
 /**
- * Where the detail of a chart starts being worth drawing. SectorSpec 4.4.1.
+ * Where the detail of a subsector starts being worth drawing. SectorSpec 4.4.1.
  *
  * Under this, a world is a dot: a thousand names is not a map. Over it, fewer
- * than four subsectors are on the page and there is room for what a chart shows
+ * than four subsectors are on the page and there is room for what a subsector map shows
  * - the hex number, the starport, the name - so the map stops being a map of a
- * sector and starts being a chart of whatever is under the pointer.
+ * sector and starts being a map of whatever is under the pointer.
  */
 const DETAIL_FROM = 2.2;
 
@@ -56,8 +56,8 @@ function make<K extends keyof SVGElementTagNameMap>(
   return node;
 }
 
-/** What colour a world is drawn, the same four the chart uses. */
-function worldClass(world: ChartWorld): string {
+/** What colour a world is drawn, the same four the subsector uses. */
+function worldClass(world: SubsectorWorld): string {
   const { hydrographics, atmosphere, population } = world.profile;
   if (population === 0) return "sec-world sec-empty";
   if (hydrographics > 0 && atmosphere >= 2 && atmosphere <= 9) return "sec-world sec-wet";
@@ -185,8 +185,8 @@ export function createSectorMap(): SectorMap {
       group.append(title);
       const close = view.zoom >= DETAIL_FROM;
       if (close) {
-        // The starport above the world, the way a chart draws it. SectorSpec
-        // 4.4.1: close enough for a hex to hold what a chart puts in one.
+        // The starport above the world, the way a subsector draws it. SectorSpec
+        // 4.4.1: close enough for a hex to hold what a subsector puts in one.
         const port = make("text", { class: "sec-port", x: where.x, y: where.y - HEX_HIGH * 0.13 });
         port.textContent = world.profile.starport;
         group.append(port);

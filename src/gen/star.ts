@@ -5,7 +5,7 @@
  * reads a world: SystemSpec 2.5 rolls the star in its own right and leaves it to
  * section 5 to put the world in the best orbit that star turns out to have.
  *
- * This is also the one part of a system the subsector chart needs for all eighty
+ * This is also the one part of a system the subsector map needs for all eighty
  * of its hexes, under SystemSpec 11.2, so it is a function of the seed alone and
  * costs nothing but a few draws.
  */
@@ -72,7 +72,7 @@ const SKY_CLASS_WEIGHTS: Readonly<Record<SpectralClass, number>> = {
  * out, inside the reach of its tides, so the world in it is locked, half of it
  * frozen and half of it scorched, and flares wash the lit face. Nobody put a
  * class A starport and three billion people there while a K or a G was going
- * spare a parsec away. So the systems the chart gives people to are the
+ * spare a parsec away. So the systems the subsector gives people to are the
  * comfortable ones, and the red dwarfs are the empty hexes between them - which
  * is both a truer picture of a settled sector and a better one to play in.
  *
@@ -242,9 +242,9 @@ export function luminosityOf(spectral: SpectralClass, size: StarSize): number {
  * How settled the world in this system is, 0 to 1. SystemSpec 2.2.2.
  *
  * Read off the system's own seed, not handed in, so a star is still a function
- * of the seed alone and the chart and the system cannot disagree about it. The
+ * of the seed alone and the subsector and the system cannot disagree about it. The
  * profile read here is the one the system's main world rolls for itself, before
- * any lean the referee has put on the chart: the star does not know about that,
+ * any lean the referee has put on the subsector: the star does not know about that,
  * and a subsector turned up to teeming should not quietly reclass its suns.
  */
 function settledness(seed: string): number {
@@ -297,7 +297,7 @@ function starAt(seed: string, stream: string, index: number): Star {
   const size = sizeAllowed(spectral, drawn) ? drawn : "V";
   // The subclass is the label's, not the model's: luminosity is by class, and a
   // G2 and a G7 are the same star to everything downstream. It is drawn anyway
-  // because a chart of bare letters reads as a placeholder.
+  // because a subsector of bare letters reads as a placeholder.
   const subclass = Math.floor(valueFor(`${seed}:star:${stream}-sub`, index) * 10);
   return { spectral, subclass, size, luminosity: luminosityOf(spectral, size) };
 }
@@ -417,7 +417,7 @@ export function starOf(spectral: SpectralClass, subclass: number, size: StarSize
 /**
  * The Stars column of a sector line, which is every star in the system with a
  * space between them. SystemSpec 1.6.4 and 3.7.3: this is the one thing the
- * chart above takes from this level.
+ * subsector above takes from this level.
  */
 export function starsLabel(stars: Stars): string {
   const primary = starLabel(stars.primary);

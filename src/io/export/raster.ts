@@ -6,7 +6,7 @@
  * the SVG itself - the SVG is text and can be tested anywhere, and this needs a
  * document.
  *
- * Drawn at twice the size, because a chart is read by zooming into it and a hex
+ * Drawn at twice the size, because a subsector is read by zooming into it and a hex
  * number at eleven pixels does not survive being printed.
  */
 export async function svgToPng(svg: string, scale = 2): Promise<Blob> {

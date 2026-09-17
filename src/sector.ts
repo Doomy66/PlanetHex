@@ -3,7 +3,7 @@
  * section 5.
  *
  * A sector is a seed, a name, a density, a lean, and whatever the referee has
- * worked up under it. No world is stored: load rebuilds all sixteen charts from
+ * worked up under it. No world is stored: load rebuilds all sixteen subsectors from
  * the seed, exactly as a subsector rebuilds its eighty hexes and a planet its
  * surface.
  *
@@ -69,8 +69,8 @@ export function keepSubsector(doc: SectorDoc, letter: string, held: SubsectorDoc
  *
  * The one the referee left if they have been in it, and a fresh one off the
  * letter's own seed if they have not — wearing the sector's density and lean,
- * because those are the sector's and a chart pulled out of it should look like
- * the rest of the sector rather than like a chart rolled from nowhere.
+ * because those are the sector's and a subsector pulled out of it should look like
+ * the rest of the sector rather than like a subsector rolled from nowhere.
  */
 export function subsectorIn(doc: SectorDoc, letter: string): SubsectorDoc {
   const held = savedSubsector(doc, letter);
@@ -87,15 +87,15 @@ export function subsectorIn(doc: SectorDoc, letter: string): SubsectorDoc {
 }
 
 /**
- * The sector a document describes: generated from its seed, with the charts the
+ * The sector a document describes: generated from its seed, with the subsectors the
  * referee has worked on laid over the top. SectorSpec 5.2.
  *
- * Laid over rather than merged: a worked chart carries its own density, lean and
- * written hexes, and it is that chart which goes into the sector. So a subsector
+ * Laid over rather than merged: a worked subsector carries its own density, lean and
+ * written hexes, and it is that subsector which goes into the sector. So a subsector
  * turned up to dense shows more systems on the sector map, and the routes and
  * Mains of 3.3 and 3.4 are worked out again over the worlds that are now there.
  *
- * `open` is the chart being looked at this moment, which wins over the stored
+ * `open` is the subsector being looked at this moment, which wins over the stored
  * one: an edit shows on the sector without having to be put away first.
  */
 export function sectorOf(doc: SectorDoc, open?: SubsectorDoc): Sector {
@@ -157,9 +157,9 @@ function parseShifts(raw: unknown): { population: number; tech: number } {
 }
 
 /**
- * The charts carried in a sector document. One that cannot be read is left out
+ * The subsectors carried in a sector document. One that cannot be read is left out
  * rather than taking the sector down with it: the letter still has a seed, and
- * the seed still makes a chart.
+ * the seed still makes a subsector.
  */
 function parseSubsectors(raw: unknown): { letter: string; doc: SubsectorDoc }[] {
   if (!Array.isArray(raw)) return [];

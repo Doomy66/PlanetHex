@@ -33,7 +33,7 @@ This document is the shell. [PlanetSpec.md](PlanetSpec.md) specifies a planet, [
 
 1.3.1.2 So the obligation of 1.3.1 is precise rather than absolute: what a seed fixes is the document given its settings, and a parent that writes a setting must write it into the document rather than hold it privately. That is what keeps the app spec 4.8 true - a document saved inside a parent still stands by itself.
 
-1.3.2 The system level is the link that was missing. The subsector spec 3.8.3 had a hex hold a main world and two counts, because there was nothing to open a second world into. There is now, so a hex holds a system, and the main world is the one the chart draws rather than the only one there is.
+1.3.2 The system level is the link that was missing. The subsector spec 3.8.3 had a hex hold a main world and two counts, because there was nothing to open a second world into. There is now, so a hex holds a system, and the main world is the one the subsector draws rather than the only one there is.
 
 1.4 A planet opened from the landing page behaves exactly as the planet spec 6.4 already describes, including its file picker and the folder of 6.4.1.
 
@@ -87,7 +87,7 @@ This document is the shell. [PlanetSpec.md](PlanetSpec.md) specifies a planet, [
 
 4.1 Every document carries the level it is, alongside the version the planet spec 6.4.2 requires. A loader that opens a folder is looking for a document of a stated level, and a document that says what it is can be checked rather than guessed at from its shape.
 
-4.1.1 It also says so in its name. JSON inside, but `.planet`, `.system`, `.subsector` and `.sector` outside, so a folder says at a glance which file is the chart and which are the worlds. A referee looking for their subsector should not have to open three files called something.json to find out which one it is. Documents written before this are `.json` and are still read.
+4.1.1 It also says so in its name. JSON inside, but `.planet`, `.system`, `.subsector` and `.sector` outside, so a folder says at a glance which file is the subsector and which are the worlds. A referee looking for their subsector should not have to open three files called something.json to find out which one it is. Documents written before this are `.json` and are still read.
 
 4.1.2 **A level's save is one document, carrying the levels below it that somebody has worked on.** A subsector document holds the systems worked up under it; each of those holds the worlds worked up under it. One Save, at the level you opened, and one file.
 
@@ -137,15 +137,15 @@ This document is the shell. [PlanetSpec.md](PlanetSpec.md) specifies a planet, [
 
 4.9 A folder at any level may hold anything else the user has put in it. Nothing is deleted, and nothing unrecognised is complained about. A referee's own notes, maps, and handouts belong in the folder with the thing they are about.
 
-4.9.1 **What a level says about itself, the level above hears.** Rename a world or type over its profile and the system it is in says the new name, and the chart above the system says it too. A name and a profile are what the levels above draw, so a change to either has to reach them or two levels are describing one world differently.
+4.9.1 **What a level says about itself, the level above hears.** Rename a world or type over its profile and the system it is in says the new name, and the subsector above the system says it too. A name and a profile are what the levels above draw, so a change to either has to reach them or two levels are describing one world differently.
 
 4.9.1.1 It lands as an override at the level above, which is where every typed value in this application lives — the world document holds everything about the world, and the override holds the part the levels above are looking at. So it obeys the same rule as any other override: typed back to what the generator said, it goes away again.
 
-4.9.1.2 A main world and its system are one thing named once, under the system spec 7.3.4.1. Renaming the main world renames the system, and renames the hex on the chart.
+4.9.1.2 A main world and its system are one thing named once, under the system spec 7.3.4.1. Renaming the main world renames the system, and renames the hex on the subsector.
 
 4.9.1.3 Nothing flows the other way by itself. A level above sets what a level below starts as, under 1.3; once a world exists, what it says about itself is its own.
 
-4.10 **One Save per chain.** The level you opened owns the document, and the levels below it do not offer a Save of their own — a world reached through a system and a chart is saved by that chart.
+4.10 **One Save per chain.** The level you opened owns the document, and the levels below it do not offer a Save of their own — a world reached through a system and a subsector is saved by that subsector.
 
 4.10.1 Nor an unsaved mark of their own. Work done at any level marks the level that will save it, so there is one place to look and one thing to press.
 
@@ -167,7 +167,7 @@ This document is the shell. [PlanetSpec.md](PlanetSpec.md) specifies a planet, [
 
 ## 6. Moving between levels
 
-6.1 Opening a system from a subsector chart is a move down, and so is opening a world from a system, and a subsector from a sector. One route, used at three joins.
+6.1 Opening a system from a subsector map is a move down, and so is opening a world from a system, and a subsector from a sector. One route, used at three joins.
 
 6.2 A move down keeps the parent open. Coming back arrives at the same view with the same selection and nothing regenerated.
 

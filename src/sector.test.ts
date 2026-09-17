@@ -22,7 +22,7 @@ describe("a whole sector", () => {
     expect(sector.subsectors.map((held) => held.letter).join("")).toBe(SUBSECTOR_LETTERS);
   });
 
-  it("gives each subsector the chart its own seed makes", () => {
+  it("gives each subsector the subsector its own seed makes", () => {
     // The claim the chain is built on, at this level: a subsector opened out of
     // a sector is the subsector that seed makes on its own. AppSpec 1.3.
     for (const held of sector.subsectors) {
@@ -66,7 +66,7 @@ describe("what only the sector can see", () => {
   });
 
   it("runs a Main past the edge a subsector stops at", () => {
-    // SectorSpec 3.4 and the subsector spec 3.10.5: a chart is eight by ten and
+    // SectorSpec 3.4 and the subsector spec 3.10.5: a subsector is eight by ten and
     // a Main can run the width of a sector.
     const biggest = sector.mains[0]!;
     const inOne = Math.max(...sector.subsectors.map((held) => held.mains[0]?.hexes.length ?? 0));
@@ -95,8 +95,8 @@ describe("a sector document", () => {
     expect(JSON.stringify(doc)).not.toContain(sector.worlds[0]!.uwp);
   });
 
-  it("hands its density and its lean down to a chart opened from it", () => {
-    // SectorSpec 7.1: a chart pulled out of a sector should look like the rest
+  it("hands its density and its lean down to a subsector opened from it", () => {
+    // SectorSpec 7.1: a subsector pulled out of a sector should look like the rest
     // of the sector rather than like one rolled from nowhere.
     const doc = newSectorDoc(SEED, "Spinward Marches", "dense");
     doc.shifts = { population: 2, tech: -1 };
@@ -107,10 +107,10 @@ describe("a sector document", () => {
     expect(held.sector).toBe("Spinward Marches");
   });
 
-  it("shows a chart the referee worked on, at its own density", () => {
+  it("shows a subsector the referee worked on, at its own density", () => {
     // SectorSpec 5.2: a subsector turned up to dense is denser on the sector
     // map too. Generating the sixteen from the sector's own density and nothing
-    // else meant an hour's work on a chart was invisible one level up.
+    // else meant an hour's work on a subsector was invisible one level up.
     const doc = newSectorDoc(SEED, "Spinward Marches", "sparse");
     const before = sectorOf(doc);
     const held = subsectorIn(doc, "C");
@@ -128,7 +128,7 @@ describe("a sector document", () => {
 
   it("works the routes out again over what is actually there", () => {
     // SectorSpec 3.3: the routes are a fact about the worlds, so worlds that
-    // appeared when a chart was turned up have routes of their own.
+    // appeared when a subsector was turned up have routes of their own.
     const doc = newSectorDoc(SEED, "Spinward Marches", "sparse");
     const before = sectorOf(doc).routes.length;
     const held = subsectorIn(doc, "C");
@@ -171,9 +171,9 @@ describe("a sector document", () => {
     expect(sectorOf(doc).worlds.find((world) => world.at === at)?.name).toBe("Hadley's Hope");
   });
 
-  it("shows the chart being looked at before it has been put away", () => {
-    // A referee editing a chart has not saved it against its letter yet, and
-    // the border of 4.5 is drawn against the sector, so the open chart wins.
+  it("shows the subsector being looked at before it has been put away", () => {
+    // A referee editing a subsector has not saved it against its letter yet, and
+    // the border of 4.5 is drawn against the sector, so the open subsector wins.
     const doc = newSectorDoc(SEED, "Spinward Marches");
     const open = subsectorIn(doc, "C");
     const at = subsectorOf(open).worlds[0]!.at;
@@ -184,7 +184,7 @@ describe("a sector document", () => {
     );
   });
 
-  it("gives back the chart the referee left", () => {
+  it("gives back the subsector the referee left", () => {
     const doc = newSectorDoc(SEED);
     const held = subsectorIn(doc, "C");
     setOverride(held, subsectorOf(held).worlds[0]!.at, "name", "Hadley's Hope");
@@ -193,7 +193,7 @@ describe("a sector document", () => {
     expect(subsectorIn(doc, "C").overrides).toHaveLength(1);
   });
 
-  it("carries the worked up charts through a save and back", () => {
+  it("carries the worked up subsectors through a save and back", () => {
     const doc = newSectorDoc(SEED, "Spinward Marches");
     const held = subsectorIn(doc, "C");
     setOverride(held, subsectorOf(held).worlds[0]!.at, "note", "Pirates.");
@@ -225,14 +225,14 @@ describe("reading a sector back", () => {
     expect(() => parseSectorDoc(held)).toThrow(/version 9/);
   });
 
-  it("drops a chart under no letter of the sixteen", () => {
+  it("drops a subsector under no letter of the sixteen", () => {
     const held = JSON.stringify({
       level: "sector",
       version: 1,
       seed: SEED,
       subsectors: [{ letter: "Q", doc: {} }, { letter: "C", doc: {} }],
     });
-    // Both are dropped: one for its letter, one for not being a chart at all.
+    // Both are dropped: one for its letter, one for not being a subsector at all.
     expect(parseSectorDoc(held).subsectors).toEqual([]);
   });
 });

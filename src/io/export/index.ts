@@ -17,7 +17,7 @@ import type { Planet } from "../../planet";
  *
  * A save has always written the planet and its pictures. What it could not do was
  * hand the world to anything else: a picture is a picture, and a referee who
- * wanted the coastline in a mapping program, the profile on a sector chart, or
+ * wanted the coastline in a mapping program, the profile on a sector map, or
  * the ground under a virtual tabletop had nothing to give them. These are that.
  *
  * Every format is described here rather than wired into the save, so the dialogue

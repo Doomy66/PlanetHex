@@ -82,7 +82,7 @@ const MOONS_SHOWN = 8;
 const MOON_GAP = 9;
 const MOON_Y = AXIS_Y + 31;
 /**
- * Where the chart's own marks sit: between the zone's label along the top of the
+ * Where the subsector's own marks sit: between the zone's label along the top of the
  * strip and the body itself, which is the one band of the slot with nothing in
  * it.
  */
@@ -289,7 +289,7 @@ export function createOrbitDiagram(): OrbitDiagram {
     );
     group.append(make("line", { class: "orbit-tick", x1: x, y1: AXIS_Y - 7, x2: x, y2: AXIS_Y + 7 }));
     group.append(...bodyOf(orbit, x));
-    drawChartMarks(group, orbit, x);
+    drawMapMarks(group, orbit, x);
 
     if (orbit.content.kind === "giant") drawMoons(group, orbit.content.moons, x);
 
@@ -314,16 +314,16 @@ export function createOrbitDiagram(): OrbitDiagram {
   }
 
 /**
-   * The marks a chart puts on a hex, on the body they are actually about.
+   * The marks a subsector puts on a hex, on the body they are actually about.
    * SubSectorSpec 4.2 draws them against the system as a whole; here there is
    * room to say which world they belong to, and that is the main world: a naval
    * base is a station in its orbit, a scout way station a field on it, and a
    * travel zone is a warning about the world people are going to.
    *
-   * The same three marks the chart uses, so a referee who can read one can read
+   * The same three marks the subsector uses, so a referee who can read one can read
    * the other: the star, the triangle and the dashed ring.
    */
-  function drawChartMarks(group: SVGGElement, orbit: Orbit, x: number): void {
+  function drawMapMarks(group: SVGGElement, orbit: Orbit, x: number): void {
     if (shown === null || orbit.index !== shown.bases.orbitIndex) return;
     const kinds: string[] = [];
     if (hasNaval(shown.bases.letter)) kinds.push("naval");

@@ -15,7 +15,7 @@ import {
   mainsIn,
   routesBetween,
   worldAt,
-  type ChartWorld,
+  type SubsectorWorld,
   type Density,
   type Subsector,
 } from "./gen/subsector";
@@ -28,7 +28,7 @@ import { tradeCodes } from "./gen/trade";
 
 /**
  * What the referee has written over one hex. Only what changed, under 5.3.1: a
- * chart nobody has edited saves as its seed and nothing else, and a later change
+ * subsector nobody has edited saves as its seed and nothing else, and a later change
  * to the generator improves the worlds nobody has touched while leaving the ones
  * they have alone.
  */
@@ -56,8 +56,8 @@ export interface HexOverride {
    *
    * The hex's own seed is derived from the subsector's under 3.1.3, and that is
    * what a hex holds until somebody deliberately replaces it. Storing the
-   * replacement is what keeps the chart and the system view agreeing about what
-   * is in the hex: without it, a reroll would show one system and the chart
+   * replacement is what keeps the subsector and the system view agreeing about what
+   * is in the hex: without it, a reroll would show one system and the subsector
    * would go on drawing another.
    */
   readonly systemSeed?: string;
@@ -96,10 +96,10 @@ export interface SubsectorDoc {
   shifts: { population: number; tech: number };
   overrides: HexOverride[];
   /**
-   * The systems under this chart that somebody has worked on, by hex, each
+   * The systems under this subsector that somebody has worked on, by hex, each
    * carrying its own worked up worlds. SubSectorSpec 5.7.
    *
-   * One document for the level you opened. A referee working down from a chart
+   * One document for the level you opened. A referee working down from a subsector
    * should press Save once and have everything they touched kept, rather than
    * saving three times at three levels and keeping track of which folder each
    * of them went into.
@@ -219,7 +219,7 @@ export function systemSeedIn(doc: SubsectorDoc, at: string): string {
 }
 
 /**
- * The chart a document describes: generated from its seed and density, with what
+ * The subsector a document describes: generated from its seed and density, with what
  * the referee wrote laid over the top. SubSectorSpec 5.2.
  *
  * An override never changes a world's seed, under 5.3.3. The seed is the world;
@@ -252,7 +252,7 @@ export function subsectorOf(doc: SubsectorDoc): Subsector {
     if (world !== null) held.set(override.at, world);
   }
 
-  const worlds: ChartWorld[] = [];
+  const worlds: SubsectorWorld[] = [];
   for (const hex of subsectorHexes(doc.letter)) {
     const at = formatSectorHex(hex);
     const world = held.get(at);
@@ -266,7 +266,7 @@ export function subsectorOf(doc: SubsectorDoc): Subsector {
 }
 
 /** One world, wearing what the referee wrote on it. */
-function wearing(world: ChartWorld, override: HexOverride): ChartWorld {
+function wearing(world: SubsectorWorld, override: HexOverride): SubsectorWorld {
   const uwp = override.uwp?.trim().toUpperCase();
   const profile = uwp === undefined ? null : parseUwp(uwp);
   // A profile that is not a profile is not applied. The referee is mid-typing,
@@ -286,7 +286,7 @@ function wearing(world: ChartWorld, override: HexOverride): ChartWorld {
 
 /**
  * Reads a subsector document back, or throws saying why not. The same contract
- * the planet spec 6.4.3 sets: a document that cannot produce the chart it claims
+ * the planet spec 6.4.3 sets: a document that cannot produce the subsector it claims
  * to be fails loudly rather than opening a different one under the right name.
  */
 export function parseSubsectorDoc(text: string): SubsectorDoc {
@@ -329,7 +329,7 @@ export function parseSubsectorDoc(text: string): SubsectorDoc {
 
 /**
  * The systems carried in a subsector document. One that cannot be read is left
- * out rather than taking the chart down with it: the hex still has a seed, and
+ * out rather than taking the subsector down with it: the hex still has a seed, and
  * the seed still makes a system.
  */
 function parseSystems(raw: unknown): { at: string; doc: SystemDoc }[] {

@@ -4,6 +4,53 @@ The version in [package.json](package.json) is what the Windows installer of
 `npm run package` names itself after, so it is the one number that reaches a
 user. Dates are the day the release was tagged.
 
+## 2.1.0 — 2026-09-17
+
+A tidy of the front of house. 2.0.0 put four levels behind one window and left
+the window itself saying things twice, saying them in the wrong place, or asking
+for what it already knew. Nothing here changes what is generated: a seed opened
+in 2.0.0 opens the same in 2.1.0, and every save file still loads.
+
+- **Renaming a system renames what is named after it.** A body's designation is
+  the system's name and its number, so a system called something else now has
+  bodies called something else: on the tree, in the panel, and in the worlds
+  already worked on and put down. A world the referee named themselves keeps the
+  name they gave it. `SystemSpec.md` 7.3.5.
+- **Subsector is a field you can fill in, and where you are is owned by the
+  level that knows it.** The subsector had been derived from the hex and nothing
+  else, which is only ever a letter: what a subsector is *called* is a name, and
+  now it is stored and typed like the sector. The letter is still offered as what
+  the field shows until you name one. The system view gains the subsector field
+  it was missing. And at every level, location is editable exactly when nothing
+  above has answered it: a system rolled on its own takes its sector, subsector
+  and hex, a system opened from a subsector is told all three, and a subsector in
+  a sector is told its sector. `PlanetSpec.md` 6.14.2, `SystemSpec.md` 9.7.
+- **The planet panel says where a world is instead of asking.** Opening a world
+  out of a system no longer announces its name and its distance to sixteen
+  decimal places in the status line: both were already on screen. The location
+  fields now read sector, subsector and hex — the subsector had only been a note
+  under them — and where a world came down from a system all three are shown
+  rather than typed in, because the system is what put it there.
+  `PlanetSpec.md` 6.14.2 and 6.14.4, `SystemSpec.md` 6.2.1.
+- **The list down the left is dragged to the width you want it.** A body is named
+  after its system, so a long system name gave a column of names that wrapped to
+  three lines each and showed six bodies at a time. The rows are one line apiece
+  now, and the edge of the panel moves: drag it, or focus it and use the arrow
+  keys, and the width is remembered. The same edge is on the sector and
+  subsector lists. `SystemSpec.md` 8.7.
+- **The system header wraps rather than dropping what will not fit.** A narrow
+  window had been pushing the seed and the PBG counts off the end of the line
+  instead of taking a second one.
+- **The word "chart" is gone.** There are four levels and they have names:
+  planet, system, subsector, sector. "Chart" meant the subsector almost
+  everywhere it appeared and the drawn hex map in the rest, and reading it cost a
+  beat every time. Specs, comments, identifiers, CSS class names and three
+  filenames all say what they mean now: `src/ui/chart.ts` is
+  `src/ui/subsectormap.ts`, `src/chartlayout.ts` is `src/hexlayout.ts`,
+  `ChartWorld` is `SubsectorWorld`, and the hex map's classes are `starmap-*`
+  rather than colliding with the orbit map's `map-*`. Nothing about what the
+  application does has changed.
+
 ## 2.0.0 — 2026-09-17
 
 A major number, because PlanetHex was one thing and is now four. Up to 1.5 it
@@ -15,7 +62,7 @@ sector, subsector, system, planet, and every level of it generates the same way:
 from a seed, with nothing stored that can be derived.
 
 - **Four levels, and one rule holding them together.** A world found on a
-  subsector chart is the same world opened on its own from its seed. That is the
+  subsector map is the same world opened on its own from its seed. That is the
   whole of it, and it is what makes the levels navigable rather than merely
   stacked: going down never invents anything, going up never loses anything, and a
   seed passed to somebody else reproduces what you were looking at. Each level is
@@ -34,7 +81,7 @@ from a seed, with nothing stored that can be derived.
   - **Drawn twice, because there are two questions.** A schematic strip along the
     foot for what is where in what order, and a model in the middle that is to
     scale in distance, leans, turns and zooms. The main world is marked as the main
-    world in both, with the same base and travel-zone marks the chart above uses.
+    world in both, with the same base and travel-zone marks the subsector above uses.
   - **The star is selectable**, and fills the panel with the system: class and
     size, what it puts out, how wide it is, its jump shadow and how long crossing
     that takes at a gravity, how many orbits sit inside that shadow and so cannot
@@ -48,9 +95,9 @@ from a seed, with nothing stored that can be derived.
     repainted: a different star lights different orbits, so the habitable zone and
     everything beyond it moves. A planet opened from a system carries its star
     with it, and a planet on its own says which star it orbits itself.
-- **The subsector level.** Eighty hexes, generated and drawn as a chart a referee
+- **The subsector level.** Eighty hexes, generated and drawn as a subsector a referee
   can read at a glance.
-  - **A standard-looking chart**: coloured dots sized by population, base and
+  - **A standard-looking subsector**: coloured dots sized by population, base and
     zone marks, a key, and no gaps between the hexes.
   - **X-boat routes and trade routes**, under those names and by those rules,
     with **Mains** — the jump-1 connected chains — available as an overlay.
@@ -60,15 +107,15 @@ from a seed, with nothing stored that can be derived.
     population and tech lean, as modifiers on the dice rather than numbers written
     over the answer. Raising the density only ever adds systems; it never moves
     the ones already there.
-  - **The edge is an edge, not an end.** With a sector above it, a chart shows the
+  - **The edge is an edge, not an end.** With a sector above it, a subsector shows the
     worlds within two hexes of its border lowlighted, and the routes that cross it.
-  - **Exports**: the chart as a PNG or an SVG, the table as a CSV, a subsector
+  - **Exports**: the subsector as a PNG or an SVG, the table as a CSV, a subsector
     sheet in Markdown or HTML, and a Traveller sector file a mapping tool can read.
 - **The sector level.** Sixteen subsectors, 32 by 40 hexes, and the two things
   only this level can see: a route that crosses a subsector's border, and a Main
   that runs past one.
   - **Zoom that changes what is drawn.** Out, it is a sector map; going in far
-    enough, the hexes fill out into the same detail a subsector chart shows.
+    enough, the hexes fill out into the same detail a subsector map shows.
   - **A subsector you have worked on is the subsector the sector shows**, carrying
     its own density, lean and every hex you wrote on, with the sector's routes and
     Mains worked out again over what is actually there.
@@ -82,7 +129,7 @@ from a seed, with nothing stored that can be derived.
   `.subsector`, `.system`, `.planet`, and opening the wrong one at the wrong level
   says so instead of opening something else under the right name.
 - **What a child says about itself, the levels above hear.** A world renamed in
-  the system view is renamed on the chart; a subsector renamed is renamed on the
+  the system view is renamed on the subsector; a subsector renamed is renamed on the
   sector map and in its list. What a parent knows — density, lean, which star,
   which hex, which designation — flows the other way.
 - **Physics where the game was arbitrary, and the game's own answer where it was
@@ -110,7 +157,7 @@ from a seed, with nothing stored that can be derived.
 - **Somewhere to say what it should do instead.** The header links to a new GitHub
   issue with the version, the level and the seed already filled in, because a
   report that names the seed is a report that can be reproduced.
-- **It is called a subsector.** Not a chart, anywhere a user can see.
+- **It is called a subsector.** Not a subsector, anywhere a user can see.
 
 ## 1.5.1 — 2026-09-13
 
@@ -299,7 +346,7 @@ from a seed, with nothing stored that can be derived.
   says how many files it is about to write before it starts, since the finest
   levels take a few seconds each.
 - **Seven export formats**, for the tools that are not PlanetHex. A picture of a
-  map cannot be queried, projected, styled, or put on a chart, and until now a
+  map cannot be queried, projected, styled, or put on a subsector, and until now a
   picture was all a save could hand over.
   - **Vector map (SVG)** — the hex map as lines rather than pixels, from the same
     detached renderer the pictures come from.

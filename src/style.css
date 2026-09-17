@@ -288,6 +288,18 @@ textarea { resize: vertical; }
 .linky:hover { color: var(--text); }
 input.overridden { border-color: var(--accent, #e0b341); }
 
+/* A field the level above filled in. Still readable and still selectable - it is
+   a fact about the world and a user may want to copy it - but plainly not a box
+   to type in: the frame that says "edit me" comes off and the text goes quiet.
+   PlanetSpec 6.14.2 and 6.14.4. */
+input[readonly] {
+  background: transparent;
+  border-color: transparent;
+  color: var(--muted);
+  cursor: default;
+}
+input[readonly]:focus { outline: none; }
+
 /* Two fields on one line, where the second is narrow enough to leave the first
    a usable width. Sector and hex are one thing under 6.14, so they read better
    side by side than stacked. */
@@ -778,7 +790,7 @@ body[data-view="planet"] .landing { display: none; }
 .map-shadow { fill: rgba(120, 140, 190, 0.13); stroke: rgba(140, 165, 220, 0.35); stroke-width: 1; vector-effect: non-scaling-stroke; }
 .map-shadow-star { fill: rgba(150, 130, 90, 0.15); stroke: rgba(210, 180, 120, 0.4); }
 
-/* The chart's own marks, on the strip, against the world they are about. */
+/* The subsector's own marks, on the strip, against the world they are about. */
 .orbit-naval { fill: #e6ebf2; }
 .orbit-scout { fill: #9fb0c4; }
 .orbit-travel { fill: none; stroke: #e0b341; stroke-width: 1.6; stroke-dasharray: 3 3; }
@@ -836,12 +848,12 @@ body[data-view="subsector"] .sector { display: none; }
 .sector {
   height: 100vh;
   display: grid;
-  grid-template-columns: 240px minmax(0, 1fr) 330px;
+  grid-template-columns: var(--tree-width, 240px) 7px minmax(0, 1fr) 330px;
   grid-template-rows: auto minmax(0, 1fr) auto;
   grid-template-areas:
-    "head head head"
-    "tree map  side"
-    "strip strip strip";
+    "head  head head head"
+    "tree  grip map  side"
+    "strip strip strip strip";
   gap: 10px;
   padding: 10px 14px 12px;
   overflow: hidden;
@@ -874,7 +886,7 @@ body[data-view="subsector"] .sector { display: none; }
 .sec-empty { fill: none; stroke: #6d7784; stroke-width: 1.2; }
 .sec-name { fill: #dfe3ea; font-size: 15px; text-anchor: middle; }
 /* What a hex holds once the view is close enough for it to fit. SectorSpec
-   4.4.1: the map becomes the chart rather than showing a smaller one. */
+   4.4.1: the map becomes the subsector rather than showing a smaller one. */
 .sec-at { fill: #59636f; font-size: 11px; text-anchor: middle; font-variant-numeric: tabular-nums; }
 .sec-port { fill: #dbe3ec; font-size: 14px; text-anchor: middle; font-weight: 600; }
 .sec-close .sec-name { font-size: 13px; fill: #f0f4f9; }
@@ -906,7 +918,7 @@ body[data-view="subsector"] .sector { display: none; }
 .sec-chosen { fill: rgba(224, 179, 65, 0.06); stroke: var(--accent); stroke-width: 2.5; vector-effect: non-scaling-stroke; }
 .sec-pick { fill: none; stroke: var(--select); stroke-width: 3; vector-effect: non-scaling-stroke; }
 
-/* The subsector chart. SubSectorSpec section 4 --------------------------- */
+/* The subsector map. SubSectorSpec section 4 --------------------------- */
 
 body[data-view="subsector"] .layout,
 body[data-view="subsector"] .landing,
@@ -918,18 +930,18 @@ body[data-view="system"] .subsector { display: none; }
 .subsector {
   height: 100vh;
   display: grid;
-  grid-template-columns: 260px minmax(0, 1fr) 330px;
+  grid-template-columns: var(--tree-width, 260px) 7px minmax(0, 1fr) 330px;
   grid-template-rows: auto minmax(0, 1fr) auto;
   grid-template-areas:
-    "head head head"
-    "tree model side"
-    "strip strip strip";
+    "head  head head  head"
+    "tree  grip model side"
+    "strip strip strip strip";
   gap: 10px;
   padding: 10px 14px 12px;
   overflow: hidden;
 }
 
-.sub-chart {
+.sub-map {
   grid-area: model;
   min-height: 0;
   min-width: 0;
@@ -938,19 +950,20 @@ body[data-view="system"] .subsector { display: none; }
   border-radius: 4px;
   overflow: hidden;
 }
-/* The chart fills the panel, the way the sector map does: the viewBox is matched
-   to the panel's shape rather than letterboxed inside it. */
-.chart { width: 100%; height: 100%; display: block; cursor: grab; }
-.chart:active { cursor: grabbing; }
-.sub-chart { background: #0a0c10; }
+/* The map fills the panel, the way the sector map does: the viewBox is matched
+   to the panel's shape rather than letterboxed inside it. Named apart from the
+   view that holds it: `.subsector` is the whole screen, this is the drawing. */
+.subsectormap { width: 100%; height: 100%; display: block; cursor: grab; }
+.subsectormap:active { cursor: grabbing; }
+.sub-map { background: #0a0c10; }
 
 /* Every part of the panel folds away, so the panel itself is what scrolls and
    nothing has to be pinned to the foot of it. The list of worlds is the one
    thing long enough to need a limit of its own: capped, it leaves the sections
    under it reachable without a scroll of forty rows first. */
 .subsector #sub-list { max-height: 42vh; overflow: auto; }
-.chart-legend { flex: none; margin-top: 10px; }
-.chart-legend summary {
+.starmap-legend { flex: none; margin-top: 10px; }
+.starmap-legend summary {
   cursor: pointer;
   font-weight: 600;
   font-size: 0.78rem;
@@ -960,7 +973,7 @@ body[data-view="system"] .subsector { display: none; }
   margin-bottom: 6px;
 }
 
-.chart-key {
+.starmap-key {
   flex: none;
   border-top: 1px solid var(--line);
   padding-top: 8px;
@@ -970,50 +983,50 @@ body[data-view="system"] .subsector { display: none; }
   font-size: 0.82rem;
   color: var(--muted);
 }
-.chart-key li { display: flex; align-items: center; gap: 7px; }
-.chart-key svg { width: 16px; height: 16px; flex: none; overflow: visible; }
+.starmap-key li { display: flex; align-items: center; gap: 7px; }
+.starmap-key svg { width: 16px; height: 16px; flex: none; overflow: visible; }
 
-/* A chart hex, and what is drawn in it. The grid is thin and even and the same
-   everywhere: the published charts let the worlds carry all the weight. */
-.chart-cell {
+/* A map hex, and what is drawn in it. The grid is thin and even and the same
+   everywhere: the published maps let the worlds carry all the weight. */
+.starmap-cell {
   fill: transparent;
   stroke: #39414d;
   stroke-width: 1;
   vector-effect: non-scaling-stroke;
 }
-.chart-hex { cursor: pointer; }
-.chart-hex:hover .chart-cell { fill: #191e26; }
-.chart-hex:focus { outline: none; }
-.chart-hex:focus .chart-cell { fill: #1f252e; }
+.starmap-hex { cursor: pointer; }
+.starmap-hex:hover .starmap-cell { fill: #191e26; }
+.starmap-hex:focus { outline: none; }
+.starmap-hex:focus .starmap-cell { fill: #1f252e; }
 
-.chart-at {
+.starmap-at {
   fill: #59636f;
   font-size: 11px;
   text-anchor: middle;
   font-variant-numeric: tabular-nums;
 }
-.chart-port { fill: #dbe3ec; font-size: 14px; text-anchor: middle; font-weight: 600; }
-.chart-name { fill: #f0f4f9; font-size: 13px; text-anchor: middle; }
-.chart-loud { font-weight: 700; letter-spacing: 0.03em; }
+.starmap-port { fill: #dbe3ec; font-size: 14px; text-anchor: middle; font-weight: 600; }
+.starmap-name { fill: #f0f4f9; font-size: 13px; text-anchor: middle; }
+.starmap-loud { font-weight: 700; letter-spacing: 0.03em; }
 
-/* The colour the charts never had: water and air is blue, dry with air is tan,
+/* The colour the printed maps never had: water and air is blue, dry with air is tan,
    an airless rock is grey, and a world nobody lives on is hollow. The globe is
    drawn over this as soon as there is one. */
-.chart-wet { fill: #3f7fc4; }
-.chart-dusty { fill: #b08b5e; }
-.chart-airless { fill: #8d96a2; }
-.chart-empty { fill: none; stroke: #7b8694; stroke-width: 1.6; }
-.chart-rock { fill: #9aa5b2; }
-.chart-globe { pointer-events: none; }
+.starmap-wet { fill: #3f7fc4; }
+.starmap-dusty { fill: #b08b5e; }
+.starmap-airless { fill: #8d96a2; }
+.starmap-empty { fill: none; stroke: #7b8694; stroke-width: 1.6; }
+.starmap-rock { fill: #9aa5b2; }
+.starmap-globe { pointer-events: none; }
 
-.chart-naval { fill: #e6ebf2; }
-.chart-scout { fill: #9fb0c4; }
-.chart-giant { fill: #d7b273; }
-.chart-giant-ring { fill: none; stroke: #d7b273; stroke-width: 1.4; }
+.starmap-naval { fill: #e6ebf2; }
+.starmap-scout { fill: #9fb0c4; }
+.starmap-giant { fill: #d7b273; }
+.starmap-giant-ring { fill: none; stroke: #d7b273; stroke-width: 1.4; }
 
-/* The chart's own settings, two to a row inside a section that folds away, so
+/* The subsector's own settings, two to a row inside a section that folds away, so
    four of them cost one line of panel rather than half the header - and nothing
-   at all once the chart is rolled and the referee has moved on to reading it. */
+   at all once the subsector is rolled and the referee has moved on to reading it. */
 .sub-settings { display: grid; gap: 5px; margin: 0 0 4px; }
 .sub-settings label {
   display: flex;
@@ -1030,32 +1043,32 @@ body[data-view="system"] .subsector { display: none; }
 .sub-choices { border-top: 0; padding-top: 0; }
 .sub-choices label { display: flex; align-items: center; gap: 6px; cursor: pointer; }
 
-/* What is just outside the chart: there to say the edge is an edge rather than
-   an end, and quiet enough that the chart is still what is being read. */
-.chart-around { opacity: 0.32; pointer-events: none; }
-.chart-faint { filter: saturate(0.5); }
+/* What is just outside the subsector: there to say the edge is an edge rather than
+   an end, and quiet enough that the subsector is still what is being read. */
+.starmap-around { opacity: 0.32; pointer-events: none; }
+.starmap-faint { filter: saturate(0.5); }
 
-/* A Main washed behind the hexes it runs through. Low enough to read the chart
+/* A Main washed behind the hexes it runs through. Low enough to read the map
    through, distinct enough to follow across it. */
-.chart-main > * { stroke: none; }
-.chart-main-0 > * { fill: rgba(90, 160, 220, 0.16); }
-.chart-main-1 > * { fill: rgba(200, 150, 90, 0.16); }
-.chart-main-2 > * { fill: rgba(140, 200, 140, 0.15); }
-.chart-main-3 > * { fill: rgba(190, 130, 200, 0.15); }
-.chart-main-4 > * { fill: rgba(220, 200, 120, 0.14); }
-/* The key's swatch has no chart behind it to tint, so it shows solid. */
-.chart-key .chart-main-0 > * { fill: rgba(90, 160, 220, 0.55); }
+.starmap-main > * { stroke: none; }
+.starmap-main-0 > * { fill: rgba(90, 160, 220, 0.16); }
+.starmap-main-1 > * { fill: rgba(200, 150, 90, 0.16); }
+.starmap-main-2 > * { fill: rgba(140, 200, 140, 0.15); }
+.starmap-main-3 > * { fill: rgba(190, 130, 200, 0.15); }
+.starmap-main-4 > * { fill: rgba(220, 200, 120, 0.14); }
+/* The key's swatch has no map behind it to tint, so it shows solid. */
+.starmap-key .starmap-main-0 > * { fill: rgba(90, 160, 220, 0.55); }
 
 /* The routes. Under the worlds, over the grid. The express network is the
    heavier line, because it is the one that runs whatever else is happening. */
-.chart-route { stroke: #3d6ea8; stroke-width: 2; opacity: 0.75; }
-.chart-xboat { stroke: #6aa6e8; stroke-width: 3.4; opacity: 0.9; }
+.starmap-route { stroke: #3d6ea8; stroke-width: 2; opacity: 0.75; }
+.starmap-xboat { stroke: #6aa6e8; stroke-width: 3.4; opacity: 0.9; }
 
 /* A travel zone is a ring around the world, not around the hex: the warning is
    about the world, and the hex is only where it is. */
-.chart-zone { fill: none; stroke: #e0b341; stroke-width: 1.6; stroke-dasharray: 5 5; }
-.chart-red { stroke: #e24b4a; }
-.chart-select { fill: none; stroke: var(--select); stroke-width: 2.5; vector-effect: non-scaling-stroke; }
+.starmap-zone { fill: none; stroke: #e0b341; stroke-width: 1.6; stroke-dasharray: 5 5; }
+.starmap-red { stroke: #e24b4a; }
+.starmap-select { fill: none; stroke: var(--select); stroke-width: 2.5; vector-effect: non-scaling-stroke; }
 
 /* The system view. SystemSpec section 8 ---------------------------------- */
 
@@ -1069,18 +1082,29 @@ body[data-view="planet"] .system { display: none; }
 .system {
   height: 100vh;
   display: grid;
-  grid-template-columns: 260px minmax(0, 1fr) 330px;
+  grid-template-columns: var(--tree-width, 260px) 7px minmax(0, 1fr) 330px;
   grid-template-rows: auto minmax(0, 1fr) auto;
   grid-template-areas:
-    "head head head"
-    "tree model side"
-    "strip strip strip";
+    "head  head head  head"
+    "tree  grip model side"
+    "strip strip strip strip";
   gap: 10px;
   padding: 10px 14px 12px;
   overflow: hidden;
 }
 
-.system-head { grid-area: head; display: flex; align-items: baseline; gap: 12px; }
+/* Wraps rather than squeezing. There are three location fields, two star
+   selects and four buttons along here, and a window too narrow for all of them
+   pushed the seed and the counts out of sight instead of taking a second line.
+   SystemSpec 8.6: the header carries those figures, so it has to keep them. */
+.system-head {
+  grid-area: head;
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  flex-wrap: wrap;
+  row-gap: 6px;
+}
 .system-head h1 { margin: 0; }
 .sys-stars { color: var(--accent); }
 .sys-counts { color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
@@ -1101,7 +1125,9 @@ body[data-view="planet"] .system { display: none; }
 .sys-name:focus { border-color: var(--muted); background: var(--bg); }
 .sys-where { display: flex; align-items: center; gap: 5px; margin: 0; color: var(--muted); }
 .sys-where input { width: 104px; margin: 0; }
-.sys-where:last-of-type input { width: 58px; }
+/* Four digits and no more, the way the planet panel's hex field is sized. A box
+   wide enough for a sentence invites one. */
+.sys-where .hexfield { width: 58px; }
 
 .sys-tree-panel,
 .sys-side {
@@ -1113,6 +1139,45 @@ body[data-view="planet"] .system { display: none; }
   padding: 10px 12px;
 }
 .sys-tree-panel { grid-area: tree; }
+
+/* The edge between the list and what it lists, dragged to move it. Wider to
+   the pointer than it looks, because a 7px target is a target that is missed:
+   the bar is the line, and the grip reaches either side of it. */
+.sys-grip {
+  grid-area: grip;
+  position: relative;
+  cursor: col-resize;
+  border-radius: 3px;
+  background: transparent;
+  transition: background 120ms;
+}
+.sys-grip::before {
+  content: "";
+  position: absolute;
+  inset: 0 -5px;
+}
+/* A mark at the middle so the gap reads as something to take hold of. A control
+   nobody can see is a control nobody uses. */
+.sys-grip::after {
+  content: "";
+  position: absolute;
+  top: 50%;
+  left: 2px;
+  width: 3px;
+  height: 28px;
+  margin-top: -14px;
+  border-radius: 2px;
+  background: var(--line);
+}
+.sys-grip:hover::after,
+.sys-grip:focus-visible::after,
+.sys-grip.dragging::after { background: transparent; }
+.sys-grip:hover,
+.sys-grip:focus-visible,
+.sys-grip.dragging { background: var(--select); outline: none; }
+/* Dragged, the pointer owns the whole window: a cursor that changes back over
+   the model, or a selection dragged out of the list, is a resize gone wrong. */
+body.resizing { cursor: col-resize; user-select: none; }
 .sys-side { grid-area: side; display: flex; flex-direction: column; gap: 10px; }
 .sys-tree-panel h2 { margin: 0 0 6px; }
 .sys-tree-panel h2 + dl { margin-bottom: 14px; }
@@ -1146,9 +1211,24 @@ body[data-view="planet"] .system { display: none; }
 }
 .sys-tree button:hover { background: #262b33; }
 .sys-tree button[aria-current="true"] { border-color: var(--select); color: var(--text); }
-.sys-tree .tree-what { color: var(--muted); font-size: 11px; margin-left: auto; }
+/* One line to a body. The name is the part that can be cut, because the profile
+   and what the thing is are short and fixed and mean nothing half shown - and a
+   name cut short is a panel to widen, which is what the grip is for. */
+.sys-tree button > span:first-child {
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.sys-tree .tree-what {
+  color: var(--muted);
+  font-size: 11px;
+  margin-left: auto;
+  white-space: nowrap;
+  flex: none;
+}
 .sys-tree .tree-none { color: var(--muted); padding: 4px 6px; }
-.sys-tree .tree-uwp { color: var(--muted); font-size: 11px; }
+.sys-tree .tree-uwp { color: var(--muted); font-size: 11px; white-space: nowrap; flex: none; }
 .sys-tree .tree-people { color: var(--accent); }
 
 .sys-model {

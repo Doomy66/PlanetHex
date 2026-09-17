@@ -3,14 +3,14 @@
  * it, which is Traveller convention. PlanetSpec.md 6.14.
  *
  * This grid is nothing to do with the surface grid of section 2. A sector is a
- * flat 32 by 40 chart of star systems, one hex per system, and the four digits
+ * flat 32 by 40 subsector of star systems, one hex per system, and the four digits
  * are a column and a row on it. Nothing here reaches the generator: the location
  * says where the world is, not what it is like.
  */
 
-/** Columns across a sector chart. */
+/** Columns across a sector map. */
 export const SECTOR_COLS = 32;
-/** Rows down a sector chart. */
+/** Rows down a sector map. */
 export const SECTOR_ROWS = 40;
 
 /** Columns and rows per subsector: four across and four down make the sixteen. */
@@ -29,7 +29,7 @@ export interface SectorHex {
 /**
  * Reads a four digit location, or null if it is not one. Spaces are allowed
  * around and inside it, so "19 10" and " 1910 " both read as column 19, row 10,
- * but the digits themselves have to be a real square on the chart.
+ * but the digits themselves have to be a real square on the subsector.
  */
 export function parseSectorHex(text: string): SectorHex | null {
   const digits = text.replace(/\s+/g, "");
@@ -49,7 +49,7 @@ export function formatSectorHex(hex: SectorHex): string {
 
 /**
  * The subsector a hex falls in, A to P. Derived rather than stored: the sixteen
- * subsectors are a fixed carve-up of the chart, so a typed subsector could only
+ * subsectors are a fixed carve-up of the subsector, so a typed subsector could only
  * ever agree with the hex or be wrong about it.
  */
 export function subsectorLetter(hex: SectorHex): string {
@@ -60,10 +60,10 @@ export function subsectorLetter(hex: SectorHex): string {
 
 /**
  * The eighty hexes of one subsector, in reading order: across the top row, then
- * the next, as a chart is read. SubSectorSpec 2.1.1 and 2.2.2.
+ * the next, as a subsector is read. SubSectorSpec 2.1.1 and 2.2.2.
  *
  * Sector-absolute, so a hex of subsector G is numbered where subsector G is on
- * the sector chart rather than from its own corner. 2.2.2.1 gives the reason:
+ * the sector map rather than from its own corner. 2.2.2.1 gives the reason:
  * the referee who writes down 1914 wants to find 1914 later.
  */
 export function subsectorHexes(letter: string): SectorHex[] {
@@ -93,7 +93,7 @@ export interface PlanetLocation {
 /**
  * How many jumps apart two hexes are. SubSectorSpec 3.9.1.1.
  *
- * The chart's columns are offset against each other, so a step sideways is also
+ * The subsector's columns are offset against each other, so a step sideways is also
  * half a step up or down, and counting rows and columns separately gets it
  * wrong. Rows are counted in halves instead: a sideways step pays for half a row
  * of the vertical distance for free, and only what is left over costs a jump.

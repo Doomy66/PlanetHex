@@ -30,6 +30,12 @@ export interface Planet {
   designation: string | null;
   /** The sector the world sits in, free text. Spec 6.14. */
   sector: string;
+  /**
+   * Which subsector of it, free text. Spec 6.14.2: the letter follows from the
+   * hex, but what the sixteen are called does not, and a world can sit in the
+   * Regina subsector of a referee's own map that has no hex grid at all.
+   */
+  subsector: string;
   /** Its four digit hex within that sector, held as typed. Spec 6.14. */
   hex: string;
   uwp: string;
@@ -90,6 +96,7 @@ export function blankPlanet(): Planet {
     version: 1,
     name: "",
     sector: "",
+    subsector: "",
     hex: "",
     uwp: "",
     narrative: "",
@@ -111,6 +118,7 @@ export function newPlanet(seed = randomSeed()): Planet {
     version: 1,
     name: "Unnamed",
     sector: "",
+    subsector: "",
     hex: "",
     uwp: rollUwp(seed),
     narrative: "",
@@ -352,19 +360,31 @@ function readSettings(r: Record<string, unknown>): {
 }
 
 /**
- * The two location fields. Saves written before the format was settled carried a
+ * The location fields. Saves written before the format was settled carried a
  * single free text "location", which is split rather than dropped, so an old file
- * keeps whatever the user had written in it. Spec 6.14.4.
+ * keeps whatever the user had written in it. Spec 6.14.6.
+ *
+ * A save written before the subsector was a field of its own has none, and a
+ * world with none is a world nobody said one about: the letter still follows
+ * from the hex, so nothing has been lost that was ever stored.
  */
-function readLocation(r: Record<string, unknown>): { sector: string; hex: string } {
+function readLocation(r: Record<string, unknown>): {
+  sector: string;
+  subsector: string;
+  hex: string;
+} {
+  const subsector = typeof r["subsector"] === "string" ? r["subsector"] : "";
   if (typeof r["sector"] === "string" || typeof r["hex"] === "string") {
     return {
       sector: typeof r["sector"] === "string" ? r["sector"] : "",
+      subsector,
       hex: typeof r["hex"] === "string" ? r["hex"] : "",
     };
   }
-  if (typeof r["location"] === "string") return splitLegacyLocation(r["location"]);
-  return { sector: "", hex: "" };
+  if (typeof r["location"] === "string") {
+    return { ...splitLegacyLocation(r["location"]), subsector };
+  }
+  return { sector: "", subsector, hex: "" };
 }
 
 /** The eight positions of a UWP, as numbers. Spec 6.7.1. */

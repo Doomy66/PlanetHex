@@ -13,12 +13,12 @@ import {
 import { subsectorFile } from "../io/export/subsector";
 import { generateSector } from "./sector";
 
-const SEEDS = Array.from({ length: 40 }, (_, i) => `chart-${i}`);
+const SEEDS = Array.from({ length: 40 }, (_, i) => `subsector-${i}`);
 
 describe("the eighty hexes", () => {
-  it("gives every subsector its own square of the chart", () => {
+  it("gives every subsector its own square of the subsector", () => {
     // SubSectorSpec 2.1.1 and 2.2.2: eight across and ten down, numbered where
-    // that subsector sits on the sector chart rather than from its own corner.
+    // that subsector sits on the sector map rather than from its own corner.
     for (const letter of "ABCDEFGHIJKLMNOP") {
       const hexes = subsectorHexes(letter);
       expect(hexes, letter).toHaveLength(80);
@@ -48,7 +48,7 @@ describe("where the systems are", () => {
   });
 
   it("only ever adds systems as the density rises", () => {
-    // SubSectorSpec 3.2.2.1. A referee who has written notes on half a chart and
+    // SubSectorSpec 3.2.2.1. A referee who has written notes on half a subsector and
     // then decides the region should be busier keeps the half they wrote.
     const order: Density[] = ["rift", "sparse", "standard", "dense"];
     for (const seed of SEEDS) {
@@ -63,21 +63,21 @@ describe("where the systems are", () => {
 
   it("agrees with itself about which hexes hold systems", () => {
     for (const seed of SEEDS.slice(0, 5)) {
-      const chart = generateSubsector(seed, "C", "standard");
+      const subsector = generateSubsector(seed, "C", "standard");
       for (const hex of subsectorHexes("C")) {
         const at = `${String(hex.col).padStart(2, "0")}${String(hex.row).padStart(2, "0")}`;
-        const here = chart.worlds.some((world) => world.at === at);
+        const here = subsector.worlds.some((world) => world.at === at);
         expect(holdsSystem(seed, at, "standard"), at).toBe(here);
       }
     }
   });
 });
 
-describe("what the chart holds", () => {
-  const chart = generateSubsector("REGINA42", "C", "standard");
+describe("what the subsector holds", () => {
+  const subsector = generateSubsector("REGINA42", "C", "standard");
 
   it("shows the profile the world's own seed rolls", () => {
-    // The claim the whole chain is built on, at this level: the chart names
+    // The claim the whole chain is built on, at this level: the subsector names
     // seeds rather than inventing worlds. SubSectorSpec 1.3.1.
     for (const seed of SEEDS) {
       for (const world of generateSubsector(seed, "A").worlds) {
@@ -88,8 +88,8 @@ describe("what the chart holds", () => {
     }
   });
 
-  it("puts every world on a square of the chart", () => {
-    for (const world of chart.worlds) {
+  it("puts every world on a square of the subsector", () => {
+    for (const world of subsector.worlds) {
       expect(parseSectorHex(world.at), world.at).not.toBeNull();
       expect(subsectorLetter(world.hex)).toBe("C");
     }
@@ -143,8 +143,8 @@ describe("what the chart holds", () => {
   });
 
   it("posts two or three of them in a subsector rather than twenty", () => {
-    // SubSectorSpec 3.6.2. Half a chart qualifies on paper; a chart where half
-    // the hexes carry a warning is a chart where the warning means nothing.
+    // SubSectorSpec 3.6.2. Half a subsector qualifies on paper; a subsector where half
+    // the hexes carry a warning is a subsector where the warning means nothing.
     const counts = SEEDS.map(
       (seed) =>
         generateSubsector(seed, "A").worlds.filter((world) => world.zone === "A").length,
@@ -152,7 +152,7 @@ describe("what the chart holds", () => {
     const average = counts.reduce((sum, n) => sum + n, 0) / counts.length;
     expect(average).toBeGreaterThan(1.5);
     expect(average).toBeLessThan(3.5);
-    // And no chart is drowning in them, whichever way the dice fell.
+    // And no subsector is drowning in them, whichever way the dice fell.
     expect(Math.max(...counts)).toBeLessThan(10);
   });
 
@@ -170,7 +170,7 @@ describe("what the chart holds", () => {
   it("names its worlds mostly the way the region names things", () => {
     // SubSectorSpec 3.4.2: a region reads as a region when most of its names
     // sound related, and all of them from one flavour reads as a program.
-    const names = chart.worlds.map((world) => world.name);
+    const names = subsector.worlds.map((world) => world.name);
     expect(new Set(names).size).toBeGreaterThan(names.length / 2);
     expect(names.every((name) => name !== "")).toBe(true);
   });
@@ -178,7 +178,7 @@ describe("what the chart holds", () => {
 
 describe("how far apart two hexes are", () => {
   // SubSectorSpec 3.9.1.1. The columns are offset, so counting rows and columns
-  // separately gets it wrong, and a chart that got this wrong would draw lanes
+  // separately gets it wrong, and a subsector that got this wrong would draw lanes
   // between worlds that cannot reach each other.
   const at = (text: string) => parseSectorHex(text)!;
 
@@ -213,16 +213,16 @@ describe("how far apart two hexes are", () => {
 });
 
 describe("the routes", () => {
-  const charts = SEEDS.map((seed) => generateSubsector(seed, "A"));
+  const subsectors = SEEDS.map((seed) => generateSubsector(seed, "A"));
 
   it("runs no route to a world nobody is on", () => {
     // SubSectorSpec 3.9.2: two inhabited worlds, or no route. A rock with a
     // beacon on it is not a destination.
-    for (const chart of charts) {
+    for (const subsector of subsectors) {
       const empty = new Set(
-        chart.worlds.filter((world) => world.profile.population === 0).map((world) => world.at),
+        subsector.worlds.filter((world) => world.profile.population === 0).map((world) => world.at),
       );
-      for (const route of chart.routes) {
+      for (const route of subsector.routes) {
         expect(empty.has(route.from), route.from).toBe(false);
         expect(empty.has(route.to), route.to).toBe(false);
       }
@@ -232,9 +232,9 @@ describe("the routes", () => {
   it("keeps every route inside two jumps", () => {
     // 3.9.2 and 3.9.3: an X-boat leg ends at a port that can service one, and a
     // trader will cross two hexes for a cargo.
-    for (const chart of charts) {
-      const where = new Map(chart.worlds.map((world) => [world.at, world]));
-      for (const route of chart.routes) {
+    for (const subsector of subsectors) {
+      const where = new Map(subsector.worlds.map((world) => [world.at, world]));
+      for (const route of subsector.routes) {
         const far = hexDistance(where.get(route.from)!.hex, where.get(route.to)!.hex);
         expect(far, `${route.from}-${route.to}`).toBeGreaterThan(0);
         expect(far).toBeLessThanOrEqual(2);
@@ -246,9 +246,9 @@ describe("the routes", () => {
     // 3.9.2.1: a station is a class A or B port. Anywhere else the boat cannot
     // be turned round.
     let legs = 0;
-    for (const chart of charts) {
-      const where = new Map(chart.worlds.map((world) => [world.at, world]));
-      for (const route of chart.routes) {
+    for (const subsector of subsectors) {
+      const where = new Map(subsector.worlds.map((world) => [world.at, world]));
+      for (const route of subsector.routes) {
         if (route.kind !== "xboat") continue;
         legs++;
         for (const at of [route.from, route.to]) {
@@ -271,9 +271,9 @@ describe("the routes", () => {
       ["Ht", "Lt"],
     ];
     let runs = 0;
-    for (const chart of charts) {
-      const where = new Map(chart.worlds.map((world) => [world.at, world]));
-      for (const route of chart.routes) {
+    for (const subsector of subsectors) {
+      const where = new Map(subsector.worlds.map((world) => [world.at, world]));
+      for (const route of subsector.routes) {
         if (route.kind !== "trade") continue;
         runs++;
         const from = where.get(route.from)!.trade.map((code) => code.code);
@@ -290,9 +290,9 @@ describe("the routes", () => {
   });
 
   it("draws each pair once and never a world to itself", () => {
-    for (const chart of charts) {
+    for (const subsector of subsectors) {
       const seen = new Set<string>();
-      for (const route of chart.routes) {
+      for (const route of subsector.routes) {
         expect(route.from).not.toBe(route.to);
         const key = [route.from, route.to].sort().join("-");
         expect(seen.has(key), key).toBe(false);
@@ -303,12 +303,12 @@ describe("the routes", () => {
 
   it("leaves a web rather than a thicket", () => {
     // About one route per world. Enough to follow across a subsector, few
-    // enough that the chart still reads.
-    const worlds = charts.reduce(
-      (count, chart) => count + chart.worlds.filter((w) => w.profile.population > 0).length,
+    // enough that the subsector still reads.
+    const worlds = subsectors.reduce(
+      (count, subsector) => count + subsector.worlds.filter((w) => w.profile.population > 0).length,
       0,
     );
-    const lanes = charts.reduce((count, chart) => count + chart.routes.length, 0);
+    const lanes = subsectors.reduce((count, subsector) => count + subsector.routes.length, 0);
     expect(lanes / worlds).toBeGreaterThan(0.3);
     expect(lanes / worlds).toBeLessThan(2.5);
   });
@@ -316,12 +316,12 @@ describe("the routes", () => {
   it("takes an interdicted world off the web altogether", () => {
     // 3.9.2.2. Nothing generates a red zone, so this is the referee's edit of
     // 5.3 arriving at the lanes.
-    const chart = generateSubsector("REGINA42", "C", "standard");
-    const busy = [...chart.worlds]
+    const subsector = generateSubsector("REGINA42", "C", "standard");
+    const busy = [...subsector.worlds]
       .filter((world) => world.profile.population > 0)
       .sort((a, b) => b.profile.population - a.profile.population)[0]!;
-    expect(chart.routes.some((route) => route.from === busy.at || route.to === busy.at)).toBe(true);
-    const shut = chart.worlds.map((world) =>
+    expect(subsector.routes.some((route) => route.from === busy.at || route.to === busy.at)).toBe(true);
+    const shut = subsector.worlds.map((world) =>
       world.at === busy.at ? { ...world, zone: "R" } : world,
     );
     const after = routesBetween(shut);
@@ -332,12 +332,12 @@ describe("the routes", () => {
 describe("the Mains", () => {
   // SubSectorSpec 3.10. A run of worlds every one of which is within one jump
   // of the next, which is the oldest piece of Traveller astrography there is.
-  const charts = SEEDS.map((seed) => generateSubsector(seed, "A"));
+  const subsectors = SEEDS.map((seed) => generateSubsector(seed, "A"));
 
   it("puts every world of a Main within one jump of another on it", () => {
-    for (const chart of charts) {
-      const where = new Map(chart.worlds.map((world) => [world.at, world]));
-      for (const main of chart.mains) {
+    for (const subsector of subsectors) {
+      const where = new Map(subsector.worlds.map((world) => [world.at, world]));
+      for (const main of subsector.mains) {
         for (const at of main.hexes) {
           const here = where.get(at)!;
           const near = main.hexes.some(
@@ -351,9 +351,9 @@ describe("the Mains", () => {
 
   it("puts no world on two Mains", () => {
     // A Main is a connected group, and a world cannot be in two of those.
-    for (const chart of charts) {
+    for (const subsector of subsectors) {
       const seen = new Set<string>();
-      for (const main of chart.mains) {
+      for (const main of subsector.mains) {
         for (const at of main.hexes) {
           expect(seen.has(at), at).toBe(false);
           seen.add(at);
@@ -365,10 +365,10 @@ describe("the Mains", () => {
   it("takes in every neighbour there is, so no two Mains touch", () => {
     // 3.10.1: if two groups had a jump-1 step between them they would be one
     // group, so a walk that stopped early would show up here.
-    for (const chart of charts) {
-      const where = new Map(chart.worlds.map((world) => [world.at, world]));
-      for (const [at, main] of chart.mains.entries()) {
-        for (const other of chart.mains.slice(at + 1)) {
+    for (const subsector of subsectors) {
+      const where = new Map(subsector.worlds.map((world) => [world.at, world]));
+      for (const [at, main] of subsector.mains.entries()) {
+        for (const other of subsector.mains.slice(at + 1)) {
           for (const one of main.hexes) {
             for (const two of other.hexes) {
               expect(
@@ -384,16 +384,16 @@ describe("the Mains", () => {
 
   it("does not call a pair of worlds a Main", () => {
     // 3.10.2: three in a row is the shortest thing worth the name.
-    for (const chart of charts) {
-      for (const main of chart.mains) expect(main.hexes.length).toBeGreaterThanOrEqual(3);
+    for (const subsector of subsectors) {
+      for (const main of subsector.mains) expect(main.hexes.length).toBeGreaterThanOrEqual(3);
     }
   });
 
   it("names a Main after the busiest world on it", () => {
     // 3.10.3: the one anybody would say they were heading for.
-    for (const chart of charts) {
-      const where = new Map(chart.worlds.map((world) => [world.at, world]));
-      for (const main of chart.mains) {
+    for (const subsector of subsectors) {
+      const where = new Map(subsector.worlds.map((world) => [world.at, world]));
+      for (const main of subsector.mains) {
         const most = Math.max(...main.hexes.map((at) => where.get(at)!.profile.population));
         const named = main.hexes.find((at) => where.get(at)!.name === main.name)!;
         expect(where.get(named)!.profile.population, main.name).toBe(most);
@@ -402,10 +402,10 @@ describe("the Mains", () => {
   });
 
   it("finds them at all, and longest first", () => {
-    const found = charts.filter((chart) => chart.mains.length > 0);
-    expect(found.length).toBeGreaterThan(charts.length / 2);
-    for (const chart of found) {
-      const sizes = chart.mains.map((main) => main.hexes.length);
+    const found = subsectors.filter((subsector) => subsector.mains.length > 0);
+    expect(found.length).toBeGreaterThan(subsectors.length / 2);
+    for (const subsector of found) {
+      const sizes = subsector.mains.map((main) => main.hexes.length);
       expect(sizes).toEqual([...sizes].sort((a, b) => b - a));
     }
   });
@@ -413,9 +413,9 @@ describe("the Mains", () => {
   it("counts an empty world as a step along one", () => {
     // 3.10.1.1: a Main is where a ship can go, and an unpopulated world with a
     // gas giant to skim is as much a step along one as a hive world.
-    const anyEmpty = charts.some((chart) => {
-      const where = new Map(chart.worlds.map((world) => [world.at, world]));
-      return chart.mains.some((main) =>
+    const anyEmpty = subsectors.some((subsector) => {
+      const where = new Map(subsector.worlds.map((world) => [world.at, world]));
+      return subsector.mains.some((main) =>
         main.hexes.some((at) => where.get(at)!.profile.population === 0),
       );
     });
@@ -425,10 +425,10 @@ describe("the Mains", () => {
 
 describe("what the worlds are called", () => {
   // SubSectorSpec 3.4.3 and 3.4.4.
-  it("never uses one name twice on a chart", () => {
+  it("never uses one name twice on a subsector", () => {
     for (const seed of SEEDS) {
-      const chart = generateSubsector(seed, "A");
-      const names = chart.worlds.map((world) => world.name);
+      const subsector = generateSubsector(seed, "A");
+      const names = subsector.worlds.map((world) => world.name);
       expect(new Set(names).size, seed).toBe(names.length);
     }
   });
@@ -445,8 +445,8 @@ describe("what the worlds are called", () => {
     }
   });
 
-  it("keeps a chart's names whether or not a sector is above it", () => {
-    // AppSpec 1.3: naming is the chart's, so a chart cannot be renamed from
+  it("keeps a subsector's names whether or not a sector is above it", () => {
+    // AppSpec 1.3: naming is the subsector's, so a subsector cannot be renamed from
     // above without the same subsector being two different subsectors.
     const alone = generateSubsector("SPINWARD-C", "C");
     const again = generateSubsector("SPINWARD-C", "C");
@@ -454,7 +454,7 @@ describe("what the worlds are called", () => {
   });
 
   it("leaves nearly every world in a sector with a name of its own", () => {
-    // Across sixteen charts a repeat is chance rather than a rule, and with the
+    // Across sixteen subsectors a repeat is chance rather than a rule, and with the
     // pools of 3.4.3 it stays under one world in twenty.
     const sector = generateSector("SPINWARD", "standard");
     const counts = new Map<string, number>();
@@ -466,12 +466,12 @@ describe("what the worlds are called", () => {
 
 describe("the sector file", () => {
   it("writes a line a sector map can read for every world", () => {
-    const chart = generateSubsector("REGINA42", "C", "standard");
-    const file = subsectorFile(chart, "Spinward Marches");
+    const subsector = generateSubsector("REGINA42", "C", "standard");
+    const file = subsectorFile(subsector, "Spinward Marches");
     const lines = file.split("\n").filter((line) => line !== "" && !line.startsWith("#"));
     expect(lines[0]).toBe("Hex\tName\tUWP\tBases\tRemarks\tZone\tPBG\tAllegiance\tStars");
-    expect(lines).toHaveLength(chart.worlds.length + 1);
-    for (const [at, world] of chart.worlds.entries()) {
+    expect(lines).toHaveLength(subsector.worlds.length + 1);
+    for (const [at, world] of subsector.worlds.entries()) {
       const fields = lines[at + 1]!.split("\t");
       expect(fields).toHaveLength(9);
       expect(fields[0]).toBe(world.at);

@@ -2,7 +2,7 @@
 
 A browser application that generates planet surfaces procedurally and shows them two ways at once: as a flat Traveller-style hex map, and as a rotating sphere.
 
-This document is the specification for one planet. [SubSectorSpec.md](SubSectorSpec.md) is its companion, numbered the same way, for the eighty hex chart a world sits on.
+This document is the specification for one planet. [SubSectorSpec.md](SubSectorSpec.md) is its companion, numbered the same way, for the eighty hex map a world sits on.
 
 ## Contents
 
@@ -652,6 +652,7 @@ This document is the specification for one planet. [SubSectorSpec.md](SubSectorS
 | --- | --- |
 | Planet name | Free text. |
 | Sector | The sector the world sits in, see 6.14. Free text. |
+| Subsector | Which subsector of it, see 6.14.2. Free text. |
 | Hex | Its four digit hex within that sector, see 6.14. |
 | UWP | The Universal World Profile, see 6.7. |
 | Narrative text | Free prose about the world, written by the user. Plain text, no length limit. |
@@ -835,11 +836,25 @@ This document is the specification for one planet. [SubSectorSpec.md](SubSectorS
 
 6.14 Location follows Traveller convention: a sector, and a four digit hex within it. Two fields rather than one, because they are two different things and only one of them has a format to check.
 
-6.14.1 The four digits are a column from 01 to 32 and a row from 01 to 40, which is the size of a sector chart. An entry outside that is not a square on any chart, and the field says so where it is rather than accepting it and hoping.
+6.14.1 The four digits are a column from 01 to 32 and a row from 01 to 40, which is the size of a sector map. An entry outside that is not a square on any sector map, and the field says so where it is rather than accepting it and hoping.
 
-6.14.2 The subsector, A to P, is derived from the hex and never typed. The sixteen are a fixed carve-up of the chart, four across and four down, so a typed subsector could only agree with the hex or be wrong about it. It is shown under the field, along with the complaint of 6.14.1 when the entry is not a square on the chart. An empty field says nothing: the placeholder shows the shape of a hex, and the format is not worth a line of instructions to someone who either knows it or does not care.
+6.14.2 The subsector is a field of its own beside the hex, because where a world sits is a sector, one of the sixteen, and a hex, and a reader who has come down the chain is looking for the three of them together rather than for two of them and a note.
 
-6.14.3 This grid has nothing to do with the surface grid of section 2. A sector hex is one star system on a chart; a surface hex is a piece of ground on one planet. Nothing in generation reads either location field, so under 6.11 they stay user owned, and a world's place in the setting cannot change its terrain.
+6.14.2.1 It is free text and not a derivation. The letter, A to P, does follow from the hex — the sixteen are a fixed carve-up of the sector, four across and four down — but what a subsector is *called* does not follow from anything, and a name is what a referee writes and reads. A world can also sit in a named subsector of somebody's own map that has no hex grid at all, and a field that only ever showed a letter had nowhere to put that.
+
+6.14.2.2 The letter is offered rather than imposed: it is what the field shows while nobody has filled it in, so a hex alone still says which of the sixteen, and a name typed over it wins. Nothing checks one against the other, because a referee who calls the C subsector something is not making a mistake about C.
+
+6.14.2.3 The complaint of 6.14.1 stays under the fields rather than going in that one. A hex that is not a square on any sector map has no letter to offer, and saying so is not naming a subsector. An empty hex says nothing at all: the placeholder shows the shape of one, and the format is not worth a line of instructions to someone who either knows it or does not care.
+
+6.14.3 This grid has nothing to do with the surface grid of section 2. A sector hex is one star system on a sector map; a surface hex is a piece of ground on one planet. Nothing in generation reads either location field, so under 6.11 they stay user owned, and a world's place in the setting cannot change its terrain.
+
+6.14.4 Where a world was opened out of a system, its location is the system's and is shown rather than asked for: all three fields read as facts about the world and none of them takes an entry. The app spec 1.3.2 has a level fill in the level below it, and the system knows where it sits. A hex typed here would have moved the world out from under the system holding it, which is the one thing the chain must not allow.
+
+6.14.4.3 The same rule holds at every level, not only this one. A system on a subsector takes its sector, subsector and hex from the subsector; a subsector in a sector takes its sector from the sector. Whichever level is the top of what is open owns where it is, and every level below it is told. See the system spec 9.7.
+
+6.14.4.1 This does not contradict 6.11. What is user owned is owned against generation, which never writes these fields at any level; the level above is not generation, it is the referee's own work one step up, and a world that is somewhere because its system is there has not had anything taken from it.
+
+6.14.4.2 A planet rolled or loaded on its own has no level above and takes both entries as it always did. That is the whole of the difference: the fields are the same fields, and which of them can be typed in follows from whether anything above has already answered.
 
 6.14.5 A world of a system also carries its designation - which body of which system it is, "Sol-3" or "Regina Belt-1" - written in by the system that handed it down. It is what the world's files are named for, under the app spec 4.2.1: a world named Earth is still Sol-3 on disk, because the name is what people call it and the designation is which world it is.
 
@@ -936,7 +951,7 @@ This document is the specification for one planet. [SubSectorSpec.md](SubSectorS
 
 ### 6.17 Exporting the world
 
-6.17 A save can also write the world in formats nothing in this application reads, for the tools that are not this application. The map images of 6.4.5 are pictures, and a picture cannot be queried, projected, styled, or put on a chart.
+6.17 A save can also write the world in formats nothing in this application reads, for the tools that are not this application. The map images of 6.4.5 are pictures, and a picture cannot be queried, projected, styled, or put on a map.
 
 6.17.1 Every export describes the world at the detail level on screen rather than at all of them. A table of a level nobody is looking at is a table of a map nobody has, and the reader has the map in front of them.
 
@@ -958,7 +973,7 @@ This document is the specification for one planet. [SubSectorSpec.md](SubSectorS
 
 6.18.2 Bases, travel zone, and stars are left blank rather than invented. PlanetHex describes the world, not the system it is in. Allegiance is the format's own placeholder for unaligned, which is what an unclaimed world is. PBG is the exception, under 6.16.2.
 
-6.18.3 A world whose hex is not a square on the chart of 6.14 is written at 0000 rather than refused, so the line is still a line and the user can put it where it belongs.
+6.18.3 A world whose hex is not a square on the sector map of 6.14 is written at 0000 rather than refused, so the line is still a line and the user can put it where it belongs.
 
 ### 6.19 The world sheet
 

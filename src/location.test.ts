@@ -21,7 +21,7 @@ describe("sector hex", () => {
     expect(parseSectorHex(" 19 10 ")).toEqual({ col: 19, row: 10 });
   });
 
-  it("refuses anything that is not a square on the chart", () => {
+  it("refuses anything that is not a square on the subsector", () => {
     for (const bad of ["", "191", "19100", "0010", "1900", "3340", "1941", "19x0", "abcd"]) {
       expect(parseSectorHex(bad), bad).toBeNull();
     }
@@ -32,7 +32,7 @@ describe("sector hex", () => {
     expect(formatSectorHex({ col: 32, row: 40 })).toBe("3240");
   });
 
-  it("round trips every square on the chart", () => {
+  it("round trips every square on the subsector", () => {
     for (let col = 1; col <= SECTOR_COLS; col++) {
       for (let row = 1; row <= SECTOR_ROWS; row++) {
         expect(parseSectorHex(formatSectorHex({ col, row }))).toEqual({ col, row });
@@ -43,7 +43,7 @@ describe("sector hex", () => {
 
 describe("subsectors", () => {
   // Four across and four down, lettered left to right then top to bottom.
-  it("letters the corners of the chart A, D, M and P", () => {
+  it("letters the corners of the subsector A, D, M and P", () => {
     expect(subsectorLetter({ col: 1, row: 1 })).toBe("A");
     expect(subsectorLetter({ col: 32, row: 1 })).toBe("D");
     expect(subsectorLetter({ col: 1, row: 40 })).toBe("M");
@@ -106,7 +106,7 @@ describe("older saves", () => {
     });
   });
 
-  it("leaves four digits that are not a square on the chart alone", () => {
+  it("leaves four digits that are not a square on the subsector alone", () => {
     expect(splitLegacyLocation("Sector 9999")).toEqual({ sector: "Sector 9999", hex: "" });
   });
 
@@ -124,5 +124,43 @@ describe("older saves", () => {
     );
     expect(planet.sector).toBe("Core");
     expect(planet.hex).toBe("0101");
+  });
+
+  // 6.14.2: what the sixteen are called cannot be worked out from a hex, so it
+  // is stored, and a file written before it was is simply a file that says none.
+  it("keeps a typed subsector", () => {
+    const planet = parsePlanet(
+      JSON.stringify({
+        version: 1,
+        seed: "ABC",
+        size: 24,
+        sector: "Spinward Marches",
+        subsector: "Aramis",
+        hex: "3110",
+      }),
+    );
+    expect(planet.subsector).toBe("Aramis");
+  });
+
+  it("gives a save written without one an empty subsector", () => {
+    const planet = parsePlanet(
+      JSON.stringify({ version: 1, seed: "ABC", size: 24, sector: "Core", hex: "0101" }),
+    );
+    expect(planet.subsector).toBe("");
+  });
+
+  it("keeps a typed subsector beside a legacy single location", () => {
+    const planet = parsePlanet(
+      JSON.stringify({
+        version: 1,
+        seed: "ABC",
+        size: 24,
+        location: "Spinward Marches 1910",
+        subsector: "Regina",
+      }),
+    );
+    expect(planet.sector).toBe("Spinward Marches");
+    expect(planet.hex).toBe("1910");
+    expect(planet.subsector).toBe("Regina");
   });
 });

@@ -6,7 +6,7 @@ import {
   overrideFor,
   parseSystemDoc,
   setOverride,
-  subsectorOf,
+  subsectorLetterOf,
   systemOf,
 } from "./system";
 
@@ -116,12 +116,26 @@ describe("reading a file", () => {
 });
 
 describe("where a system sits", () => {
-  it("derives the subsector from the hex and never stores it", () => {
+  it("derives the subsector letter from the hex and never stores it", () => {
     const doc = newSystemDoc(SEED, "Regina");
-    expect(subsectorOf(doc)).toBe("");
+    expect(subsectorLetterOf(doc)).toBe("");
     doc.hex = "1910";
-    expect(subsectorOf(doc)).toBe("C");
+    expect(subsectorLetterOf(doc)).toBe("C");
     doc.hex = "nonsense";
-    expect(subsectorOf(doc)).toBe("");
+    expect(subsectorLetterOf(doc)).toBe("");
+  });
+
+  // The letter follows from the hex; what the subsector is called does not, so
+  // the name is a field of its own and is stored.
+  it("keeps a typed subsector name", () => {
+    const doc = parseSystemDoc(
+      JSON.stringify({ ...newSystemDoc(SEED, "Regina"), subsector: "Aramis" }),
+    );
+    expect(doc.subsector).toBe("Aramis");
+  });
+
+  it("gives a save written without one an empty subsector", () => {
+    const doc = parseSystemDoc(JSON.stringify({ level: "system", version: 1, seed: SEED }));
+    expect(doc.subsector).toBe("");
   });
 });

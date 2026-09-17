@@ -1,7 +1,7 @@
 import { SUB_COLS, SUB_ROWS } from "../location";
 import {
   centreOf,
-  chartSize,
+  hexMapSize,
   dotFor,
   hexPoints,
   COLUMN_STEP,
@@ -9,19 +9,19 @@ import {
   HEX_WIDE,
   MAIN_COLOURS,
   ZONE_R,
-} from "../chartlayout";
+} from "../hexlayout";
 import { BORDER_REACH } from "../gen/sector";
 import { boxFor, pointIn, wholeOf, zoomedAt, type Box, type View } from "./viewbox";
-import type { ChartWorld, Route, Subsector } from "../gen/subsector";
+import type { SubsectorWorld, Route, Subsector } from "../gen/subsector";
 
 /**
- * The subsector chart: eighty hexes, drawn the way Traveller draws them.
+ * The subsector map: eighty hexes, drawn the way Traveller draws them.
  * SubSectorSpec 2.1.2 and section 4.
  *
  * Columns of hexes, column 01 on the left, even columns sitting half a hex lower
  * than odd ones, row 01 at the top. This is the opposite convention from the
  * surface hexes of the planet spec section 2, and deliberately not shared with
- * them: a chart hex is one star system and a surface hex is a piece of ground on
+ * them: a subsector hex is one star system and a surface hex is a piece of ground on
  * one planet.
  *
  * A hex is laid out the way every published subsector map lays one out, because
@@ -48,31 +48,31 @@ function make<K extends keyof SVGElementTagNameMap>(
 }
 
 /**
- * What colour a world is drawn. The published charts have only black, so this is
+ * What colour a world is drawn. The published maps have only black, so this is
  * the one thing here they do not do: water and air is blue, a dry world with air
  * is tan, an airless rock is grey, and a world nobody lives on is hollow.
  */
-function worldClass(world: ChartWorld): string {
+function worldClass(world: SubsectorWorld): string {
   const { hydrographics, atmosphere, population } = world.profile;
-  if (population === 0) return "chart-world chart-empty";
-  if (hydrographics > 0 && atmosphere >= 2 && atmosphere <= 9) return "chart-world chart-wet";
-  if (atmosphere >= 2) return "chart-world chart-dusty";
-  return "chart-world chart-airless";
+  if (population === 0) return "starmap-world starmap-empty";
+  if (hydrographics > 0 && atmosphere >= 2 && atmosphere <= 9) return "starmap-world starmap-wet";
+  if (atmosphere >= 2) return "starmap-world starmap-dusty";
+  return "starmap-world starmap-airless";
 }
 
 /**
- * What lies just outside the chart: the worlds within reach of its edge, and the
+ * What lies just outside the subsector: the worlds within reach of its edge, and the
  * routes that cross it. SectorSpec 4.5.
  */
 export interface Around {
-  readonly worlds: readonly ChartWorld[];
+  readonly worlds: readonly SubsectorWorld[];
   readonly routes: readonly Route[];
 }
 
-export interface Chart {
+export interface SubsectorMap {
   readonly element: SVGSVGElement;
   render(subsector: Subsector, around?: Around): void;
-  /** Frame the chart on its own eighty hexes again. SubSectorSpec 4.7. */
+  /** Frame the map on its own eighty hexes again. SubSectorSpec 4.7. */
   resetView(): void;
   /** Show or hide the Mains overlay. SubSectorSpec 3.10.4. */
   setMains(show: boolean): void;
@@ -80,9 +80,9 @@ export interface Chart {
   onSelect(handler: (at: string) => void): void;
 }
 
-export function createChart(): Chart {
-  const svg = make("svg", { class: "chart" });
-  const aroundLayer = make("g", { class: "chart-around" });
+export function createSubsectorMap(): SubsectorMap {
+  const svg = make("svg", { class: "subsectormap" });
+  const aroundLayer = make("g", { class: "starmap-around" });
   const mainLayer = make("g");
   const gridLayer = make("g");
   const routeLayer = make("g");
@@ -90,8 +90,8 @@ export function createChart(): Chart {
   const selectLayer = make("g");
   // The routes go under the worlds and over the grid: they are the thing a hex is
   // read in the context of, not a thing drawn on top of it.
-  // Under everything: a Main is the ground the rest of the chart sits on.
-  // The neighbours go under everything: they are context, and the chart is what
+  // Under everything: a Main is the ground the rest of the map sits on.
+  // The neighbours go under everything: they are context, and the map is what
   // is being read.
   svg.append(aroundLayer, mainLayer, gridLayer, routeLayer, worldLayer, selectLayer);
 
@@ -101,15 +101,15 @@ export function createChart(): Chart {
   let shown: Subsector | null = null;
   let mainsShown = false;
   /**
-   * How far out the view is. One is the chart's own eighty hexes filling the
+   * How far out the view is. One is the map's own eighty hexes filling the
    * panel; going out from there brings the neighbours of 4.5 into view, and a
-   * chart with none to show simply has less to find out there.
+   * subsector with none to show simply has less to find out there.
    */
   let view: View = { zoom: 1, x: 0, y: 0 };
   let press: { x: number; y: number; from: { x: number; y: number } } | null = null;
-  /** Whether this chart has neighbours to find outside its own hexes. */
+  /** Whether this subsector has neighbours to find outside its own hexes. */
   let hasAround = false;
-  /** A drag that moved the chart swallows the click that ended it. */
+  /** A drag that moved the subsector swallows the click that ended it. */
   let dragged = false;
 
   function drawSelection(): void {
@@ -117,7 +117,7 @@ export function createChart(): Chart {
     if (selected === null) return;
     const at = places.get(selected);
     if (at === undefined) return;
-    selectLayer.append(make("polygon", { class: "chart-select", points: hexPoints(at.x, at.y) }));
+    selectLayer.append(make("polygon", { class: "starmap-select", points: hexPoints(at.x, at.y) }));
   }
 
   function render(subsector: Subsector, around?: Around): void {
@@ -129,7 +129,7 @@ export function createChart(): Chart {
     places.clear();
 
     const worlds = new Map(subsector.worlds.map((world) => [world.at, world]));
-    // The chart is its own eight by ten, whichever of the sixteen it is: the
+    // The subsector is its own eight by ten, whichever of the sixteen it is: the
     // hexes carry sector-absolute numbers under 2.2.2, and the drawing does not.
     const first = subsector.worlds[0]?.hex;
     const acrossFrom = first === undefined ? 0 : Math.floor((first.col - 1) / SUB_COLS) * SUB_COLS;
@@ -152,7 +152,7 @@ export function createChart(): Chart {
       if (from === undefined || to === undefined) continue;
       routeLayer.append(
         make("line", {
-          class: route.kind === "xboat" ? "chart-route chart-xboat" : "chart-route",
+          class: route.kind === "xboat" ? "starmap-route starmap-xboat" : "starmap-route",
           x1: from.x,
           y1: from.y,
           x2: to.x,
@@ -168,9 +168,9 @@ export function createChart(): Chart {
     drawSelection();
   }
 
-  /** The chart's own eighty hexes, which is what the view is framed on. */
+  /** The subsector's own eighty hexes, which is what the view is framed on. */
   function content(): Box {
-    const { width, height } = chartSize();
+    const { width, height } = hexMapSize();
     return { x: 0, y: 0, width, height };
   }
 
@@ -179,8 +179,8 @@ export function createChart(): Chart {
   }
 
   /**
-   * The window on to the chart, matched to the shape of the panel. SubSectorSpec
-   * 4.7: the chart fills the panel rather than sitting in the middle of it with
+   * The window on to the subsector, matched to the shape of the panel. SubSectorSpec
+   * 4.7: the subsector fills the panel rather than sitting in the middle of it with
    * a margin down both ends.
    */
   function showView(): void {
@@ -189,25 +189,25 @@ export function createChart(): Chart {
     svg.setAttribute("viewBox", `${box.x} ${box.y} ${box.width} ${box.height}`);
   }
 
-  /** How far out this chart is allowed to go, which is as far as it has to show. */
+  /** How far out this subsector is allowed to go, which is as far as it has to show. */
   function limits(): { out: number; in: number } {
     if (!hasAround) return { out: 1, in: 4 };
     // Far enough out for the whole border to be in view, and no further: past
-    // that there is nothing more to see and the chart is just getting smaller.
-    const { width } = chartSize();
+    // that there is nothing more to see and the subsector is just getting smaller.
+    const { width } = hexMapSize();
     return { out: width / (width + BORDER_REACH * COLUMN_STEP * 2), in: 4 };
   }
 
   /**
    * The neighbours, lowlighted. SectorSpec 4.5.
    *
-   * Drawn faint and unclickable: they are there to say the chart has edges
+   * Drawn faint and unclickable: they are there to say the subsector has edges
    * rather than ends, and a referee who wants one of them opens that subsector.
    * A route crossing the edge is drawn whole, both ends visible, because half a
    * line pointing off the page says less than no line at all.
    */
   function drawAround(around: Around, acrossFrom: number, downFrom: number): void {
-    // The grid first, across the whole border, so the edge reads as a chart
+    // The grid first, across the whole border, so the edge reads as a subsector
     // continuing rather than as a handful of dots floating beside one.
     for (let row = 1 - BORDER_REACH; row <= SUB_ROWS + BORDER_REACH; row++) {
       for (let col = 1 - BORDER_REACH; col <= SUB_COLS + BORDER_REACH; col++) {
@@ -215,7 +215,7 @@ export function createChart(): Chart {
         if (own) continue;
         const { x, y } = centreOf(col, row);
         aroundLayer.append(
-          make("polygon", { class: "chart-cell chart-faint", points: hexPoints(x, y) }),
+          make("polygon", { class: "starmap-cell starmap-faint", points: hexPoints(x, y) }),
         );
       }
     }
@@ -230,7 +230,7 @@ export function createChart(): Chart {
       group.append(title);
       group.append(
         make("circle", {
-          class: `${worldClass(world)} chart-faint`,
+          class: `${worldClass(world)} starmap-faint`,
           cx: where.x,
           cy: where.y,
           r: dotFor(world.profile.population),
@@ -239,7 +239,7 @@ export function createChart(): Chart {
       // A name, small, on the ones big enough to be why the neighbour matters.
       if (world.profile.population >= 9) {
         const name = make("text", {
-          class: "chart-name",
+          class: "starmap-name",
           x: where.x,
           y: where.y + HEX_HIGH * 0.33,
         });
@@ -257,8 +257,8 @@ export function createChart(): Chart {
         make("line", {
           class:
             route.kind === "xboat"
-              ? "chart-route chart-xboat chart-faint"
-              : "chart-route chart-faint",
+              ? "starmap-route starmap-xboat starmap-faint"
+              : "starmap-route starmap-faint",
           x1: from.x,
           y1: from.y,
           x2: to.x,
@@ -280,7 +280,7 @@ export function createChart(): Chart {
     mainLayer.replaceChildren();
     if (!mainsShown || shown === null) return;
     for (const [at, main] of shown.mains.entries()) {
-      const group = make("g", { class: `chart-main chart-main-${at % MAIN_COLOURS}` });
+      const group = make("g", { class: `starmap-main starmap-main-${at % MAIN_COLOURS}` });
       const title = make("title");
       title.textContent = `The ${main.name} Main: ${main.hexes.length} worlds within one jump of each other`;
       group.append(title);
@@ -293,18 +293,18 @@ export function createChart(): Chart {
     }
   }
 
-  function drawHex(at: string, x: number, y: number, world: ChartWorld | null): void {
-    const group = make("g", { class: world === null ? "chart-hex" : "chart-hex chart-full" });
+  function drawHex(at: string, x: number, y: number, world: SubsectorWorld | null): void {
+    const group = make("g", { class: world === null ? "starmap-hex" : "starmap-hex starmap-full" });
     group.setAttribute("tabindex", "0");
     group.setAttribute("role", "button");
     const title = make("title");
     title.textContent = world === null ? `${at}, empty` : `${at} ${world.name} ${world.uwp}`;
     group.append(title);
-    group.append(make("polygon", { class: "chart-cell", points: hexPoints(x, y) }));
+    group.append(make("polygon", { class: "starmap-cell", points: hexPoints(x, y) }));
 
     // Every hex says which it is, occupied or not: an empty hex still has to be
     // referrable. SubSectorSpec 4.2.
-    const digits = make("text", { class: "chart-at", x, y: y - HEX_HIGH * 0.33 });
+    const digits = make("text", { class: "starmap-at", x, y: y - HEX_HIGH * 0.33 });
     digits.textContent = at;
     group.append(digits);
 
@@ -312,7 +312,7 @@ export function createChart(): Chart {
       if (world.zone !== "") {
         group.append(
           make("circle", {
-            class: world.zone === "R" ? "chart-zone chart-red" : "chart-zone",
+            class: world.zone === "R" ? "starmap-zone starmap-red" : "starmap-zone",
             cx: x,
             cy: y,
             r: ZONE_R,
@@ -322,7 +322,7 @@ export function createChart(): Chart {
 
       // The port is read before the world is: it is what decides whether the
       // world can be reached at all.
-      const port = make("text", { class: "chart-port", x, y: y - HEX_HIGH * 0.13 });
+      const port = make("text", { class: "starmap-port", x, y: y - HEX_HIGH * 0.13 });
       port.textContent = world.profile.starport;
       group.append(port);
 
@@ -343,7 +343,7 @@ export function createChart(): Chart {
       // table.
       const loud = world.profile.population >= 9;
       const name = make("text", {
-        class: loud ? "chart-name chart-loud" : "chart-name",
+        class: loud ? "starmap-name starmap-loud" : "starmap-name",
         x,
         y: y + HEX_HIGH * 0.33,
       });
@@ -351,7 +351,7 @@ export function createChart(): Chart {
       group.append(name);
 
       // Bases to the left and a gas giant to the right, each its own mark, as
-      // the charts have always drawn them: a star is a naval base and a
+      // the subsectors have always drawn them: a star is a naval base and a
       // triangle a scout way station.
       const left = x - HEX_WIDE * 0.3;
       const both = world.bases === "A";
@@ -375,7 +375,7 @@ export function createChart(): Chart {
     (world === null ? gridLayer : worldLayer).append(group);
   }
 
-  /** An asteroid belt, which the charts draw as a scatter rather than a world. */
+  /** An asteroid belt, which the subsectors draw as a scatter rather than a world. */
   function drawBelt(group: SVGGElement, x: number, y: number): void {
     const rocks = [
       [-6, -4],
@@ -386,7 +386,7 @@ export function createChart(): Chart {
       [2, 7],
     ];
     for (const [dx, dy] of rocks) {
-      group.append(make("circle", { class: "chart-rock", cx: x + dx!, cy: y + dy!, r: 2 }));
+      group.append(make("circle", { class: "starmap-rock", cx: x + dx!, cy: y + dy!, r: 2 }));
     }
   }
 
@@ -398,23 +398,23 @@ export function createChart(): Chart {
       const angle = (Math.PI / 180) * (i * 36 - 90);
       points.push(`${x + r * Math.cos(angle)},${y + r * Math.sin(angle)}`);
     }
-    group.append(make("polygon", { class: "chart-naval", points: points.join(" ") }));
+    group.append(make("polygon", { class: "starmap-naval", points: points.join(" ") }));
   }
 
   /** A scout way station. */
   function drawTriangle(group: SVGGElement, x: number, y: number): void {
     group.append(
       make("polygon", {
-        class: "chart-scout",
+        class: "starmap-scout",
         points: `${x},${y - 6} ${x + 6},${y + 5} ${x - 6},${y + 5}`,
       }),
     );
   }
 
-  /** Somewhere to skim fuel, which is why it is on the chart at all. */
+  /** Somewhere to skim fuel, which is why it is on the subsector at all. */
   function drawGiant(group: SVGGElement, x: number, y: number): void {
-    group.append(make("circle", { class: "chart-giant", cx: x, cy: y, r: 4.5 }));
-    group.append(make("ellipse", { class: "chart-giant-ring", cx: x, cy: y, rx: 8, ry: 2.6 }));
+    group.append(make("circle", { class: "starmap-giant", cx: x, cy: y, r: 4.5 }));
+    group.append(make("ellipse", { class: "starmap-giant-ring", cx: x, cy: y, rx: 8, ry: 2.6 }));
   }
 
   new ResizeObserver(() => showView()).observe(svg);
@@ -430,7 +430,7 @@ export function createChart(): Chart {
     { passive: false },
   );
 
-  // A drag moves the chart, and the click that ends one is not a click on a hex.
+  // A drag moves the subsector, and the click that ends one is not a click on a hex.
   svg.addEventListener("pointerdown", (event) => {
     if (event.button !== 0) return;
     press = { x: event.clientX, y: event.clientY, from: { x: view.x, y: view.y } };

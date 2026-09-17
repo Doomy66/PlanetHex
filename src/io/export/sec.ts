@@ -53,7 +53,7 @@ export function sectorHeader(): string {
   return `${COLUMNS.join("\t")}\n`;
 }
 
-/** One world as one line, with no header. What a whole chart is made of. */
+/** One world as one line, with no header. What a whole subsector is made of. */
 export function worldLine(planet: Planet, extras: SectorLineExtras = {}): string {
   const codes = tradeCodes(planet.uwp).map((code) => code.code);
   const fields = [

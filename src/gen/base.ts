@@ -2,14 +2,14 @@
  * What a system carries besides its profile: its bases and its travel zone.
  * SubSectorSpec 3.5 and 3.6, SystemSpec 4.7.
  *
- * A base is a fact about the system rather than about the chart that draws it,
- * so it lives here where both levels can read it. The chart puts it in the Bases
+ * A base is a fact about the system rather than about the subsector that draws it,
+ * so it lives here where both levels can read it. The subsector puts it in the Bases
  * column and draws a mark for it; the system says which orbit it is in, because
  * a naval base is a station in orbit of the main world and a scout way station
  * is a field on it or a tender beside it, and a referee arriving in a system
  * wants to know which rock the navy is parked over.
  *
- * Derived rather than invented, from the main world's own seed, so the chart and
+ * Derived rather than invented, from the main world's own seed, so the subsector and
  * the system agree without either of them telling the other: the profile says
  * what quality of port the world has, and the rules say what a port of that
  * quality can carry.
@@ -71,7 +71,7 @@ const AMBER_CHANCE = [0, 0.07, 0.18, 0.4] as const;
 function amberTriggers(profile: Uwp): number {
   // A world nobody lives on is never flagged. A zone is a warning posted about
   // somewhere people go, and most of a subsector is rock nobody has been to: a
-  // warning on every one of them is a chart of warnings. Its government and law
+  // warning on every one of them is a map of warnings. Its government and law
   // digits are blank rather than extreme for the same reason - there is nobody
   // there to have no government.
   if (profile.population === 0) return 0;

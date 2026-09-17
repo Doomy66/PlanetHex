@@ -51,7 +51,7 @@ interface PickerWindow {
  * What each level's document is called on disk. AppSpec 4.1.1.
  *
  * JSON inside, but named for what it is: a folder of saves says at a glance
- * which file is the chart and which are the worlds, and a referee looking for
+ * which file is the subsector and which are the worlds, and a referee looking for
  * their subsector does not have to open three files called something.json to
  * find out which one it is.
  */

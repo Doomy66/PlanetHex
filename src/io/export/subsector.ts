@@ -7,16 +7,16 @@
  *
  * One line per system, in hex order, under the header the format is identified
  * by. The three columns a single planet had to leave blank - bases, zone and
- * stars - are filled from what the chart knows.
+ * stars - are filled from what the subsector knows.
  */
 
 import { newPlanet, type Planet } from "../../planet";
-import { starsOf, pbgOf, type ChartWorld, type Subsector } from "../../gen/subsector";
+import { starsOf, pbgOf, type SubsectorWorld, type Subsector } from "../../gen/subsector";
 import type { Sector } from "../../gen/sector";
 import { sectorHeader, worldLine } from "./sec";
 
-/** The planet a chart world stands for, which is what the line is written from. */
-function planetOf(world: ChartWorld): Planet {
+/** The planet a subsector world stands for, which is what the line is written from. */
+function planetOf(world: SubsectorWorld): Planet {
   return {
     ...newPlanet(world.seed),
     name: world.name,
@@ -25,7 +25,7 @@ function planetOf(world: ChartWorld): Planet {
   };
 }
 
-/** The chart as a sector file. */
+/** The subsector as a sector file. */
 export function subsectorFile(subsector: Subsector, sector = ""): string {
   const lines = subsector.worlds.map((world) =>
     worldLine(planetOf(world), {

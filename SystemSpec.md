@@ -1,6 +1,6 @@
 # PlanetHex Systems
 
-One star or several, the orbits around them, and the worlds in those orbits — the level between a hex on a chart and a planet with a surface.
+One star or several, the orbits around them, and the worlds in those orbits — the level between a hex on a subsector and a planet with a surface.
 
 This document sits under [SubSectorSpec.md](SubSectorSpec.md) and over [PlanetSpec.md](PlanetSpec.md), and [AppSpec.md](AppSpec.md) 1.1 places it among the four levels. It is numbered the same way, so the code can cite it. *The planet spec*, *the subsector spec*, and *the app spec* mean those three documents.
 
@@ -16,7 +16,7 @@ This document sits under [SubSectorSpec.md](SubSectorSpec.md) and over [PlanetSp
 8. [Display](#8-display)
 9. [System data and persistence](#9-system-data-and-persistence)
 10. [Exporting the system](#10-exporting-the-system)
-11. [What the chart reads](#11-what-the-chart-reads)
+11. [What the subsector reads](#11-what-the-subsector-reads)
 12. [Build order](#12-build-order)
 13. [Open questions](#13-open-questions)
 
@@ -24,43 +24,43 @@ This document sits under [SubSectorSpec.md](SubSectorSpec.md) and over [PlanetSp
 
 ## 1. Purpose
 
-1.1 A system is what one hex of a subsector chart holds: a primary star and perhaps a companion, a set of orbits around them, and whatever sits in those orbits — worlds, gas giants, and planetoid belts.
+1.1 A system is what one hex of a subsector map holds: a primary star and perhaps a companion, a set of orbits around them, and whatever sits in those orbits — worlds, gas giants, and planetoid belts.
 
-1.2 A system is a seed, a name, and whatever the user has typed over what was rolled. Nothing generated is stored, as the planet spec 1.3 has it for a surface and the subsector spec 1.2 for a chart.
+1.2 A system is a seed, a name, and whatever the user has typed over what was rolled. Nothing generated is stored, as the planet spec 1.3 has it for a surface and the subsector spec 1.2 for a subsector.
 
 1.3 Every world in a system is a planet of the planet spec, with its own seed and its own surface. The system decides how many worlds there are and where they sit; it does not generate terrain, and it never will.
 
-1.4 The level exists because the subsector spec 3.8.3 had nowhere to put a second world. A chart hex draws one world and two counts because that is what a sector line carries, not because that is all a system is.
+1.4 The level exists because the subsector spec 3.8.3 had nowhere to put a second world. A subsector hex draws one world and two counts because that is what a sector line carries, not because that is all a system is.
 
-1.5 **The main world is the system's face.** It is the world the chart draws, the world the sector line describes, and the world a user means when they name the system. Everything here is arranged so that the main world is exactly the world the levels above already believe in.
+1.5 **The main world is the system's face.** It is the world the subsector draws, the world the sector line describes, and the world a user means when they name the system. Everything here is arranged so that the main world is exactly the world the levels above already believe in.
 
 ### 1.6 What generates what
 
-1.6.1 The system reads its main world's **profile** and does not write it. The main world's UWP is `rollUwp(worldSeed)` untouched, as the subsector spec 1.3.1 requires, and the chart and the system show the same digits because neither of them changed any.
+1.6.1 The system reads its main world's **profile** and does not write it. The main world's UWP is `rollUwp(worldSeed)` untouched, as the subsector spec 1.3.1 requires, and the subsector and the system show the same digits because neither of them changed any.
 
-1.6.1.1 The profile is what the levels above have already committed to. It is on the chart, it is in the sector line, and a user who clicked a hex expecting an A-class port and a billion people has to find them.
+1.6.1.1 The profile is what the levels above have already committed to. It is on the subsector, it is in the sector line, and a user who clicked a hex expecting an A-class port and a billion people has to find them.
 
 1.6.2 The system does write a world's **settings** - its orbit, and what follows from its star. Those are the nullable fields of the planet spec 6.15, where null means the rolled value stands and a value means somebody overruled it. A system filling one in is somebody overruling it, on the same terms as a user typing in the box.
 
 1.6.2.1 So the star and its orbits are rolled in their own right, and the world is then placed in them and told where it ended up. This is the ordinary direction - generate the system, put the world in it - and it is available because the planet spec already built a world's settings to be overruled from outside.
 
-1.6.2.2 The two halves are what keep this coherent. The profile is read, so a world is the world the chart drew. The settings are written, so a world is in the system it is actually in. Nothing is generated twice, and no two levels hold an opinion about the same number.
+1.6.2.2 The two halves are what keep this coherent. The profile is read, so a world is the world the subsector drew. The settings are written, so a world is in the system it is actually in. Nothing is generated twice, and no two levels hold an opinion about the same number.
 
-1.6.3 The counts of belts and gas giants are likewise read rather than rolled: they come from `pbgFor` in [src/gen/trade.ts](src/gen/trade.ts), which the subsector spec 3.3.3 already puts on the chart and in the sector line. The system places exactly that many. PBG is the contract between the two levels, and this level honours it rather than restating it.
+1.6.3 The counts of belts and gas giants are likewise read rather than rolled: they come from `pbgFor` in [src/gen/trade.ts](src/gen/trade.ts), which the subsector spec 3.3.3 already puts on the subsector and in the sector line. The system places exactly that many. PBG is the contract between the two levels, and this level honours it rather than restating it.
 
-1.6.4 The one thing this level does generate for the levels above is the stars, which the subsector spec 3.7 puts in the Stars column. Section 11 says how the chart gets them without generating a whole system for each of eighty hexes.
+1.6.4 The one thing this level does generate for the levels above is the stars, which the subsector spec 3.7 puts in the Stars column. Section 11 says how the subsector gets them without generating a whole system for each of eighty hexes.
 
 ## 2. The star or stars
 
 2.1 The primary has a spectral class — O, B, A, F, G, K, or M — and a size, from supergiant down through the main sequence to white dwarf.
 
-2.2 The draw is weighted towards the small and the long-lived. Most of the sky is K and M dwarfs, and a chart where every third system is a blue giant is a chart nobody believes.
+2.2 The draw is weighted towards the small and the long-lived. Most of the sky is K and M dwarfs, and a subsector where every third system is a blue giant is a subsector nobody believes.
 
 2.2.1 An empty system gets the sky's own draw, which is near enough the real distribution and near enough Traveller's own table: both are mostly M and K. O and B are a trace rather than a fortieth. In Book 6 they cannot be rolled at all without the referee adding a modifier to reach them, and at a trace a sector of 1,280 hexes still holds a handful, which is what a landmark is for.
 
 2.2.2 A system with a settled world in it gets a different draw, leaning towards F, G and K. The sky is mostly red dwarfs and the Imperium is mostly not, because those are not the same question.
 
-2.2.2.1 The reason is in 3.2.2. A red dwarf's habitable orbit is a tenth of an AU out, inside the reach of its own tides, so the world in it is tidally locked with one face scorched and the other frozen, and the star flares across the lit one. Nobody put a class A starport and three billion people there while a G was going spare a parsec away. The systems a chart gives people to are the comfortable ones and the red dwarfs are the quiet hexes between them, which is a truer picture of a settled sector than an even draw and a better one to play in.
+2.2.2.1 The reason is in 3.2.2. A red dwarf's habitable orbit is a tenth of an AU out, inside the reach of its own tides, so the world in it is tidally locked with one face scorched and the other frozen, and the star flares across the lit one. Nobody put a class A starport and three billion people there while a G was going spare a parsec away. The systems a subsector gives people to are the comfortable ones and the red dwarfs are the quiet hexes between them, which is a truer picture of a settled sector than an even draw and a better one to play in.
 
 2.2.2.2 G and K lead it rather than F and A, because an F burns out in a couple of billion years and an A in a few hundred million, and the Imperium has been at this for longer than that.
 
@@ -68,7 +68,7 @@ This document sits under [SubSectorSpec.md](SubSectorSpec.md) and over [PlanetSp
 
 2.2.2.4 The size is leaned the same way, and very nearly always comes out the main sequence. A supergiant has a few million years to live and a white dwarf has already killed everything it had, so neither is where anybody builds a starport. A subgiant is allowed, being a star visibly on its way off the sequence and a good line for a referee to use.
 
-2.2.2.5 Read off the system's own seed and not handed in, so a star is still a function of the seed alone and the chart and the system cannot disagree about it. The profile read is the one the system's main world rolls for itself, before any lean the referee has put on the chart under the subsector spec 3.11: the star does not know about that, and a subsector turned up to teeming should not quietly reclass its suns.
+2.2.2.5 Read off the system's own seed and not handed in, so a star is still a function of the seed alone and the subsector and the system cannot disagree about it. The profile read is the one the system's main world rolls for itself, before any lean the referee has put on the subsector under the subsector spec 3.11: the star does not know about that, and a subsector turned up to teeming should not quietly reclass its suns.
 
 2.2.3 Two size and class pairs are not drawn at all, which is Traveller's blank columns, and it is right about both. There is no K or M subgiant, because a star that small takes longer to leave the main sequence than the universe has existed. There is no subdwarf hotter than an F. Either draw falls back to the main sequence.
 
@@ -102,7 +102,7 @@ This document sits under [SubSectorSpec.md](SubSectorSpec.md) and over [PlanetSp
 
 2.6.3 Stored as the Stars column writes it, and only where it differs from the roll. Rolled back to what it was, the override goes, which is the rule every override in this document follows.
 
-2.6.4 The chart above is told. The Stars column is the chart's, so a star changed here reaches the hex or the two levels describe one system differently.
+2.6.4 The subsector above is told. The Stars column is the subsector's, so a star changed here reaches the hex or the two levels describe one system differently.
 
 ## 3. Orbits
 
@@ -122,7 +122,7 @@ This document sits under [SubSectorSpec.md](SubSectorSpec.md) and over [PlanetSp
 
 3.1.5 How many orbits a system has is drawn, leaning on the primary's mass. With the ladder moving with the star, cutting it by what the star sweeps or lights would cut the same orbits off every star and say nothing at all. Real counts run from one to eight or more and follow the mass of the disc, which follows the mass of the star loosely and with enormous scatter, so the star leans on the draw rather than deciding it. The floor is set so that a system has the habitable orbit of 3.2 in it, whether or not anything is put there.
 
-3.1.6 A star with no room between the two limits of 3.1.4 still gets one orbit. The chart above has put a world in this hex and there has to be somewhere for it to go; it is somewhere nobody should be, and the figures say so.
+3.1.6 A star with no room between the two limits of 3.1.4 still gets one orbit. The subsector above has put a world in this hex and there has to be somewhere for it to go; it is somewhere nobody should be, and the figures say so.
 
 3.2 Each orbit has a distance, and from the primary's class and size comes a **habitable zone**: the orbit or two where a world could have liquid water and an atmosphere worth breathing. The band is Kopparapu's optimistic limits, a sunlight-equivalent 0.75 to 1.84 AU, which is recent Venus at one end and early Mars at the other - two places we know held liquid water, which is a better pair of bounds than a bare rock's freezing point.
 
@@ -144,7 +144,7 @@ This document sits under [SubSectorSpec.md](SubSectorSpec.md) and over [PlanetSp
 
 4.2.1 Except where there are not enough orbits to hold them. The counts were drawn from a seed under the planet spec 6.16.2 with nothing knowing what star they would have to fit around, and a star whose inner orbits are swept away or which reaches nowhere can have fewer orbits than the counts ask for. What fits is placed, and the system says how many that was.
 
-4.2.2 Placing what fits rather than stacking two gas giants in one orbit, and saying so rather than quietly amending the chart's figures. The disagreement is real: it is the price of 1.6.3, where the counts are read from a level that could not have known. A system that reported the amended figures would be the tail wagging the chart.
+4.2.2 Placing what fits rather than stacking two gas giants in one orbit, and saying so rather than quietly amending the subsector's figures. The disagreement is real: it is the price of 1.6.3, where the counts are read from a level that could not have known. A system that reported the amended figures would be the tail wagging the subsector.
 
 4.2.3 A gas giant has a size: a Jupiter or a Neptune, with a spread inside each, since no two are the same width. The difference is worth holding rather than drawing every giant the same, because 4.8 measures its jump shadow from it — the giant everybody refuels at is the one they then have to crawl away from, and how long that takes depends on which kind it is.
 
@@ -152,7 +152,7 @@ This document sits under [SubSectorSpec.md](SubSectorSpec.md) and over [PlanetSp
 
 4.3.1 So the belt count of 1.6.3 cannot be zero for such a system, and the belt people live in is one of the count rather than an extra on top of it. A system that reported a belt main world and no belts would be contradicting itself in the same line.
 
-4.3.2 The belt carries the profile, the seed and the main flag the world would have carried, and everything that reads a body's profile off an orbit finds it there too. Otherwise the same body is a world to the chart above and a rock to the system, which is exactly the disagreement 11.1 exists to prevent — and it showed up as one: the chart drew its scatter of rocks while the system drew a planet, for the same hex.
+4.3.2 The belt carries the profile, the seed and the main flag the world would have carried, and everything that reads a body's profile off an orbit finds it there too. Otherwise the same body is a world to the subsector above and a rock to the system, which is exactly the disagreement 11.1 exists to prevent — and it showed up as one: the subsector drew its scatter of rocks while the system drew a planet, for the same hex.
 
 4.3.3 It is drawn as a belt everywhere it is drawn, because that is what it is. It has no globe: a belt is not a sphere to photograph. It opens as a planet like anything else, since the planet view is where a profile is worked out in detail and a belt has a profile.
 
@@ -166,11 +166,11 @@ This document sits under [SubSectorSpec.md](SubSectorSpec.md) and over [PlanetSp
 
 4.6.2 Held down rather than rolled small. The physical digits are the moon's own seed's under 6.3, and a seed that rolls an Earth would otherwise put one in orbit around a gas giant. The size is brought to the limit and the air and water are brought down with it, since both are held by the gravity it no longer has.
 
-4.7 A system records its bases, and where they are. The chart draws a mark for a naval base or a scout way station; the system has to say which body they are at, because a base is somewhere and a referee arriving in a system wants to know which rock the navy is parked over.
+4.7 A system records its bases, and where they are. The subsector draws a mark for a naval base or a scout way station; the system has to say which body they are at, because a base is somewhere and a referee arriving in a system wants to know which rock the navy is parked over.
 
 4.7.1 They are at the main world. A naval base is a station in its orbit, a scout way station is a field on it or a tender beside it — neither is a body of its own, so neither takes an orbit, and both are marks on the world they belong to.
 
-4.7.2 Derived from the main world's seed by the same rule the chart derives it — the subsector spec 3.5 — rather than handed down. The chart and the system then agree without either telling the other, which is 11.1 again: what both levels can work out, neither owns.
+4.7.2 Derived from the main world's seed by the same rule the subsector derives it — the subsector spec 3.5 — rather than handed down. The subsector and the system then agree without either telling the other, which is 11.1 again: what both levels can work out, neither owns.
 
 4.7.3 What a port can carry is what limits it: naval at class A and B, scout at A through D. A base without a port to service it is a base nobody can reach.
 
@@ -210,7 +210,7 @@ This document sits under [SubSectorSpec.md](SubSectorSpec.md) and over [PlanetSp
 
 ## 5. The main world
 
-5.1 The main world's seed is derived from the system seed, and its profile is `rollUwp` of that seed, unmodified. Under the subsector spec 3.1.3 the chart derives the same seed from the same hex, so the chart and the system agree by construction rather than by being checked against each other.
+5.1 The main world's seed is derived from the system seed, and its profile is `rollUwp` of that seed, unmodified. Under the subsector spec 3.1.3 the subsector derives the same seed from the same hex, so the subsector and the system agree by construction rather than by being checked against each other.
 
 5.2 Its orbit is the best one the rolled star has for the profile it already has. A world with water and a breathable atmosphere goes in the habitable zone where there is one to be had; a hot, thin-aired rock goes inside it; an ice-bound one goes outside.
 
@@ -232,7 +232,7 @@ This document sits under [SubSectorSpec.md](SubSectorSpec.md) and over [PlanetSp
 
 5.2.4 Tide-locking needs nothing written. With the star and the orbit both in the save, the planet spec works out for itself how far tides have reached, and a world in the habitable zone of a red dwarf comes up locked because that is what the pair of figures says. Nothing else is set from the system either: tilt, craters, and the rest stay the planet's own.
 
-5.3 Which world of a system is the main world is not a question this level asks. It is the world the chart names, and the chart named it before the system existed.
+5.3 Which world of a system is the main world is not a question this level asks. It is the world the subsector names, and the subsector named it before the system existed.
 
 5.3.1 Traveller's own generation picks a main world by population, and a system generated from scratch would have to. Here the main world is given, and the rest of the system is built around it, so the question does not arise. This is 1.6.1 again, in the place it is most tempting to forget.
 
@@ -241,6 +241,8 @@ This document sits under [SubSectorSpec.md](SubSectorSpec.md) and over [PlanetSp
 6.1 Every orbit that is not the main world's, not a gas giant's, and not a belt's may hold another world. Each has its own seed, derived from the system seed and the orbit number.
 
 6.2 Another world is a planet of the planet spec. It has a surface, a globe, and a local panel, and it opens exactly as the main world does.
+
+6.2.1 Opening one says nothing about it. Its name is in the header and in the trail, how far out it sits was in the panel it was opened from and is in its own description, and a line repeating either is a line a reader learns to stop reading. The status line is for what the user cannot otherwise see.
 
 6.3 Its physical profile — size, atmosphere, and hydrographics — is `rollUwp` of its seed, adjusted for where it sits: a world far outside the habitable zone has no liquid water, one far inside has no atmosphere worth the name.
 
@@ -262,7 +264,7 @@ This document sits under [SubSectorSpec.md](SubSectorSpec.md) and over [PlanetSp
 
 6.6.1 A world generated in a system is not, field for field, what its bare seed alone would produce. Its orbit is written under 5.2.2, and a secondary world's social digits under 6.4. That is a departure from the subsector spec 1.3.1, and it is worth being plain about rather than left to be discovered.
 
-6.6.2 It is not a contradiction of it. Every field a system writes is a stored field of a planet that the user may type over anyway: a UWP under the planet spec 6.7, an orbit under 6.15. A value arriving from a system is that field arriving filled in, exactly as one arriving from a chart or from the user is. What a seed fixes is the surface given the settings, and that is as true here as anywhere.
+6.6.2 It is not a contradiction of it. Every field a system writes is a stored field of a planet that the user may type over anyway: a UWP under the planet spec 6.7, an orbit under 6.15. A value arriving from a system is that field arriving filled in, exactly as one arriving from a subsector or from the user is. What a seed fixes is the surface given the settings, and that is as true here as anywhere.
 
 6.6.2.1 Put the other way round: nothing a system writes is something the planet generator held an unshakeable opinion about. It writes into the boxes the planet spec 6.15 built for exactly this, where null means nobody has said and a value means somebody has.
 
@@ -270,7 +272,7 @@ This document sits under [SubSectorSpec.md](SubSectorSpec.md) and over [PlanetSp
 
 6.6.4 So a world reached through a system should be reached through its system. The route exists at every level under the app spec 6.1, the files of the app spec 4.2 sit in the system's folder for the same reason, and a world lifted out of one is a world that has been told to forget where it was.
 
-6.6.5 The main world is no exception now. 5.1 leaves its profile alone, which is what the chart needs, but 5.2.2 writes its orbit like any other world's. The main world differs from the others in its profile and in nothing else.
+6.6.5 The main world is no exception now. 5.1 leaves its profile alone, which is what the subsector needs, but 5.2.2 writes its orbit like any other world's. The main world differs from the others in its profile and in nothing else.
 
 ## 7. Names
 
@@ -288,19 +290,25 @@ This document sits under [SubSectorSpec.md](SubSectorSpec.md) and over [PlanetSp
 
 7.2.3 The main world is named this way too. It is the third orbit of its system before it is anything else, and the system name alone belongs to the system.
 
-7.3 A world with people on it takes a name of its own as well, drawn from the flavour machinery of the planet spec 6.24.6 with the system's own flavour, and the main world's is the one the chart gave it under the subsector spec 3.4. People name where they live; a numbered rock is a rock nobody stayed on.
+7.3 A world with people on it takes a name of its own as well, drawn from the flavour machinery of the planet spec 6.24.6 with the system's own flavour, and the main world's is the one the subsector gave it under the subsector spec 3.4. People name where they live; a numbered rock is a rock nobody stayed on.
 
 7.3.1 As well as, not instead of. The name is what the world is called and 7.2 is where it sits, and a referee needs both: the app spec 4.2.1.1 saves under the second, and everything a player sees uses the first. Where a body has a name of its own, the panel says what it is filed under beside it.
 
 7.3.2 The names of one system are one draw. The machinery picks a flavour and then makes as many names as are asked for without repeating itself, so a system's places sound like each other's neighbours and no two of them are called the same thing.
 
-7.3.3 The system's name is the first of that draw, and it is the main world's. A main world that has no name of its own lends none, and the system is still called that first name, because an empty rock is a place on a chart rather than somewhere with a name and the system has to be called something.
+7.3.3 The system's name is the first of that draw, and it is the main world's. A main world that has no name of its own lends none, and the system is still called that first name, because an empty rock is a place on a subsector rather than somewhere with a name and the system has to be called something.
 
 7.3.4 Not everywhere people live is named. A place is named by the people who stayed there, and a few dozen working a rock have often never bothered: it was Corrise-8b when they landed and nobody has called it anything else since. So the likelihood follows the population - a world with millions on it has been called something for centuries, an outpost of forty has a contract number - and the designation of 7.2 is what a place without a name of its own is called.
 
-7.3.4.1 A main world is the exception to the exception: it always has a name. It is the reason anybody came to the system, the system is called after it, and the chart above named it before the system was ever laid out. What a chart hands down is taken, since a world must not be called two things depending on which level is looking at it.
+7.3.4.1 A main world is the exception to the exception: it always has a name. It is the reason anybody came to the system, the system is called after it, and the subsector above named it before the system was ever laid out. What a subsector hands down is taken, since a world must not be called two things depending on which level is looking at it.
 
 7.3.4.2 This is why 7.2 is the naming and 7.3 is the exception rather than the other way round. Every body in a system has a designation and always did; a name is a thing that happened to some of them afterwards.
+
+7.3.5 Rename the system and every body designated after it is renamed with it, everywhere it is called that: on the tree, in the panel, and in the worlds the referee has already worked on and put down. A designation is the system's name and a number, so a system called something else has bodies called something else, and a world left behind under the old name would be the one place still saying it.
+
+7.3.5.1 Except what the referee named themselves. A name they typed is theirs and survives the rename, because they were naming that world and not spelling out the system's. What tells the two apart is whether a body is still called the designation the old system name gave it: a name that was only ever derived still matches it, and a chosen one does not.
+
+7.3.5.2 The main world goes with the system rather than with its designation, under 7.3.4.1: the two are one name said once, so renaming either renames the other.
 
 7.4 A gas giant is a planet and is designated as one. A belt says what it is: the system name, Belt, and its slot, so a belt in the fourth orbit is Sol Belt-4.
 
@@ -338,13 +346,19 @@ This document sits under [SubSectorSpec.md](SubSectorSpec.md) and over [PlanetSp
 
 8.4.1.4 No travel times. The panel of 4.9 is times from one body to another, and a star is neither somewhere a ship leaves from nor somewhere it arrives at.
 
-8.5 The main world is marked as the main world wherever it appears. 5.3 says the chart already decided, and a user coming down from the chart should see which one they came for.
+8.5 The main world is marked as the main world wherever it appears. 5.3 says the subsector already decided, and a user coming down from the subsector should see which one they came for.
 
-8.5.1 What the chart marks against a hex is marked here against the body it is actually about, which is the main world: the naval base's star, the scout station's triangle, and the travel zone's dashed ring. The same three marks the chart uses, so a referee who can read one can read the other.
+8.5.1 What the subsector marks against a hex is marked here against the body it is actually about, which is the main world: the naval base's star, the scout station's triangle, and the travel zone's dashed ring. The same three marks the subsector uses, so a referee who can read one can read the other.
 
-8.5.2 A chart has one hex to say them in and has to say them about the system. A system has the room to say which world the navy is parked over, and saying it is most of why somebody came down a level.
+8.5.2 A subsector has one hex to say them in and has to say them about the system. A system has the room to say which world the navy is parked over, and saying it is most of why somebody came down a level.
 
 8.6 A header carries the stars, the counts of 1.6.3, and the system's place — sector, subsector, hex — so the chain of the app spec 6.5 is visible from inside.
+
+8.7 The list of bodies down the left is one line to a body: its name, its profile, and what it is. The name is the part that gives way when there is not room for all three, because a profile and a kind are short, fixed, and say nothing half shown, while a name shortened is still a name that can be recognised.
+
+8.7.1 The edge of that list is dragged. A body is named after its system under 7.2, so a system with a long name has a column of long names, and a width chosen to suit the names the generator draws suits a referee's own by luck. How much room the list needs is a fact about what they called things, so it is theirs to set.
+
+8.7.2 Within limits: narrow enough to be a list, and never so wide that the model and the panel have been squeezed out to fit a name. The width is remembered between sessions, since it is a choice about the window rather than about any one system, and the lists at the levels above are the same list with the same edge.
 
 ## 9. System data and persistence
 
@@ -360,7 +374,7 @@ This document sits under [SubSectorSpec.md](SubSectorSpec.md) and over [PlanetSp
 | Main world profile | The UWP of 5.1, so the system stands alone under the app spec 4.8. |
 | Overrides | Per orbit, only where the user changed something. |
 
-9.2 A save holds no generated orbit, world, or surface. Load rebuilds the lot from the seed, as the planet spec 6.3 rebuilds a surface and the subsector spec 5.2 an eighty hex chart.
+9.2 A save holds no generated orbit, world, or surface. Load rebuilds the lot from the seed, as the planet spec 6.3 rebuilds a surface and the subsector spec 5.2 an eighty hex map.
 
 9.2.1 The settings a system writes into its worlds under 1.6.2 are not stored either, because the system that wrote them is rebuilt first and writes them again. They are stored in the one place they would otherwise be lost: a world's own planet file, when one is saved, where they go in as ordinary settings under the planet spec 6.15. That is 6.6.3 met by the file format rather than by a rule.
 
@@ -376,6 +390,14 @@ This document sits under [SubSectorSpec.md](SubSectorSpec.md) and over [PlanetSp
 
 9.6 Unsaved edits are tracked and warned about, under the app spec section 7.
 
+9.7 Where a system sits — sector, subsector, hex — is typed where nothing above has answered and shown where something has. A system rolled on its own takes all three, because nothing else knows. A system opened out of a subsector takes all three from the subsector and none of them can be edited here: the hex is which square of that subsector the system is in, and typing another would have moved it out from under the subsector holding it.
+
+9.7.1 The subsector is free text, on the same terms as the planet spec 6.14.2. The letter follows from the hex under 2.2.3 and what the subsector is *called* does not, so the field takes a name and offers the letter until somebody gives it one. Where a subsector handed the system down, the name is the subsector's own name, since they are one subsector named once.
+
+9.7.2 The header says both where there are both — "1910 (Regina, subsector C)" — because a referee reads the name and a subsector files the hex under the letter, and neither is the other's abbreviation.
+
+9.7.3 This is the same rule the levels above and below keep. A subsector in a sector takes its sector from the sector; a world in a system takes all three from the system, under the planet spec 6.14.4. Whichever level is the top of what is open owns where it is.
+
 ## 10. Exporting the system
 
 10.1 A system sheet: the stars, the orbits in order, and every world with its profile, as a readable document. The planet spec 6.19 writes one world up this way and this is the same idea a level out.
@@ -386,15 +408,15 @@ This document sits under [SubSectorSpec.md](SubSectorSpec.md) and over [PlanetSp
 
 10.4 No sector line. A system's line is its main world's, and the subsector spec section 6 writes it.
 
-## 11. What the chart reads
+## 11. What the subsector reads
 
-11.1 The chart of the subsector spec needs three things from this level for each of eighty hexes: the stars, and nothing else. The counts are already `pbgFor` under 1.6.3, and the main world is already `rollUwp` under 5.1.
+11.1 The subsector of the subsector spec needs three things from this level for each of eighty hexes: the stars, and nothing else. The counts are already `pbgFor` under 1.6.3, and the main world is already `rollUwp` under 5.1.
 
-11.2 So the star draw of section 2 is a function of the system seed and the main world's profile, separable from the rest of the generation and cheap enough to run eighty times. The chart calls that and stops; it does not lay out orbits it will never draw.
+11.2 So the star draw of section 2 is a function of the system seed and the main world's profile, separable from the rest of the generation and cheap enough to run eighty times. The subsector calls that and stops; it does not lay out orbits it will never draw.
 
-11.3 The subsector spec 3.7 describes the star draw as the chart's. It is this level's, and the chart reads it. The clause stands with that correction — the draw and the weighting it describes are the ones in section 2 here.
+11.3 The subsector spec 3.7 describes the star draw as the subsector's. It is this level's, and the subsector reads it. The clause stands with that correction — the draw and the weighting it describes are the ones in section 2 here.
 
-11.4 A hex's system is generated in full when the user opens it, and not before. Eighty full systems for a chart that draws one world each is work nobody asked for.
+11.4 A hex's system is generated in full when the user opens it, and not before. Eighty full systems for a subsector that draws one world each is work nobody asked for.
 
 ## 12. Build order
 
@@ -402,7 +424,7 @@ This document sits under [SubSectorSpec.md](SubSectorSpec.md) and over [PlanetSp
 
 12.2 **Orbits and filling them.** Sections 3 and 4, honouring the PBG contract of 1.6.3. Tested by generating a system and checking its belt and gas giant counts against `pbgFor` for the same seed.
 
-12.3 **The main world in its orbit.** Section 5, including the settings written back under 5.2.2. Tested by the two claims that matter: the profile the system shows equals `rollUwp(worldSeed)` and equals what the chart drew, and a world saved out of a system carries the orbit the system put it in.
+12.3 **The main world in its orbit.** Section 5, including the settings written back under 5.2.2. Tested by the two claims that matter: the profile the system shows equals `rollUwp(worldSeed)` and equals what the subsector drew, and a world saved out of a system carries the orbit the system put it in.
 
 12.4 **The other worlds.** Section 6, including the seam of 6.6 and the tests that pin it down.
 
@@ -416,7 +438,7 @@ This document sits under [SubSectorSpec.md](SubSectorSpec.md) and over [PlanetSp
 
 ## 13. Open questions
 
-13.1 **Satellites as main worlds.** Moons are worlds now, under 4.6.1, and a moon with people on it opens like anywhere else. What is still not done is making one *the* main world - the world the chart draws and the sector line describes - which would mean the hex's profile and its PBG coming from something in orbit around something else. The rest of this document reads the main world as a world of the primary throughout, and that is the work.
+13.1 **Satellites as main worlds.** Moons are worlds now, under 4.6.1, and a moon with people on it opens like anywhere else. What is still not done is making one *the* main world - the world the subsector draws and the sector line describes - which would mean the hex's profile and its PBG coming from something in orbit around something else. The rest of this document reads the main world as a world of the primary throughout, and that is the work.
 
 13.2 **Worlds in belts.** A belt is a count and a name. Whether individual rocks in one deserve to be places — the mining station, the hideout — is a question about points of interest more than about generation, and the planet spec 6.5 may already be the answer at the wrong scale.
 

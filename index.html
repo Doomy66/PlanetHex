@@ -104,7 +104,7 @@
     </section>
 
     <!-- The sector map. SectorSpec section 4: sixteen subsectors marked out on
-         one chart of 1,280 hexes, with what is in a hex on the right and the way
+         one subsector of 1,280 hexes, with what is in a hex on the right and the way
          down into a subsector on the left. -->
     <section id="sector-view" class="sector">
       <header class="system-head">
@@ -123,7 +123,7 @@
         <h2>Sector</h2>
         <dl id="sec-about" class="sys-facts"></dl>
 
-        <details class="chart-legend" id="sec-generation" open>
+        <details class="starmap-legend" id="sec-generation" open>
           <summary>Generation</summary>
           <div class="sub-settings">
             <label>Density
@@ -143,11 +143,18 @@
           </div>
         </details>
 
-        <details class="chart-legend" id="sec-subsectors" open>
+        <details class="starmap-legend" id="sec-subsectors" open>
           <summary>Subsectors</summary>
           <ul id="sec-list" class="sys-tree"></ul>
         </details>
       </aside>
+
+
+      <!-- The edge between the list and what it lists, dragged to give the list
+           more room. A name is as long as the referee made it, so how wide the
+           column has to be is theirs to say. -->
+      <div class="sys-grip" id="sec-grip" role="separator" aria-orientation="vertical"
+           tabindex="0" aria-label="Width of the sector panel" title="Drag to resize"></div>
 
       <div class="sec-map" id="sec-map"></div>
 
@@ -167,7 +174,7 @@
       </div>
     </section>
 
-    <!-- The subsector chart. SubSectorSpec section 4: the eighty hexes in the
+    <!-- The subsector map. SubSectorSpec section 4: the eighty hexes in the
          middle, what is in them down the left, and whatever hex is selected on
          the right. -->
     <section id="subsector-view" class="subsector">
@@ -194,7 +201,7 @@
              it is settled, and which way it leans. The letter is not among them:
              which of the sixteen this is comes from the sector it was opened
              out of, or from the seed it was rolled with. -->
-        <details class="chart-legend" id="sub-generation" open>
+        <details class="starmap-legend" id="sub-generation" open>
           <summary>Generation</summary>
           <div class="sub-settings">
           <label>Density
@@ -216,7 +223,7 @@
           </label>
           </div>
         </details>
-        <details class="chart-legend sub-worlds" id="sub-worlds" open>
+        <details class="starmap-legend sub-worlds" id="sub-worlds" open>
           <summary>Worlds</summary>
           <label class="sys-only">
             <input id="sub-inhabited" type="checkbox" />
@@ -230,9 +237,9 @@
         </details>
 
         <!-- What a save writes beside the document. SubSectorSpec 6.5. -->
-        <details class="chart-legend" id="sub-files">
+        <details class="starmap-legend" id="sub-files">
           <summary>Files to save</summary>
-          <ul class="chart-key sub-choices">
+          <ul class="starmap-key sub-choices">
             <li><label><input id="sub-want-sec" type="checkbox" checked /> Sector file, for a map</label></li>
             <li><label><input id="sub-want-png" type="checkbox" checked /> Subsector as a PNG</label></li>
             <li><label><input id="sub-want-svg" type="checkbox" /> Subsector as an SVG</label></li>
@@ -243,27 +250,34 @@
         </details>
 
         <!-- Foldable, because a key is read once and then known. -->
-        <details class="chart-legend" open>
+        <details class="starmap-legend" open>
           <summary>Key</summary>
-        <ul id="sub-key" class="chart-key">
-          <li><svg viewBox="0 0 16 16" aria-hidden="true"><circle class="chart-wet" cx="8" cy="8" r="6" /></svg>Water and air</li>
-          <li><svg viewBox="0 0 16 16" aria-hidden="true"><circle class="chart-dusty" cx="8" cy="8" r="6" /></svg>Dry, with air</li>
-          <li><svg viewBox="0 0 16 16" aria-hidden="true"><circle class="chart-airless" cx="8" cy="8" r="6" /></svg>Airless</li>
-          <li><svg viewBox="0 0 16 16" aria-hidden="true"><circle class="chart-empty" cx="8" cy="8" r="5.5" /></svg>Nobody there</li>
-          <li><svg viewBox="0 0 16 16" aria-hidden="true"><circle class="chart-rock" cx="4" cy="5" r="1.4" /><circle class="chart-rock" cx="9" cy="4" r="1.4" /><circle class="chart-rock" cx="6" cy="9" r="1.4" /><circle class="chart-rock" cx="11" cy="10" r="1.4" /></svg>Asteroid belt</li>
-          <li><svg viewBox="0 0 16 16" aria-hidden="true"><circle class="chart-wet" cx="8" cy="8" r="3" /><circle class="chart-wet" cx="8" cy="8" r="6" opacity="0.25" /></svg>Dot size is population</li>
-          <li><svg viewBox="0 0 16 16" aria-hidden="true"><polygon class="chart-naval" points="8,2 9.6,6.4 14,6.4 10.5,9.2 11.8,13.6 8,11 4.2,13.6 5.5,9.2 2,6.4 6.4,6.4" /></svg>Naval base</li>
-          <li><svg viewBox="0 0 16 16" aria-hidden="true"><polygon class="chart-scout" points="8,3 14,12.5 2,12.5" /></svg>Scout base</li>
-          <li><svg viewBox="0 0 16 16" aria-hidden="true"><circle class="chart-giant" cx="8" cy="8" r="3.2" /><ellipse class="chart-giant-ring" cx="8" cy="8" rx="6.4" ry="2" /></svg>Gas giant to skim</li>
-          <li><svg viewBox="0 0 16 16" aria-hidden="true"><circle class="chart-zone" cx="8" cy="8" r="6" /></svg>Amber zone</li>
-          <li><svg viewBox="0 0 16 16" aria-hidden="true"><line class="chart-xboat" x1="1" y1="8" x2="15" y2="8" /></svg>X-boat route</li>
-          <li><svg viewBox="0 0 16 16" aria-hidden="true"><line class="chart-route" x1="1" y1="8" x2="15" y2="8" /></svg>Trade route</li>
-          <li><svg viewBox="0 0 16 16" aria-hidden="true"><g class="chart-main chart-main-0"><rect x="1" y="3" width="14" height="10" rx="2" /></g></svg>A Main, jump-1 throughout</li>
+        <ul id="sub-key" class="starmap-key">
+          <li><svg viewBox="0 0 16 16" aria-hidden="true"><circle class="starmap-wet" cx="8" cy="8" r="6" /></svg>Water and air</li>
+          <li><svg viewBox="0 0 16 16" aria-hidden="true"><circle class="starmap-dusty" cx="8" cy="8" r="6" /></svg>Dry, with air</li>
+          <li><svg viewBox="0 0 16 16" aria-hidden="true"><circle class="starmap-airless" cx="8" cy="8" r="6" /></svg>Airless</li>
+          <li><svg viewBox="0 0 16 16" aria-hidden="true"><circle class="starmap-empty" cx="8" cy="8" r="5.5" /></svg>Nobody there</li>
+          <li><svg viewBox="0 0 16 16" aria-hidden="true"><circle class="starmap-rock" cx="4" cy="5" r="1.4" /><circle class="starmap-rock" cx="9" cy="4" r="1.4" /><circle class="starmap-rock" cx="6" cy="9" r="1.4" /><circle class="starmap-rock" cx="11" cy="10" r="1.4" /></svg>Asteroid belt</li>
+          <li><svg viewBox="0 0 16 16" aria-hidden="true"><circle class="starmap-wet" cx="8" cy="8" r="3" /><circle class="starmap-wet" cx="8" cy="8" r="6" opacity="0.25" /></svg>Dot size is population</li>
+          <li><svg viewBox="0 0 16 16" aria-hidden="true"><polygon class="starmap-naval" points="8,2 9.6,6.4 14,6.4 10.5,9.2 11.8,13.6 8,11 4.2,13.6 5.5,9.2 2,6.4 6.4,6.4" /></svg>Naval base</li>
+          <li><svg viewBox="0 0 16 16" aria-hidden="true"><polygon class="starmap-scout" points="8,3 14,12.5 2,12.5" /></svg>Scout base</li>
+          <li><svg viewBox="0 0 16 16" aria-hidden="true"><circle class="starmap-giant" cx="8" cy="8" r="3.2" /><ellipse class="starmap-giant-ring" cx="8" cy="8" rx="6.4" ry="2" /></svg>Gas giant to skim</li>
+          <li><svg viewBox="0 0 16 16" aria-hidden="true"><circle class="starmap-zone" cx="8" cy="8" r="6" /></svg>Amber zone</li>
+          <li><svg viewBox="0 0 16 16" aria-hidden="true"><line class="starmap-xboat" x1="1" y1="8" x2="15" y2="8" /></svg>X-boat route</li>
+          <li><svg viewBox="0 0 16 16" aria-hidden="true"><line class="starmap-route" x1="1" y1="8" x2="15" y2="8" /></svg>Trade route</li>
+          <li><svg viewBox="0 0 16 16" aria-hidden="true"><g class="starmap-main starmap-main-0"><rect x="1" y="3" width="14" height="10" rx="2" /></g></svg>A Main, jump-1 throughout</li>
         </ul>
         </details>
       </aside>
 
-      <div class="sub-chart" id="sub-chart"></div>
+
+      <!-- The edge between the list and what it lists, dragged to give the list
+           more room. A name is as long as the referee made it, so how wide the
+           column has to be is theirs to say. -->
+      <div class="sys-grip" id="sub-grip" role="separator" aria-orientation="vertical"
+           tabindex="0" aria-label="Width of the subsector panel" title="Drag to resize"></div>
+
+      <div class="sub-map" id="sub-map"></div>
 
       <aside class="sys-side">
         <!-- The world itself, turning, where there is room to look at it. -->
@@ -334,8 +348,11 @@
         <span id="sys-counts" class="sys-counts"></span>
         <span id="sys-dirty" class="dirty" hidden>unsaved</span>
         <span class="system-actions">
+          <!-- Where the system sits. Typed where nothing above has answered, and
+               shown and not asked for where a subsector has: SystemSpec 9.7. -->
           <label class="sys-where">Sector<input id="sys-sector" type="text" autocomplete="off" /></label>
-          <label class="sys-where">Hex<input id="sys-hex" type="text" autocomplete="off" placeholder="0000" maxlength="5" /></label>
+          <label class="sys-where">Subsector<input id="sys-subsector" type="text" autocomplete="off" /></label>
+          <label class="sys-where">Hex<input id="sys-hex" class="hexfield" type="text" autocomplete="off" placeholder="0000" maxlength="5" /></label>
           <!-- The star the system turns round. SystemSpec 2.6: change it and
                the orbits are laid out again, because a different star lights
                them differently. -->
@@ -362,6 +379,13 @@
         </label>
         <ul id="sys-tree" class="sys-tree"></ul>
       </aside>
+
+
+      <!-- The edge between the list and what it lists, dragged to give the list
+           more room. A name is as long as the referee made it, so how wide the
+           column has to be is theirs to say. -->
+      <div class="sys-grip" id="sys-grip" role="separator" aria-orientation="vertical"
+           tabindex="0" aria-label="Width of the bodies panel" title="Drag to resize"></div>
 
       <div class="sys-model" id="sys-model"></div>
 
@@ -440,8 +464,16 @@
         <details class="section" id="section-profile" open>
           <summary>Profile</summary>
           <div class="section-body">
+            <!-- Where the world sits, as the chain above reads it: the sector, which
+                 of the sixteen, and the hex. The subsector is worked out from the
+                 hex and never typed, spec 6.14.2, so it is shown and not asked
+                 for. A world handed down from a system takes all three from the
+                 system, which is why they lock: 6.14.4. -->
             <div class="row fields">
               <label class="grow">Sector<input id="p-sector" type="text" autocomplete="off" placeholder="Spinward Marches" /></label>
+            </div>
+            <div class="row fields">
+              <label class="grow">Subsector<input id="p-subsector" type="text" autocomplete="off" placeholder="Regina" /></label>
               <label>Hex<input id="p-hex" class="hexfield" type="text" autocomplete="off" inputmode="numeric" maxlength="5" placeholder="1910" /></label>
             </div>
             <div id="subsector" class="hint under"></div>

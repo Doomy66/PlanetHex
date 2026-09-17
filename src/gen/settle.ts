@@ -335,7 +335,7 @@ export const FLAVOURS: readonly Flavour[] = [
      * A world, rather than a town on one. SubSectorSpec 3.4.3.
      *
      * "Camp One" is a good name for the first camp on a world and a poor name
-     * for a world: there are eight functional words, so a chart whose region
+     * for a world: there are eight functional words, so a subsector whose region
      * named things this way had forty worlds drawing from eight names and the
      * same four turned up in every subsector of a sector. A world takes the
      * word after a name of its own - Vlanar Depot, Kadrin Station - which is
@@ -398,7 +398,7 @@ export function settlementNames(
  * The name of a world. SubSectorSpec 3.4.
  *
  * A world is not a settlement, and one flavour names the two differently. The
- * attempt shifts every draw at once, so a chart that finds it has drawn the same
+ * attempt shifts every draw at once, so a subsector that finds it has drawn the same
  * name twice can ask for another.
  */
 export function worldNameFor(seed: string, flavour: Flavour, attempt = 0): string {

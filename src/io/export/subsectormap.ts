@@ -1,21 +1,21 @@
 /**
- * The chart as a file. SubSectorSpec 6.2.
+ * The subsector map as a file. SubSectorSpec 6.2.
  *
  * The same eighty hexes the window draws, written as SVG text that stands on its
  * own: framed on the whole subsector rather than on wherever the user had
  * scrolled, and carrying its own styling, because a file that has to be paired
  * with a stylesheet is a file that will be opened without one.
  *
- * It shares the arithmetic of the panel's chart through chartlayout, so the two
+ * It shares the arithmetic of the panel's map through hexlayout, so the two
  * cannot drift apart, and duplicates only the colours. That duplication is the
  * price of a standalone file and it is the cheap half: a hex in the wrong place
- * would be a different chart, while a hex in the wrong blue is the same chart in
+ * would be a different map, while a hex in the wrong blue is the same map in
  * the wrong blue.
  */
 
 import {
   centreOf,
-  chartSize,
+  hexMapSize,
   dotFor,
   hexNumbers,
   hexPoints,
@@ -23,11 +23,11 @@ import {
   HEX_WIDE,
   MAIN_COLOURS,
   ZONE_R,
-} from "../../chartlayout";
-import { starsOf, type ChartWorld, type Subsector } from "../../gen/subsector";
+} from "../../hexlayout";
+import { starsOf, type SubsectorWorld, type Subsector } from "../../gen/subsector";
 
-/** What the exported chart is drawn in. The panel's own colours, on paper. */
-const CHART_STYLE = `
+/** What the exported map is drawn in. The panel's own colours, on paper. */
+const MAP_STYLE = `
   .bg { fill: #0a0c10; }
   .cell { fill: none; stroke: #39414d; stroke-width: 1; }
   .at { fill: #59636f; font-size: 11px; text-anchor: middle; }
@@ -73,7 +73,7 @@ function esc(text: string): string {
 }
 
 /** What colour a world is drawn, by what is on its surface. 4.2.2. */
-function worldClass(world: ChartWorld): string {
+function worldClass(world: SubsectorWorld): string {
   const { hydrographics, atmosphere, population } = world.profile;
   if (population === 0) return "empty";
   if (hydrographics > 0 && atmosphere >= 2 && atmosphere <= 9) return "wet";
@@ -93,13 +93,13 @@ function starPoints(cx: number, cy: number): string {
 }
 
 /**
- * The chart as standalone SVG. SubSectorSpec 6.2.
+ * The subsector map as standalone SVG. SubSectorSpec 6.2.
  *
  * Titled, because a file leaves the application and has to say what it is when
  * it turns up in somebody's downloads folder six months later.
  */
-export function chartSvg(subsector: Subsector, sector = "", showMains = true): string {
-  const { width, height } = chartSize();
+export function subsectorMapSvg(subsector: Subsector, sector = "", showMains = true): string {
+  const { width, height } = hexMapSize();
   const head = 74;
   const first = subsector.worlds[0]?.hex;
   const numbers = hexNumbers(first?.col ?? 1, first?.row ?? 1);
@@ -112,7 +112,7 @@ export function chartSvg(subsector: Subsector, sector = "", showMains = true): s
 
   const out: string[] = [
     `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${width} ${height + head}" width="${width}" height="${height + head}">`,
-    `<style>${CHART_STYLE}</style>`,
+    `<style>${MAP_STYLE}</style>`,
     tag("rect", { class: "bg", x: 0, y: 0, width, height: height + head }),
     tag(
       "text",
@@ -172,7 +172,7 @@ export function chartSvg(subsector: Subsector, sector = "", showMains = true): s
 const PAD_LEFT = 24;
 
 /** One world and its marks, in the arrangement 4.2 lays out. */
-function worldMarks(world: ChartWorld, where: { x: number; y: number }): string[] {
+function worldMarks(world: SubsectorWorld, where: { x: number; y: number }): string[] {
   const { x, y } = where;
   const out: string[] = [];
   if (world.zone !== "") {
@@ -233,7 +233,7 @@ function worldMarks(world: ChartWorld, where: { x: number; y: number }): string[
   return out;
 }
 
-/* The chart as a table. SubSectorSpec 6.3 -------------------------------- */
+/* The subsector as a table. SubSectorSpec 6.3 -------------------------------- */
 
 const COLUMNS = [
   "hex",
@@ -260,7 +260,7 @@ const COLUMNS = [
 ] as const;
 
 /**
- * The chart as a CSV. SubSectorSpec 6.3.
+ * The subsector as a CSV. SubSectorSpec 6.3.
  *
  * Every derived figure in its own column, which the sector file cannot do: that
  * format packs seven digits into one field because a map reads it, and a
@@ -310,7 +310,7 @@ function field(value: string): string {
   return /[",\r\n]/.test(value) ? `"${value.replace(/"/g, '""')}"` : value;
 }
 
-/* The chart as a document. SubSectorSpec 6.4 ----------------------------- */
+/* The subsector as a document. SubSectorSpec 6.4 ----------------------------- */
 
 /** What the HTML sheet is styled in, so it prints and hands over as it is. */
 const SHEET_STYLE = `
@@ -393,21 +393,21 @@ export function subsectorSheetHtml(
   return out.join("\n");
 }
 
-function basesWords(world: ChartWorld): string {
+function basesWords(world: SubsectorWorld): string {
   if (world.bases === "A") return "naval and scout bases";
   if (world.bases === "N") return "a naval base";
   if (world.bases === "S") return "a scout base";
   return "no bases";
 }
 
-function zoneWords(world: ChartWorld): string {
+function zoneWords(world: SubsectorWorld): string {
   if (world.zone === "A") return "amber zone";
   if (world.zone === "R") return "red zone";
   return "green";
 }
 
 /** What one world gets said about it on the sheet. */
-function worldLines(world: ChartWorld, note: string): string[] {
+function worldLines(world: SubsectorWorld, note: string): string[] {
   const p = world.profile;
   const bases = basesWords(world);
   const zone = zoneWords(world);

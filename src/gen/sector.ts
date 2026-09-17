@@ -28,21 +28,21 @@ import {
   mainsIn,
   routesBetween,
   DEFAULT_DENSITY,
-  type ChartWorld,
+  type SubsectorWorld,
   type Density,
   type Main,
   type Route,
   type Subsector,
 } from "./subsector";
 
-/** The sixteen letters, A to P, in the order the chart lays them out. */
+/** The sixteen letters, A to P, in the order the subsector lays them out. */
 export const SECTOR_SUBSECTORS = SUBSECTOR_LETTERS.split("");
 
 /**
  * The seed of one subsector of a sector. SectorSpec 3.1.
  *
  * Derived from the sector's seed and the letter, so a sector is a seed and
- * nothing else: sixteen charts, each of eighty hexes, all of it reachable from
+ * nothing else: sixteen subsectors, each of eighty hexes, all of it reachable from
  * one word. The letter rather than the position, because the letter is what a
  * referee says and what the document stores.
  */
@@ -54,10 +54,10 @@ export interface Sector {
   readonly seed: string;
   readonly density: Density;
   readonly shifts: UwpShifts;
-  /** The sixteen charts, in letter order. */
+  /** The sixteen subsectors, in letter order. */
   readonly subsectors: readonly Subsector[];
   /** Every world in the sector, in hex order. */
-  readonly worlds: readonly ChartWorld[];
+  readonly worlds: readonly SubsectorWorld[];
   /**
    * The routes across the whole sector. SectorSpec 3.3: a route between two
    * worlds either side of a subsector's edge is a route, and only this level can
@@ -74,7 +74,7 @@ export const SECTOR_HEXES = SECTOR_COLS * SECTOR_ROWS;
 /**
  * A whole sector. SectorSpec section 3.
  *
- * Sixteen charts generated the way one chart is generated - bar any the referee
+ * Sixteen subsectors generated the way one subsector is generated - bar any the referee
  * has worked on, which are handed in and used as they stand - and then the two
  * things that are only true across all of them worked out again over the lot.
  * The routes and Mains a subsector knows about are its own, and a subsector
@@ -88,7 +88,7 @@ export function generateSector(
 ): Sector {
   const subsectors = SECTOR_SUBSECTORS.map(
     (letter) =>
-      // A chart the referee has worked on is that chart, not the one the sector
+      // A subsector the referee has worked on is that subsector, not the one the sector
       // would roll for the letter. A density they changed, a hex they turned on
       // and a world they renamed are all facts about the sector, and the routes
       // and Mains below are worked out over what is actually there rather than
@@ -113,10 +113,10 @@ export function generateSector(
 }
 
 /**
- * How far past its own edge a chart looks. SectorSpec 4.5.
+ * How far past its own edge a subsector looks. SectorSpec 4.5.
  *
  * Two hexes, which is exactly as far as a route reaches: every route that
- * crosses the edge has its far end inside the border, so a chart never draws a
+ * crosses the edge has its far end inside the border, so a subsector never draws a
  * line running off to somewhere it is not showing.
  */
 export const BORDER_REACH = 2;
@@ -125,7 +125,7 @@ export const BORDER_REACH = 2;
  * What lies just outside one subsector of a sector. SectorSpec 4.5.
  *
  * The worlds within two hexes of its edge, and the routes with one end inside
- * it and one end out. A chart drawn without them says a subsector's edge is the
+ * it and one end out. A subsector drawn without them says a subsector's edge is the
  * edge of the universe, which is the one thing about a subsector that is never
  * true - it is a square drawn on a sector, and its neighbours are right there.
  */
@@ -133,18 +133,18 @@ export function aroundSubsector(
   sector: Sector,
   letter: string,
   reach = BORDER_REACH,
-): { worlds: ChartWorld[]; routes: Route[] } {
+): { worlds: SubsectorWorld[]; routes: Route[] } {
   const want = letter.toUpperCase();
   const inside = new Set(
     sector.worlds.filter((world) => subsectorLetter(world.hex) === want).map((world) => world.at),
   );
   const hexes = subsectorHexes(want);
-  const near = (world: ChartWorld) =>
+  const near = (world: SubsectorWorld) =>
     hexes.some((hex) => hexDistance(hex, world.hex) <= reach);
 
   const worlds = sector.worlds.filter((world) => !inside.has(world.at) && near(world));
   const shown = new Set(worlds.map((world) => world.at));
-  // A route counts as crossing when one end is in the chart and the other is in
+  // A route counts as crossing when one end is in the subsector and the other is in
   // the border being drawn. One that leaves the border as well is a route to
   // somewhere off the page, and drawing half of it would say less than nothing.
   const routes = sector.routes.filter((route) => {

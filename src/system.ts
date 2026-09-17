@@ -6,7 +6,7 @@
  * from the seed, as the planet spec 6.3 rebuilds a surface.
  *
  * The one generated figure the document does carry is the main world's profile,
- * under 9.1. It is what the chart above committed to and what a user clicking a
+ * under 9.1. It is what the subsector above committed to and what a user clicking a
  * hex has to find, so it is written down rather than left to be derived again by
  * a generator that may since have changed its mind.
  */
@@ -39,6 +39,12 @@ export interface SystemDoc {
   name: string;
   /** Where the system sits, in the terms of the subsector spec 2.2. */
   sector: string;
+  /**
+   * Which subsector of it, free text. The letter follows from the hex under
+   * 2.2.3, but what the sixteen are called does not, and a system on a referee's
+   * own map may sit in a named subsector and no numbered hex at all.
+   */
+  subsector: string;
   hex: string;
   seed: string;
   /** The profile of 5.1, written down so the document stands alone. */
@@ -68,6 +74,7 @@ export function newSystemDoc(seed: string, name: string): SystemDoc {
     version: 1,
     name,
     sector: "",
+    subsector: "",
     hex: "",
     seed,
     mainWorldUwp: rollUwp(mainWorldSeed(seed)),
@@ -95,7 +102,7 @@ export function keepWorld(doc: SystemDoc, planet: Planet): void {
 }
 
 /** The subsector letter its hex falls in, or "" where the hex is not a square. */
-export function subsectorOf(doc: SystemDoc): string {
+export function subsectorLetterOf(doc: SystemDoc): string {
   const hex = parseSectorHex(doc.hex);
   return hex === null ? "" : subsectorLetter(hex);
 }
@@ -185,6 +192,9 @@ export function parseSystemDoc(text: string): SystemDoc {
     version: 1,
     name: typeof r["name"] === "string" ? r["name"] : "Unnamed",
     sector: typeof r["sector"] === "string" ? r["sector"] : "",
+    // A save written before the subsector was a field of its own has none, and
+    // the letter still follows from the hex, so nothing stored has been lost.
+    subsector: typeof r["subsector"] === "string" ? r["subsector"] : "",
     hex: typeof r["hex"] === "string" ? r["hex"] : "",
     seed,
     mainWorldUwp:

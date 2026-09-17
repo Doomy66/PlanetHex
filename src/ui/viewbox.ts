@@ -4,7 +4,7 @@
  *
  * Two maps want the same thing: fill the panel, go in and out on a wheel, move
  * on a drag, and never let the drawing be lost off the edge. The arithmetic is
- * the same for both and lives here, so a chart and a sector map cannot disagree
+ * the same for both and lives here, so a subsector and a sector map cannot disagree
  * about what zooming means.
  *
  * The view's height is what the zoom sets; the width follows from the panel's

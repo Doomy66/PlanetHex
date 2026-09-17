@@ -151,7 +151,7 @@ cheatsheet — is third party and held for private use only. It sits in
 `Examples/`, which is excluded from the repository.
 
 [SubSectorSpec.md](SubSectorSpec.md) is its companion, numbered the same way, for the
-eighty hex chart a world sits on and the systems that fill it.
+eighty hex map a world sits on and the systems that fill it.
 [SystemSpec.md](SystemSpec.md) sits between the two: one star system, its orbits, and
 the worlds in them.
 [AppSpec.md](AppSpec.md) is the shell above all three: the landing page, the four levels a

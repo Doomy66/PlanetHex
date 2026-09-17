@@ -56,8 +56,8 @@ describe("starsFor", () => {
   });
 
   it("leaves an empty system the sky's own star", () => {
-    // SystemSpec 2.2: most of the sky is K and M dwarfs, and a chart where every
-    // third system is a blue giant is a chart nobody believes.
+    // SystemSpec 2.2: most of the sky is K and M dwarfs, and a subsector where every
+    // third system is a blue giant is a subsector nobody believes.
     expect(EMPTY.length).toBeGreaterThan(50);
     expect(shareOf(EMPTY, ["M"])).toBeGreaterThan(0.4);
     expect(shareOf(EMPTY, ["M", "K"])).toBeGreaterThan(0.7);
