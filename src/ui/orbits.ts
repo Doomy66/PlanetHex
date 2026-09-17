@@ -1,6 +1,7 @@
 import type { Moon, Orbit, StarSystem } from "../gen/system";
 import { basesLabel, hasNaval, hasScout, zoneLabel } from "../gen/base";
-import type { SpectralClass, Star } from "../gen/star";
+import { starLabel, starsLabel, type SpectralClass, type Star } from "../gen/star";
+import { STAR_PICKED } from "./orbitmap";
 
 /**
  * The orbit diagram. SystemSpec section 8.
@@ -133,14 +134,18 @@ export function createOrbitDiagram(): OrbitDiagram {
   function drawSelection(): void {
     selectLayer.replaceChildren();
     if (selected === null) return;
+    // The star sits at the head of the axis rather than at an orbit's slot, so
+    // it is the one selection whose place is not read off xOf. SystemSpec 8.4.1.
+    const star = selected === STAR_PICKED;
     selectLayer.append(
       make("circle", {
         class: "orbit-select",
-        cx: xOf(selected),
+        cx: star ? STAR_X : xOf(selected),
         cy: AXIS_Y,
-        r: 28,
+        r: star ? (shown === null ? 28 : radiusOf(shown.stars.primary) + 10) : 28,
       }),
     );
+    if (star) return;
     // A moon selected anywhere is marked here too, so the three views agree
     // about which body is being looked at rather than only which orbit.
     if (selectedMoon === null) return;
@@ -206,27 +211,60 @@ export function createOrbitDiagram(): OrbitDiagram {
   function drawStars(system: StarSystem): void {
     const { primary, companion, companionOrbit } = system.stars;
     axisLayer.append(
-      make("circle", {
-        class: "orbit-star",
-        cx: STAR_X,
-        cy: AXIS_Y,
-        r: radiusOf(primary),
-        fill: STAR_COLOUR[primary.spectral],
-      }),
+      starMark(
+        STAR_X,
+        AXIS_Y,
+        radiusOf(primary),
+        STAR_COLOUR[primary.spectral],
+        "orbit-star",
+        starsLabel(system.stars),
+      ),
     );
     if (companion === null) return;
     // Inside every orbit or outside all of them, which is the only arrangement
     // SystemSpec 2.4 allows and the reason this diagram has one axis.
     const close = companionOrbit === "close";
     axisLayer.append(
-      make("circle", {
-        class: "orbit-star orbit-companion",
-        cx: close ? STAR_X + radiusOf(primary) + 14 : (placed.at(-1)?.x ?? STAR_X) + 34,
-        cy: close ? AXIS_Y - radiusOf(primary) - 10 : AXIS_Y,
-        r: radiusOf(companion),
-        fill: STAR_COLOUR[companion.spectral],
-      }),
+      starMark(
+        close ? STAR_X + radiusOf(primary) + 14 : (placed.at(-1)?.x ?? STAR_X) + 34,
+        close ? AXIS_Y - radiusOf(primary) - 10 : AXIS_Y,
+        radiusOf(companion),
+        STAR_COLOUR[companion.spectral],
+        "orbit-star orbit-companion",
+        `${starLabel(companion)}, the ${close ? "close" : "far"} companion`,
+      ),
     );
+  }
+
+  /**
+   * One star, as something that can be picked. SystemSpec 8.4.1: the star reports
+   * the same selection here as it does on the map, so a reader who clicks the
+   * one at this end of the strip gets what they would have got there.
+   */
+  function starMark(
+    cx: number,
+    cy: number,
+    r: number,
+    fill: string,
+    className: string,
+    label: string,
+  ): SVGGElement {
+    const group = make("g", { class: "orbit orbit-star-pick", tabindex: 0 });
+    group.setAttribute("role", "button");
+    const title = make("title");
+    title.textContent = label;
+    group.append(title);
+    group.append(make("circle", { class: className, cx, cy, r, fill }));
+    const pick = () => {
+      for (const handler of handlers) handler(STAR_PICKED);
+    };
+    group.addEventListener("click", pick);
+    group.addEventListener("keydown", (event) => {
+      if (event.key !== "Enter" && event.key !== " ") return;
+      event.preventDefault();
+      pick();
+    });
+    return group;
   }
 
   function drawOrbit(orbit: Orbit, x: number): void {

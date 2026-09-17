@@ -2,7 +2,7 @@ import type { Orbit, StarSystem } from "../gen/system";
 import { angleOf as placeOf, starShadowAu } from "../gen/system";
 import { jumpShadowKm, kmToAu } from "../gen/jump";
 import { valueFor } from "../gen/rng";
-import type { SpectralClass } from "../gen/star";
+import { starLabel, starsLabel, type SpectralClass } from "../gen/star";
 
 /**
  * The system seen from outside: the star at the middle, the orbits as the paths
@@ -72,6 +72,16 @@ function make<K extends keyof SVGElementTagNameMap>(
 }
 
 const radians = (degrees: number): number => (degrees * Math.PI) / 180;
+
+/**
+ * What `onSelect` reports when the star at the middle is picked. SystemSpec 8.4.1.2.
+ *
+ * The star is not an orbit and never will be, so it needs a number that cannot
+ * be one. Minus one rather than a second callback, because everything that
+ * follows a selection - the panel, the strip, the highlight - already takes an
+ * orbit number and passing it one keeps all three in step for free.
+ */
+export const STAR_PICKED = -1;
 
 export interface OrbitMap {
   readonly element: SVGSVGElement;
@@ -339,14 +349,12 @@ export function createOrbitMap(): OrbitMap {
 
   function drawStars(system: StarSystem): void {
     const { primary, companion, companionOrbit } = system.stars;
+    const r = 26 * onPage();
+    // Where the highlight goes, and it is registered under the same map the
+    // bodies use so drawSelection needs to know nothing about stars.
+    places.set(STAR_PICKED, { x: CENTRE, y: CENTRE, r });
     bodyLayer.append(
-      make("circle", {
-        class: "map-star",
-        cx: CENTRE,
-        cy: CENTRE,
-        r: 26 * onPage(),
-        fill: STAR_COLOUR[primary.spectral],
-      }),
+      starGroup(CENTRE, CENTRE, r, STAR_COLOUR[primary.spectral], starsLabel(system.stars)),
     );
     if (companion === null) return;
     // A close companion rides beside the primary; a far one sits outside every
@@ -356,14 +364,53 @@ export function createOrbitMap(): OrbitMap {
       ? { x: CENTRE + 42 * onPage(), y: CENTRE }
       : pointOn(CENTRE * RING.furthest * 1.06, radians(view.spinDeg) + Math.PI * 1.5);
     bodyLayer.append(
-      make("circle", {
-        class: "map-star",
-        cx: at.x,
-        cy: at.y,
-        r: (close ? 16 : 20) * onPage(),
-        fill: STAR_COLOUR[companion.spectral],
-      }),
+      starGroup(
+        at.x,
+        at.y,
+        (close ? 16 : 20) * onPage(),
+        STAR_COLOUR[companion.spectral],
+        `${starLabel(companion)}, the ${close ? "close" : "far"} companion`,
+      ),
     );
+  }
+
+  /**
+   * One star, as something that can be clicked. SystemSpec 8.4.1.
+   *
+   * The companion picks out the same thing the primary does: what opens is the
+   * panel about the system's stars, and there is one of those however many
+   * stars there are.
+   */
+  function starGroup(
+    x: number,
+    y: number,
+    r: number,
+    fill: string,
+    label: string,
+  ): SVGGElement {
+    const group = make("g", { class: "map-body map-star-pick", tabindex: 0 });
+    group.setAttribute("role", "button");
+    const title = make("title");
+    title.textContent = label;
+    group.append(title);
+    group.append(
+      make("circle", { class: "map-hit", cx: x, cy: y, r: Math.max(r + 10 * onPage(), r) }),
+    );
+    group.append(make("circle", { class: "map-star", cx: x, cy: y, r, fill }));
+    const pick = () => {
+      if (dragged) {
+        dragged = false;
+        return;
+      }
+      for (const handler of handlers) handler(STAR_PICKED);
+    };
+    group.addEventListener("click", pick);
+    group.addEventListener("keydown", (event) => {
+      if (event.key !== "Enter" && event.key !== " ") return;
+      event.preventDefault();
+      pick();
+    });
+    return group;
   }
 
   function drawBody(system: StarSystem, orbit: Orbit): void {

@@ -99,13 +99,14 @@ import { shaderFor, surfaceOn } from "./surface";
 import { currentAppView, landingSay, setAppView, wireLanding } from "./ui/landing";
 import { auLabel, contentLabel, createOrbitDiagram } from "./ui/orbits";
 import {
+  diameterKm as starDiameterKm,
   parseStar,
   starLabel,
   starsFor,
   SPECTRAL_CLASSES,
   STAR_SIZES,
 } from "./gen/star";
-import { createOrbitMap } from "./ui/orbitmap";
+import { createOrbitMap, STAR_PICKED } from "./ui/orbitmap";
 import { createChart } from "./ui/chart";
 import { createSectorMap } from "./ui/sectormap";
 import { APP_VERSION, RELEASE_NOTES, suggestionLink } from "./version";
@@ -2226,10 +2227,14 @@ function confirmSystemDiscard(action: string): boolean {
   return confirm(`${doc.name || "This system"} has unsaved changes. ${action} and lose them?`);
 }
 
-/** The panel for one orbit. SystemSpec 8.4. */
+/** The panel for one orbit, or for the star at the middle. SystemSpec 8.4. */
 function showOrbit(index: number | null): void {
   const open = el<HTMLButtonElement>("sys-open");
-  el<HTMLButtonElement>("sys-travel").hidden = index === null;
+  // Travel times are from one body to another, and the star is neither an
+  // origin anybody leaves from nor a destination anybody arrives at.
+  const star = index === STAR_PICKED;
+  el<HTMLButtonElement>("sys-travel").hidden = index === null || star;
+  if (star) el("sys-travel-panel").hidden = true;
   showTravel();
   const facts = el("sys-facts");
   const written = el<HTMLTextAreaElement>("sys-written");
@@ -2245,8 +2250,6 @@ function showOrbit(index: number | null): void {
     el("sys-what").textContent = "Select an orbit";
     return;
   }
-  const orbit = system.orbits.find((held) => held.index === index);
-  if (orbit === undefined) return;
 
   const row = (term: string, value: string) => {
     const dt = document.createElement("dt");
@@ -2255,6 +2258,14 @@ function showOrbit(index: number | null): void {
     dd.textContent = value;
     facts.append(dt, dd);
   };
+
+  if (star) {
+    showStarPanel(system, row);
+    return;
+  }
+
+  const orbit = system.orbits.find((held) => held.index === index);
+  if (orbit === undefined) return;
 
   const content = orbit.content;
   const what = contentLabel(orbit);
@@ -2782,6 +2793,92 @@ async function loadSystem(): Promise<void> {
  * world that opens is the world the system made rather than one that happens to
  * share its seed.
  */
+/**
+ * The panel for the star at the middle. SystemSpec 8.4.1.
+ *
+ * The figures that are about the whole system rather than about one orbit, and
+ * this is where they belong: the star is what they are all facts about. They
+ * were a block of summary rows above the body list once, which is a place a
+ * reader has to ignore rather than a place they go to look something up.
+ */
+function showStarPanel(open: StarSystem, row: (term: string, value: string) => void): void {
+  const { primary, companion, companionOrbit } = open.stars;
+  const pair = companion !== null;
+  el("sys-what").textContent = `${starsLabel(open.stars)} — ${pair ? "the stars" : "the star"}`;
+
+  row("Class", pair ? `${starLabel(primary)} and ${starLabel(companion)}` : starLabel(primary));
+  // What the orbits are lit by, which is both where the companion is inside
+  // them all. SystemSpec 2.4.2.
+  row("Light", `${lightNote(primary.luminosity)} the Sun's`);
+  if (pair && companionOrbit === "close") {
+    row("Together", `${lightNote(primary.luminosity + companion.luminosity)} the Sun's`);
+  }
+  row("Diameter", kmLabel(starDiameterKm(primary)));
+
+  // SystemSpec 4.8: how far out a ship has to be before it can jump, and how far
+  // in an arriving one comes out.
+  const shadowAu = starShadowAu(open);
+  const shadowKm = auToKm(shadowAu);
+  // One figure, because kmLabel gives AU once a distance is big enough to want
+  // them and a star's shadow always is. Two readings of it side by side round
+  // differently and read as a mistake.
+  row("Jump shadow", kmLabel(shadowKm));
+  row("Crossing it", crossingLabel(hoursAt1g(shadowKm)));
+  const inside = open.orbits.filter((orbit) => orbit.au < shadowAu).length;
+  if (inside > 0) {
+    row("Orbits inside it", inside === 1 ? "one, which cannot jump" : `${inside}, none of which can jump`);
+  }
+
+  // SystemSpec 3.2, and the one figure a referee reads a system's whole shape off.
+  const zone = open.orbits.filter((orbit) => orbit.habitable);
+  row(
+    "Habitable zone",
+    zone.length === 0
+      ? "none of its orbits"
+      : `${auLabel(zone[0]!.au)} to ${auLabel(zone[zone.length - 1]!.au)}`,
+  );
+
+  row("Orbits", String(open.orbits.length));
+  row("Worlds", String(worldsOf(open).length));
+  if (open.placed.belts > 0) row("Belts", String(open.placed.belts));
+  if (open.placed.gasGiants > 0) row("Gas giants", String(open.placed.gasGiants));
+  if (open.bases.letter !== "") row("Bases", basesLabel(open.bases.letter));
+  if (doc !== null) row("Seed", doc.seed);
+
+  el("sys-note").textContent = starNote(open);
+}
+
+/** A star's output, said the way a reader can hold it. */
+function lightNote(luminosity: number): string {
+  if (luminosity >= 100) return `${Math.round(luminosity).toLocaleString("en-GB")}×`;
+  if (luminosity >= 1) return `${luminosity.toFixed(luminosity >= 10 ? 0 : 2)}×`;
+  if (luminosity >= 0.01) return `${luminosity.toFixed(3)}×`;
+  return `${luminosity.toExponential(1)}×`;
+}
+
+/** A sentence about the star, in the terms the rest of the system is read in. */
+function starNote(open: StarSystem): string {
+  const { primary, companion, companionOrbit } = open.stars;
+  const zone = open.orbits.filter((orbit) => orbit.habitable);
+  const held = zone.filter((orbit) => orbit.content.kind === "world").length;
+  const parts = [
+    `${starLabel(primary)}, ${kmLabel(starDiameterKm(primary))} across.`,
+    zone.length === 0
+      ? "Nothing it has is in reach of liquid water."
+      : held > 0
+        ? `Its habitable zone is ${auLabel(zone[0]!.au)} out and there is a world in it.`
+        : `Its habitable zone is ${auLabel(zone[0]!.au)} out and empty.`,
+  ];
+  if (companion !== null) {
+    parts.push(
+      companionOrbit === "close"
+        ? `A ${starLabel(companion)} rides with it inside every orbit, so both suns are in every sky here and the light of both is what the orbits are laid out on.`
+        : `A ${starLabel(companion)} lies outside every orbit: a bright star in the night rather than a second sun.`,
+    );
+  }
+  return parts.join(" ");
+}
+
 /**
  * What the system holds, down the left: every orbit in order, and a gas giant's
  * moons under it. The one place a moon can be found without knowing which giant

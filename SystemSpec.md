@@ -328,6 +328,16 @@ This document sits under [SubSectorSpec.md](SubSectorSpec.md) and over [PlanetSp
 
 8.4 Selecting an orbit fills a panel: for a world, its profile digit by digit as the planet spec 6.7 shows it, its trade classifications, its seed, and the button that opens it as a planet; for a belt or a gas giant, what there is to say.
 
+8.4.1 The star can be selected too, on the model and at the head of the strip alike, and what it fills the panel with is the system: its class and size, what it puts out, how wide it is, its jump shadow and how long crossing that takes at a gravity, how many orbits sit inside the shadow and so cannot jump, where its habitable zone runs, and the counts of what the orbits hold.
+
+8.4.1.1 Those are figures about the whole system, and this is where they belong, because the star is what they are all facts about. Carrying them in a block of summary rows above the body list made them something a reader learns to skip rather than somewhere they go to look one up, and it left the one figure with nowhere else to live - the jump shadow - reachable only by reading past the four that were already in the header.
+
+8.4.1.2 The star is not an orbit and is reported as an orbit number that cannot be one. Everything that follows a selection - the panel, the strip, the model's highlight - already takes an orbit number, and handing it one keeps all three in step without a second path through any of them.
+
+8.4.1.3 A companion picks out the same thing the primary does. What opens is the panel about the system's stars and there is one of those however many stars there are; the panel then says which of them is which, and 2.4.2 decides whether the pair's light is one figure or two.
+
+8.4.1.4 No travel times. The panel of 4.9 is times from one body to another, and a star is neither somewhere a ship leaves from nor somewhere it arrives at.
+
 8.5 The main world is marked as the main world wherever it appears. 5.3 says the chart already decided, and a user coming down from the chart should see which one they came for.
 
 8.5.1 What the chart marks against a hex is marked here against the body it is actually about, which is the main world: the naval base's star, the scout station's triangle, and the travel zone's dashed ring. The same three marks the chart uses, so a referee who can read one can read the other.
