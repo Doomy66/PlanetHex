@@ -99,6 +99,8 @@ This document is the shell. [PlanetSpec.md](PlanetSpec.md) specifies a planet, [
 
 4.1.2.4 A planet opened on its own is unchanged: its own document, its own Save, its own folder. That is the level this application began at, and a world of a system is the same document with a place in one.
 
+4.1.3 A document also carries the date, which is the system spec 3.5 and the one field in this application that is about the setting rather than about the document holding it. Every level that can hold a system holds it, and the level at the top of what is open is the one whose date counts — the same rule the system spec 9.7.3 sets for where a system sits.
+
 4.2 **A planet is files, not a folder.** Its document and whatever images and exports were asked for, all named on one stem. A planet opened on its own is saved into a folder the user picks; a world of a system is carried by that system under 4.1.2 and needs no file of its own until somebody exports one.
 
 4.2.1 The stem is the system's name and the world's orbit, under the system spec 7.2: the third world of Sol is `Sol-3.json`, with `Sol-3` on every image and export beside it.

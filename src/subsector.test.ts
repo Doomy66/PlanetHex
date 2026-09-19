@@ -5,8 +5,12 @@ import {
   parseSubsectorDoc,
   setOverride,
   setPresence,
+  setSubsectorDate,
+  keepSystem,
+  savedSystem,
   subsectorOf,
 } from "./subsector";
+import { newSystemDoc } from "./system";
 import { generateSubsector } from "./gen/subsector";
 import { formatSectorHex, subsectorHexes } from "./location";
 
@@ -266,5 +270,26 @@ describe("reading a document back", () => {
       overrides: [{ at: "0101" }, { at: "nowhere", name: "Ghost" }, { at: "0102", name: "Kept" }],
     });
     expect(parseSubsectorDoc(doc).overrides).toEqual([{ at: "0102", name: "Kept" }]);
+  });
+});
+
+describe("the date a subsector is at", () => {
+  it("starts at the epoch and reads a dateless save as the epoch", () => {
+    const doc = newSubsectorDoc(SEED, "C", "standard", "Regina");
+    expect(doc.date).toBe("001-1105");
+    const raw = JSON.parse(JSON.stringify(doc)) as Record<string, unknown>;
+    delete raw["date"];
+    expect(parseSubsectorDoc(JSON.stringify(raw)).date).toBe("001-1105");
+  });
+
+  it("writes a date through to the systems it carries", () => {
+    // One date in the setting. A document holding four that happen to agree is
+    // a document to be suspicious of. SystemSpec 3.5.4.
+    const doc = newSubsectorDoc(SEED, "C", "standard", "Regina");
+    const at = formatSectorHex(subsectorHexes("C")[0]!);
+    keepSystem(doc, at, newSystemDoc("SYS", "Somewhere"));
+    setSubsectorDate(doc, "200-1120");
+    expect(doc.date).toBe("200-1120");
+    expect(savedSystem(doc, at)!.date).toBe("200-1120");
   });
 });

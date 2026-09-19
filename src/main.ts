@@ -110,6 +110,7 @@ import { createOrbitMap, STAR_PICKED } from "./ui/orbitmap";
 import { createSubsectorMap } from "./ui/subsectormap";
 import { createSectorMap } from "./ui/sectormap";
 import { APP_VERSION, RELEASE_NOTES, suggestionLink } from "./version";
+import { formatImperialDate, parseImperialDate } from "./traveller";
 import { aroundSubsector, letterAt, SECTOR_HEXES, type Sector } from "./gen/sector";
 import {
   keepSubsector,
@@ -117,6 +118,7 @@ import {
   parseSectorDoc,
   savedSubsector,
   sectorOf,
+  setSectorDate,
   subsectorIn,
   type SectorDoc,
 } from "./sector";
@@ -143,6 +145,7 @@ import {
   parseSubsectorDoc,
   setOverride as setHexOverride,
   setPresence,
+  setSubsectorDate,
   setSystemSeed,
   SHIFT_LIMIT,
   subsectorOf,
@@ -169,6 +172,7 @@ import {
   moonsOf,
   namesOf,
   ordinalOf,
+  periodDaysOf,
   worldName,
   positionAu,
   starShadowAu,
@@ -2210,6 +2214,7 @@ function openSystem(next: SystemDoc): void {
   el<HTMLInputElement>("sys-sector").value = next.sector;
   el<HTMLInputElement>("sys-subsector").value = next.subsector;
   el<HTMLInputElement>("sys-hex").value = next.hex;
+  el<HTMLInputElement>("sys-date").value = next.date;
   showSystemStar();
   orbits.render(system);
   model.render(system);
@@ -2243,6 +2248,7 @@ function refreshSystem(): void {
   system = systemOf(doc);
   names = namesOf(system, doc.name);
   el<HTMLInputElement>("sys-name").value = doc.name;
+  el<HTMLInputElement>("sys-date").value = doc.date;
   showSystemStar();
   orbits.render(system);
   model.render(system);
@@ -2322,7 +2328,7 @@ function showOrbit(index: number | null): void {
   if (called !== bodyName(system, orbit.index)) row("Designation", called);
   row("Distance", auLabel(orbit.au));
   row("Sunlight", sunlightNote(orbit.sunEquivalentAu));
-  row("Year", yearNote(orbit.au, system.stars.primary.luminosity));
+  row("Year", yearNote(system, orbit.au));
   if (orbit.habitable) row("Zone", "habitable");
 
   // A moon of the giant in this orbit, where the tree or the moon list picked
@@ -2442,8 +2448,15 @@ function showWorldPicture(open: StarSystem, orbitIndex: number): void {
   }, 0);
 }
 
-function yearNote(au: number, luminosity: number): string {
-  const years = orbitalPeriodHours(au, luminosity) / (24 * 365.25);
+/**
+ * How long a body's year is, in the words the panel uses.
+ *
+ * Off the same `periodDaysOf` the model turns the body at, so the figure stated
+ * here and the speed it moves round the diagram are one number. SystemSpec
+ * 3.5.2.
+ */
+function yearNote(open: StarSystem, au: number): string {
+  const years = periodDaysOf(open, au) / 365.25;
   return years < 1 ? `${(years * 12).toFixed(1)} months` : `${years.toFixed(1)} years`;
 }
 
@@ -2545,6 +2558,53 @@ for (const field of ["sector", "subsector", "hex"] as const) {
     showHeader();
   });
 }
+
+/**
+ * Put a date on the setting. SystemSpec 3.5.4.
+ *
+ * Written into every level that is open rather than into the one being looked
+ * at, because there is one date and a subsector holding a different one from
+ * the system inside it would be two settings. Down the chain is handled where a
+ * level is opened from the one above; this is the way back up.
+ */
+function setSettingDate(date: string): void {
+  if (sectorDoc !== null && openLevels.sector) {
+    setSectorDate(sectorDoc, date);
+    markSectorDirty();
+  }
+  if (subDoc !== null && openLevels.subsector) {
+    setSubsectorDate(subDoc, date);
+    markSubDirty();
+  }
+  if (doc !== null) doc.date = date;
+}
+
+/**
+ * The date, on change rather than on input: a half-typed date is not one, and
+ * every body in the system would move on the way to it.
+ *
+ * What cannot be read is put back rather than complained about at length. The
+ * field is four digits and a day and there is nothing to explain about it that
+ * showing the last good value does not say quicker.
+ */
+el<HTMLInputElement>("sys-date").addEventListener("change", (event) => {
+  if (doc === null) return;
+  const field = event.target as HTMLInputElement;
+  const typed = field.value;
+  const date = parseImperialDate(typed);
+  if (date === null) {
+    field.value = doc.date;
+    sysSay(`"${typed}" — a date is a day and a year, as 001-1105.`, true);
+    return;
+  }
+  const text = formatImperialDate(date);
+  field.value = text;
+  if (text === doc.date) return;
+  setSettingDate(text);
+  markSystemDirty();
+  refreshSystem();
+  sysSay(`Now ${text}.`);
+});
 
 // Free prose about whatever is in an orbit, which is an override under
 // SystemSpec 9.3 and stored only where there is something to store.
@@ -3979,6 +4039,9 @@ function openHexSystem(at: string, seed: string, name: string, uwp?: string): vo
   // What the subsector is called is what the system's subsector is called: one name
   // said once, the way the sector's already is.
   held.subsector = subDoc.name.trim() === "" ? subDoc.letter : subDoc.name;
+  // And when it is, for the same reason: the date is one value for the setting,
+  // owned by whichever level is the top of what is open. SystemSpec 3.5.4.
+  held.date = subDoc.date;
   const before = held.name;
   if (name.trim() !== "") held.name = name;
   systemFolder = null;
@@ -4315,6 +4378,9 @@ function openSubsectorOf(letter: string): void {
   // Which sector it is in is the sector's, so a subsector worked on before the
   // sector was renamed does not come back saying what it used to be called.
   held.sector = sectorDoc.name;
+  // The date the same way, and on down: the sector owns it while the sector is
+  // what is open. SystemSpec 3.5.4.
+  held.date = sectorDoc.date;
   openSubsector(held, "sector");
   markSubClean();
 }

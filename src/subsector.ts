@@ -25,6 +25,7 @@ import { parseStars } from "./gen/star";
 import { formatSectorHex, parseSectorHex, subsectorHexes } from "./location";
 import { parseUwp } from "./planet";
 import { tradeCodes } from "./gen/trade";
+import { dateOrEpoch, EPOCH, formatImperialDate } from "./traveller";
 
 /**
  * What the referee has written over one hex. Only what changed, under 5.3.1: a
@@ -85,6 +86,14 @@ export interface SubsectorDoc {
   /** A to P, see 2.2.3. */
   letter: string;
   seed: string;
+  /**
+   * When this is, as an imperial date. SystemSpec 3.5, and the app spec 4.1.3.
+   *
+   * One date for the setting, and this level owns it while it is the top of
+   * what is open: the systems carried under it hold a copy each, and it is this
+   * one they are opened at.
+   */
+  date: string;
   density: Density;
   /**
    * Which way this region leans, as modifiers on the dice every world in it is
@@ -124,6 +133,7 @@ export function newSubsectorDoc(
     sector: "",
     letter: letter.toUpperCase(),
     seed,
+    date: formatImperialDate(EPOCH),
     density,
     shifts: { population: 0, tech: 0 },
     overrides: [],
@@ -140,6 +150,18 @@ export function savedSystem(doc: SubsectorDoc, at: string): SystemDoc | undefine
 export function keepSystem(doc: SubsectorDoc, at: string, system: SystemDoc): void {
   const rest = doc.systems.filter((held) => held.at !== at);
   doc.systems = [...rest, { at, doc: system }].sort((a, b) => a.at.localeCompare(b.at));
+}
+
+/**
+ * Set the date on a subsector and on everything it carries. SystemSpec 3.5.4.
+ *
+ * Written through rather than left to the load, so a saved document does not
+ * hold four dates that happen to agree. There is one date in the setting and a
+ * file that said otherwise in three places would be a file to be suspicious of.
+ */
+export function setSubsectorDate(doc: SubsectorDoc, date: string): void {
+  doc.date = date;
+  for (const held of doc.systems) held.doc.date = date;
 }
 
 /** Forget a hex's system, when a different one has been rolled into it. */
@@ -319,6 +341,7 @@ export function parseSubsectorDoc(text: string): SubsectorDoc {
     sector: typeof r["sector"] === "string" ? r["sector"] : "",
     letter,
     seed: r["seed"],
+    date: formatImperialDate(dateOrEpoch(r["date"])),
     density:
       typeof density === "string" && density in DENSITIES ? (density as Density) : DEFAULT_DENSITY,
     shifts: parseShifts(r["shifts"]),

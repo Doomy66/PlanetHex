@@ -19,8 +19,15 @@ import {
 } from "./gen/subsector";
 import { generateSector, subsectorSeedFor, type Sector } from "./gen/sector";
 import type { Subsector } from "./gen/subsector";
-import { newSubsectorDoc, parseSubsectorDoc, subsectorOf, type SubsectorDoc } from "./subsector";
+import {
+  newSubsectorDoc,
+  parseSubsectorDoc,
+  setSubsectorDate,
+  subsectorOf,
+  type SubsectorDoc,
+} from "./subsector";
 import { SUBSECTOR_LETTERS } from "./location";
+import { dateOrEpoch, EPOCH, formatImperialDate } from "./traveller";
 
 export interface SectorDoc {
   /** Which level this document is, under the app spec 4.1. */
@@ -28,6 +35,13 @@ export interface SectorDoc {
   readonly version: 1;
   name: string;
   seed: string;
+  /**
+   * When this is, as an imperial date. SystemSpec 3.5, and the app spec 4.1.3.
+   *
+   * The top of the deepest chain there is, so where a sector is open its date is
+   * the setting's and every subsector and system under it is opened at it.
+   */
+  date: string;
   density: Density;
   /** Which way the whole sector leans. The subsector spec 3.11. */
   shifts: { population: number; tech: number };
@@ -45,10 +59,17 @@ export function newSectorDoc(
     version: 1,
     name,
     seed,
+    date: formatImperialDate(EPOCH),
     density,
     shifts: { population: 0, tech: 0 },
     subsectors: [],
   };
+}
+
+/** The date on a sector and on every subsector and system under it. 3.5.4. */
+export function setSectorDate(doc: SectorDoc, date: string): void {
+  doc.date = date;
+  for (const held of doc.subsectors) setSubsectorDate(held.doc, date);
 }
 
 /** The worked up subsector under a letter, or undefined where nobody has been. */
@@ -134,6 +155,7 @@ export function parseSectorDoc(text: string): SectorDoc {
     version: 1,
     name: typeof r["name"] === "string" ? r["name"] : "Unnamed",
     seed: r["seed"],
+    date: formatImperialDate(dateOrEpoch(r["date"])),
     density:
       typeof density === "string" && density in DENSITIES ? (density as Density) : DEFAULT_DENSITY,
     shifts: parseShifts(r["shifts"]),

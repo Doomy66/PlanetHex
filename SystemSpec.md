@@ -8,7 +8,7 @@ This document sits under [SubSectorSpec.md](SubSectorSpec.md) and over [PlanetSp
 
 1. [Purpose](#1-purpose)
 2. [The star or stars](#2-the-star-or-stars)
-3. [Orbits](#3-orbits)
+3. [Orbits](#3-orbits), and [where round one a body has got to](#35-where-round-its-orbit-a-body-has-got-to)
 4. [What fills an orbit](#4-what-fills-an-orbit)
 5. [The main world](#5-the-main-world)
 6. [The other worlds](#6-the-other-worlds)
@@ -136,6 +136,34 @@ This document sits under [SubSectorSpec.md](SubSectorSpec.md) and over [PlanetSp
 
 3.4.1 Distances are stated in AU to one or two figures, which is as precise as anything here deserves. A figure to five places would be claiming a survey nobody made, which is the planet spec 6.24.4's objection to writing a population to the last person.
 
+### 3.5 Where round its orbit a body has got to
+
+3.5 An orbit says how far out a body is; where round it the body actually is, is the **date**. The setting has one, written the way Traveller writes one — a day of the year and a year, `001-1105` — and every body in every system is placed at it.
+
+3.5.1 The seed fixes the angles at one fixed moment, and the date is measured from that moment. The moment is 001-1105, which is both Traveller's own present and what a document with nothing to say about a date reads as. So a system nobody has dated sits exactly where it always sat, and nothing anybody saved before there were dates has moved.
+
+3.5.1.1 The seed rather than the date decides the arrangement, which is why both are kept. Two worlds at similar distances being a short hop or a long haul apart is a fact about the system and has to be the same fact every time it is opened. What the date chooses is which of that seed's arrangements is the one on screen.
+
+3.5.2 A body advances by however much of its own year has gone by, so the inner system turns and the outer system barely moves. That is Kepler, and it is what makes the date worth having: a system a year on is not the same picture rotated, it is rearranged, and the gas giant that was a week away is now on the far side of the star.
+
+3.5.2.1 The year is the same figure the panel states for that body, off the same arithmetic. A diagram going round at a speed the panel beside it disagrees with would be two systems.
+
+3.5.2.2 All of them prograde, because a disc goes round the way it fell in. Nothing here would make one body of a system the exception, and a retrograde world drawn as one would be a curiosity the generator never rolled.
+
+3.5.3 Nothing else moves with the date. What a system holds is its seed's, under 1.2: the stars, the orbits, the profiles and the counts are the same on any day of any year. The date reaches the angles and, through them, the distances of 4.9, and it stops there.
+
+3.5.3.1 It does not reach a world's surface either. The planet spec 5.7.3.2 averages sunlight over a whole year, so no world in this application has a season for a date to fall in. A date that quietly moved the ice caps would be promising a model that is not there.
+
+3.5.4 **One date, for everything that is open.** It is not a property of a system: a referee moving between two systems on the same evening is in one setting on one day, and two systems disagreeing about what day it is would be two settings.
+
+3.5.4.1 It is edited on the system view, which is the only level that draws anything the date moves. A subsector and a sector carry it, because a save has to carry a thing to keep it, and neither of them has an orbit on it to show it with.
+
+3.5.4.2 Whichever level is the top of what is open owns it, which is 9.7.3's rule with one more field under it. A subsector hands its date down to the systems beneath it as it hands down where they are, and a system dated from inside hands the new date back up to whatever is holding it.
+
+3.5.5 A date before the epoch is a date. A referee running a campaign in 1080 is running one in 1080, and the arithmetic does not mind which way it counts.
+
+3.5.6 The calendar is 365 days, with no leap and no months, which is Traveller's. Day 000 and day 366 are the two things the format lets somebody type and the calendar does not have, and both are refused.
+
 ## 4. What fills an orbit
 
 4.1 An orbit holds a world, a gas giant, a planetoid belt, or nothing.
@@ -204,9 +232,11 @@ This document sits under [SubSectorSpec.md](SubSectorSpec.md) and over [PlanetSp
 
 4.9.3.2 Which way that is depends on what the ship is caught in, so the headings are tried rather than assumed. From a world inside its star's shadow the way out is straight out, and the arithmetic finds that on its own. From a world already outside it there is nothing to leave but the world's own, and any heading will do. From a ship at a gas giant far from its star it is off to one side, across a shadow a hundred giant-diameters wide rather than out past the orbit of everything.
 
-4.9.4 Distances are taken from where the model of 8.1.2 draws the bodies: each at its orbit's distance and at the angle its seed gave it. That arrangement is a picture of one moment rather than an ephemeris, and this document takes it as the truth — a referee reading the diagram and a referee reading these numbers have to be told the same thing, and a system where the worlds were somewhere else for the arithmetic would be two systems.
+4.9.4 Distances are taken from where the model of 8.1.2 draws the bodies: each at its orbit's distance and at the angle 3.5 puts it at on the date. That arrangement is a picture of one day rather than an ephemeris to be integrated, and this document takes it as the truth — a referee reading the diagram and a referee reading these numbers have to be told the same thing, and a system where the worlds were somewhere else for the arithmetic would be two systems.
 
-4.9.4.1 A belt is a ring rather than a place, so a crossing to one is a crossing to its nearest part. A ship going to the belt goes to the near edge, not to an agreed point on the far side of the star.
+4.9.4.1 So a crossing is a crossing on the day it is asked about, and the figures move as the date does. That is the honest answer and it is a good part of why 3.5 exists: the run to the gas giant really is ten hours some months and three weeks others, and one number for it all year would be wrong most of the year.
+
+4.9.4.2 A belt is a ring rather than a place, so a crossing to one is a crossing to its nearest part. A ship going to the belt goes to the near edge, not to an agreed point on the far side of the star.
 
 ## 5. The main world
 
@@ -354,6 +384,8 @@ This document sits under [SubSectorSpec.md](SubSectorSpec.md) and over [PlanetSp
 
 8.6 A header carries the stars, the counts of 1.6.3, and the system's place — sector, subsector, hex — so the chain of the app spec 6.5 is visible from inside.
 
+8.6.1 And the date of 3.5, beside the place, because both answer where and when this is. It is the one field in that header that is about the setting rather than about this system, and it is here because this is the only level with anything on it that the date moves: change it and the model, the travel times and the strip are all redrawn at the new day.
+
 8.7 The list of bodies down the left is one line to a body: its name, its profile, and what it is. The name is the part that gives way when there is not room for all three, because a profile and a kind are short, fixed, and say nothing half shown, while a name shortened is still a name that can be recognised.
 
 8.7.1 The edge of that list is dragged. A body is named after its system under 7.2, so a system with a long name has a column of long names, and a width chosen to suit the names the generator draws suits a referee's own by luck. How much room the list needs is a fact about what they called things, so it is theirs to set.
@@ -371,6 +403,7 @@ This document sits under [SubSectorSpec.md](SubSectorSpec.md) and over [PlanetSp
 | Name | The main world's, see 7.1. Free text. |
 | Sector, subsector, hex | Where the system sits, in the terms of the subsector spec 2.2. |
 | Seed | Required. Without it nothing can be rebuilt. |
+| Date | The imperial date of 3.5. Absent reads as the epoch, so an older save opens where it was drawn. |
 | Main world profile | The UWP of 5.1, so the system stands alone under the app spec 4.8. |
 | Overrides | Per orbit, only where the user changed something. |
 
@@ -381,6 +414,8 @@ This document sits under [SubSectorSpec.md](SubSectorSpec.md) and over [PlanetSp
 9.3 An override holds only what was changed: what an orbit contains, a world's profile or name, the stars, the counts, or free prose about any of it. The subsector spec 5.3.1 gives the reason, and it is the same reason at every level.
 
 9.4 An override never changes a seed. A world edited is still the world its seed makes, wearing what the referee wrote on it.
+
+9.4.1 Nor does the date, which is not an override. It is one value about the setting rather than something typed over a generated one, so it is a field of its own and it is always written, under 3.5.4.
 
 9.5 The system folder is the app spec 4.3, and it is the lowest folder the application makes: this document, and the files of each world the user has worked up, named by 7.2.
 
@@ -446,4 +481,8 @@ This document sits under [SubSectorSpec.md](SubSectorSpec.md) and over [PlanetSp
 
 13.4 **Travel times.** The orbits have distances, so the arithmetic for a trip across a system at a given acceleration is available and small. Whether a spec about generation should carry a calculator is a fair question.
 
-13.5 **Whether secondary worlds should be full planets.** They are, under 6.2, and that is tens of thousands of hexes of surface generated for a rock nobody will land on. The cost is paid only when one is opened, so this is a question about whether the route should exist rather than about performance. Left as it is: a referee who opens an ice moon deserves an ice moon.
+13.5 **Seasons, and whether the date should reach a surface.** 3.5.3.1 stops the date at the angles because the planet spec averages sunlight over a whole year, so there is nothing for a day of the year to pick out. A world with a real axial tilt has a summer hemisphere and a winter one, and 3.5 now hands the planet level the one number it would need to say which. It would mean a second temperature model rather than a field, and the ice of the planet spec 5.4.2 would have to move with it, so it is a level's worth of work and not a clause.
+
+13.6 **Whether the date belongs to a planet document too.** A planet carries no orbit to move, so under 9.1 it carries no date, and a world opened on its own is the same world on any day. If 13.5 were ever answered, that changes.
+
+13.7 **Whether secondary worlds should be full planets.** They are, under 6.2, and that is tens of thousands of hexes of surface generated for a rock nobody will land on. The cost is paid only when one is opened, so this is a question about whether the route should exist rather than about performance. Left as it is: a referee who opens an ice moon deserves an ice moon.

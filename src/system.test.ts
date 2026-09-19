@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { generateSystem, mainWorldSeed } from "./gen/system";
+import { angleOf, generateSystem, mainWorldSeed } from "./gen/system";
+import { dayFromEpoch } from "./traveller";
 import { rollUwp } from "./planet";
 import {
   newSystemDoc,
@@ -137,5 +138,43 @@ describe("where a system sits", () => {
   it("gives a save written without one an empty subsector", () => {
     const doc = parseSystemDoc(JSON.stringify({ level: "system", version: 1, seed: SEED }));
     expect(doc.subsector).toBe("");
+  });
+});
+
+describe("the date a system is at", () => {
+  it("starts at the epoch and says so in the canonical form", () => {
+    expect(newSystemDoc(SEED, "Regina").date).toBe("001-1105");
+  });
+
+  it("reaches the angles of the bodies and nothing else", () => {
+    const doc = newSystemDoc(SEED, "Regina");
+    const then = systemOf(doc);
+    doc.date = "200-1120";
+    const now = systemOf(doc);
+    // The same system, at a different moment: same orbits, same contents, same
+    // main world, and everywhere round its orbit different. SystemSpec 3.5.
+    expect(now.orbits.map((o) => o.content)).toEqual(then.orbits.map((o) => o.content));
+    expect(now.mainWorld).toEqual(then.mainWorld);
+    expect(now.atDay).toBe(dayFromEpoch({ day: 200, year: 1120 }));
+    expect(angleOf(now, now.mainWorld.orbitIndex)).not.toBe(
+      angleOf(then, then.mainWorld.orbitIndex),
+    );
+  });
+
+  it("opens a save written before there were dates at the epoch", () => {
+    // AppSpec 4.1 in miniature: a field that was not there reads as the value
+    // it always had, so nothing anybody saved has moved.
+    const doc = newSystemDoc(SEED, "Regina");
+    const raw = JSON.parse(JSON.stringify(doc)) as Record<string, unknown>;
+    delete raw["date"];
+    expect(parseSystemDoc(JSON.stringify(raw)).date).toBe("001-1105");
+    expect(systemOf(parseSystemDoc(JSON.stringify(raw))).atDay).toBe(0);
+  });
+
+  it("keeps a date it was given, and falls back where it cannot read one", () => {
+    const doc = newSystemDoc(SEED, "Regina");
+    doc.date = "200-1120";
+    expect(parseSystemDoc(JSON.stringify(doc)).date).toBe("200-1120");
+    expect(parseSystemDoc(JSON.stringify({ ...doc, date: "366-1105" })).date).toBe("001-1105");
   });
 });
