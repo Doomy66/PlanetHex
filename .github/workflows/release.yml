@@ -65,14 +65,42 @@ jobs:
       # The file is named rather than matched. A glob for PlanetHex-Setup-*.exe
       # would also catch the PlanetHex-Setup-<version>.__uninstaller.exe that
       # NSIS writes and then deletes, were a build ever to fail between the two.
+      #
+      # Create where there is nothing yet, upload where there is already. A tag
+      # push is not the only way a release gets made - somebody releasing by
+      # hand makes one too, and then this step arrived at a tag it could not
+      # create and failed the build over work that had in fact been done. The
+      # v2.0.0 and v2.2.0 runs both died exactly there, after passing the tests
+      # and building the installer. Publishing the same installer twice should
+      # be quiet, not red.
+      #
+      # An existing release keeps its title and its notes. Whoever made it by
+      # hand may have written something, and the asset is the only part of it
+      # this workflow is entitled to be sure about.
+      #
+      # The question is asked with a listing rather than with `gh release view`,
+      # which exits non-zero when the tag is not there. The runner's pwsh turns
+      # a non-zero native command into a thrown error under the `stop` it runs
+      # these scripts with, so asking that way would make the probe for "is it
+      # there yet" fail in exactly the case it exists to detect. A listing comes
+      # back empty and succeeds.
       - name: Publish the release
         shell: pwsh
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          $version = "${{ github.ref_name }}" -replace '^v', ''
+          $tag = "${{ github.ref_name }}"
+          $version = $tag -replace '^v', ''
           $exe = "release/PlanetHex-Setup-$version.exe"
           if (-not (Test-Path $exe)) { throw "No installer at $exe" }
-          gh release create "${{ github.ref_name }}" $exe `
-            --title "PlanetHex ${{ github.ref_name }}" `
-            --notes "See [CHANGELOG.md](https://github.com/${{ github.repository }}/blob/main/CHANGELOG.md)."
+          $released = gh release list --limit 200 --json tagName --jq '.[].tagName'
+          if ($released -contains $tag) {
+            Write-Host "$tag is already released; replacing its installer."
+            gh release upload $tag $exe --clobber
+          } else {
+            Write-Host "Releasing $tag."
+            gh release create $tag $exe `
+              --title "PlanetHex $tag" `
+              --notes "See [CHANGELOG.md](https://github.com/${{ github.repository }}/blob/main/CHANGELOG.md)."
+          }
+          if ($LASTEXITCODE -ne 0) { throw "Publishing $tag failed." }
