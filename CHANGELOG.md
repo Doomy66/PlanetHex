@@ -4,6 +4,17 @@ The version in [package.json](package.json) is what the Windows installer of
 `npm run package` names itself after, so it is the one number that reaches a
 user. Dates are the day the release was tagged.
 
+## 2.2.1 — 2026-09-19
+
+Nothing in the application changed. 2.2.0 and 2.2.1 are the same program, and
+there is no reason to install this one over that one.
+
+The release workflow's last step was `gh release create`, which works exactly
+once per tag: a release made by hand before the tag was pushed left the run
+failing over work it had already finished. It now uploads to a release that is
+already there rather than insisting on creating it, and this release is the tag
+that proves it.
+
 ## 2.2.0 — 2026-09-19
 
 Systems know what day it is. Until now a body sat wherever its seed had put it
