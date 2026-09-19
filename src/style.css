@@ -1128,6 +1128,9 @@ body[data-view="planet"] .system { display: none; }
 /* Four digits and no more, the way the planet panel's hex field is sized. A box
    wide enough for a sentence invites one. */
 .sys-where .hexfield { width: 58px; }
+/* A date is eight characters where a hex is four, and a date cut off at
+   "001-11" is a date nobody can read. SystemSpec 3.5. */
+.sys-where .datefield { width: 78px; }
 
 .sys-tree-panel,
 .sys-side {

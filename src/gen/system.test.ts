@@ -2,8 +2,11 @@ import { describe, expect, it } from "vitest";
 import { parseUwp, rollUwp } from "../planet";
 import { pbgFor } from "./trade";
 import {
+  angleOf,
   beltName,
   generateSystem,
+  periodDaysOf,
+  positionAu,
   moonKey,
   namesOf,
   mainWorldSeed,
@@ -581,6 +584,95 @@ describe("how far out a system reaches", () => {
   it("is the same system every time", () => {
     for (const seed of SEEDS) {
       expect(discOrbitsFor(seed, 1)).toEqual(discOrbitsFor(seed, 1));
+    }
+  });
+});
+
+describe("where a body has got to", () => {
+  const turns = (system: ReturnType<typeof generateSystem>, index: number) =>
+    angleOf(system, index) / (Math.PI * 2);
+
+  it("puts everything where the seed alone put it, at the epoch", () => {
+    // The claim that lets every save written before there were dates open
+    // showing what it showed. SystemSpec 3.5.1: the epoch is where the seed's
+    // own angles are, so a system at day zero has not moved.
+    for (const seed of SEEDS) {
+      const fixed = generateSystem(seed);
+      const dated = generateSystem(seed, undefined, 0);
+      for (const orbit of fixed.orbits) {
+        expect(angleOf(dated, orbit.index), seed).toBe(angleOf(fixed, orbit.index));
+      }
+    }
+  });
+
+  it("brings a body back round in exactly one of its years", () => {
+    for (const seed of SEEDS.slice(0, 50)) {
+      const system = generateSystem(seed);
+      for (const orbit of system.orbits) {
+        const year = periodDaysOf(system, orbit.au);
+        const later = generateSystem(seed, undefined, year);
+        expect(turns(later, orbit.index) - turns(system, orbit.index), seed).toBeCloseTo(1, 6);
+      }
+    }
+  });
+
+  it("moves an Earth-like orbit about a degree a day", () => {
+    // A sanity check in units a reader has: 360 degrees over 365-ish days.
+    const system = generateSystem("Sol");
+    const sunLike = system.orbits.reduce((best, orbit) =>
+      Math.abs(orbit.sunEquivalentAu - 1) < Math.abs(best.sunEquivalentAu - 1) ? orbit : best,
+    );
+    const day = generateSystem("Sol", undefined, 1);
+    const moved = (turns(day, sunLike.index) - turns(system, sunLike.index)) * 360;
+    const year = periodDaysOf(system, sunLike.au);
+    expect(moved).toBeCloseTo(360 / year, 6);
+  });
+
+  it("turns the inner orbits faster than the outer ones", () => {
+    // Kepler, which is what makes a date worth having: a system a year on is
+    // not the same system rotated, it is rearranged.
+    for (const seed of SEEDS.slice(0, 50)) {
+      const system = generateSystem(seed);
+      const later = generateSystem(seed, undefined, 100);
+      const moved = system.orbits.map(
+        (orbit) => turns(later, orbit.index) - turns(system, orbit.index),
+      );
+      for (let i = 1; i < moved.length; i++) {
+        expect(moved[i]!, `${seed} orbit ${i}`).toBeLessThan(moved[i - 1]!);
+      }
+    }
+  });
+
+  it("goes the same way round for every body", () => {
+    for (const seed of SEEDS.slice(0, 50)) {
+      const system = generateSystem(seed);
+      const later = generateSystem(seed, undefined, 40);
+      for (const orbit of system.orbits) {
+        expect(turns(later, orbit.index) - turns(system, orbit.index), seed).toBeGreaterThan(0);
+      }
+    }
+  });
+
+  it("moves the bodies against each other, so a crossing is not the same twice", () => {
+    // What the travel panel of 4.9 reads, through positionAu. A date that left
+    // every distance where it was would be a date that did nothing.
+    const system = generateSystem("Regina");
+    const later = generateSystem("Regina", undefined, 500);
+    const gap = (held: ReturnType<typeof generateSystem>) => {
+      const a = positionAu(held, held.orbits[0]!.index);
+      const b = positionAu(held, held.orbits[held.orbits.length - 1]!.index);
+      return Math.hypot(b.x - a.x, b.y - a.y);
+    };
+    expect(gap(later)).not.toBeCloseTo(gap(system), 6);
+  });
+
+  it("leaves what is in the system alone", () => {
+    // SystemSpec 3.5: the date decides where round its orbit a body has got to
+    // and nothing else. A system on a different day is the same system.
+    for (const seed of SEEDS.slice(0, 100)) {
+      const system = generateSystem(seed);
+      const later = generateSystem(seed, undefined, 3650);
+      expect({ ...later, atDay: 0 }, seed).toEqual(system);
     }
   });
 });

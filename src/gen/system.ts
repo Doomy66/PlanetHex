@@ -20,7 +20,7 @@ import { pbgFor, type Pbg } from "./trade";
 import { planetDetail } from "./detail";
 import { valueFor } from "./rng";
 import { diameterKm, starsFor, systemLuminosity, type Stars } from "./star";
-import { stellarMassFor } from "./climate";
+import { orbitalPeriodHours, stellarMassFor } from "./climate";
 import { basesFor, zoneFor } from "./base";
 import { jumpShadowKm, kmToAu } from "./jump";
 
@@ -180,6 +180,15 @@ export interface StarSystem {
   readonly stars: Stars;
   readonly orbits: readonly Orbit[];
   readonly mainWorld: MainWorld;
+  /**
+   * When this is, in days from the epoch of [src/traveller.ts](../traveller.ts).
+   * SystemSpec 3.5: it is the one thing about a system that is not its seed, and
+   * all it decides is where round its orbit each body has got to.
+   *
+   * Zero at the epoch, and zero is what a system generated without being told
+   * gets, so nothing that does not care about the date has to say anything.
+   */
+  readonly atDay: number;
   /** Population multiplier, belts and gas giants, read rather than rolled. */
   readonly pbg: Pbg;
   /**
@@ -338,8 +347,12 @@ function shuffled(seed: string, stream: string, of: readonly number[]): number[]
  * The order is SystemSpec 3.3: roll the star, lay out its orbits, find the
  * habitable zone, then fill the orbits. The main world goes in first because
  * section 5 decides where it belongs and section 4 works around it.
+ *
+ * The date comes in as days from the epoch and touches none of that. What is in
+ * the system is the seed's alone, under 1.2; where round its orbit each of it
+ * has got to is 3.5, and that is the only thing `atDay` decides.
  */
-export function generateSystem(seed: string, given?: Stars): StarSystem {
+export function generateSystem(seed: string, given?: Stars, atDay = 0): StarSystem {
   // The stars the seed rolls, unless the referee has said otherwise. A different
   // star is a different system: it lights different orbits, so everything from
   // the habitable zone outwards is laid out again rather than patched.
@@ -424,6 +437,7 @@ export function generateSystem(seed: string, given?: Stars): StarSystem {
     seed,
     stars,
     orbits,
+    atDay,
     pbg,
     bases: { letter: basesFor(worldSeed, parseUwp(uwp)!), orbitIndex: home.index },
     zone: zoneFor(worldSeed, parseUwp(uwp)!),
@@ -499,15 +513,35 @@ export function worldIn(
 }
 
 /**
+ * How long a body in an orbit takes to go round, in days. SystemSpec 3.5.2.
+ *
+ * One function rather than two, because the panel states this as a body's year
+ * and the model turns the body at it, and a diagram going round at a speed the
+ * panel beside it disagrees with is two systems. The light is the light the
+ * orbits were laid out against, which is both stars where the companion is
+ * inside them all.
+ */
+export function periodDaysOf(system: StarSystem, orbitAu: number): number {
+  return orbitalPeriodHours(orbitAu, system.mainWorld.luminosity) / 24;
+}
+
+/**
  * Where a body sits round its orbit, in radians. SystemSpec 3.5.
  *
- * Fixed by the system's seed rather than by a clock: a system is a picture of
- * one moment, and the one thing worse than a diagram that does not move is a
- * diagram whose distances change while you read them. The angles are what make
- * two worlds at similar distances a short hop or a long haul apart.
+ * The seed fixes where everything was at the epoch, and the date turns each
+ * body on from there by however much of its own year has gone by. So the seed
+ * still decides the arrangement - two worlds at similar distances are a short
+ * hop or a long haul apart because of it - and the date decides which
+ * arrangement, out of the ones that seed ever has.
+ *
+ * Prograde, all of them, because a disc goes round the way it fell in.
  */
 export function angleOf(system: StarSystem, orbitIndex: number): number {
-  return valueFor(`${system.seed}:where`, orbitIndex) * Math.PI * 2;
+  const seeded = valueFor(`${system.seed}:where`, orbitIndex) * Math.PI * 2;
+  if (system.atDay === 0) return seeded;
+  const orbit = system.orbits.find((held) => held.index === orbitIndex);
+  if (orbit === undefined) return seeded;
+  return seeded + (system.atDay / periodDaysOf(system, orbit.au)) * Math.PI * 2;
 }
 
 /** Where a body is, in AU, with the star at the origin. */

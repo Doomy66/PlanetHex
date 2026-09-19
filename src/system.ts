@@ -15,6 +15,7 @@ import { parseSectorHex, subsectorLetter } from "./location";
 import { parsePlanet, rollUwp, type Planet } from "./planet";
 import { generateSystem, mainWorldSeed, type StarSystem } from "./gen/system";
 import { parseStars, starsFor } from "./gen/star";
+import { dateOrEpoch, dayFromEpoch, EPOCH, formatImperialDate } from "./traveller";
 
 /**
  * What the user has written over one orbit. Only what changed, under 9.3: a
@@ -47,6 +48,15 @@ export interface SystemDoc {
   subsector: string;
   hex: string;
   seed: string;
+  /**
+   * When this is, as an imperial date. SystemSpec 3.5 and 9.1.
+   *
+   * One date for the whole setting rather than one per system, and it is here
+   * because a document has to carry it to keep it. Where a subsector or a
+   * sector is open above this system, theirs is the one that counts: whichever
+   * level is the top of what is open owns it, which is 9.7.3 again.
+   */
+  date: string;
   /** The profile of 5.1, written down so the document stands alone. */
   mainWorldUwp: string;
   /**
@@ -77,6 +87,7 @@ export function newSystemDoc(seed: string, name: string): SystemDoc {
     subsector: "",
     hex: "",
     seed,
+    date: formatImperialDate(EPOCH),
     mainWorldUwp: rollUwp(mainWorldSeed(seed)),
     star: null,
     overrides: [],
@@ -144,10 +155,11 @@ export function setOverride(
  */
 export function systemOf(doc: SystemDoc): StarSystem {
   const written = doc.star?.trim() ?? "";
+  const atDay = dayFromEpoch(dateOrEpoch(doc.date));
   const system =
     written === ""
-      ? generateSystem(doc.seed)
-      : generateSystem(doc.seed, parseStars(written, starsFor(doc.seed)));
+      ? generateSystem(doc.seed, undefined, atDay)
+      : generateSystem(doc.seed, parseStars(written, starsFor(doc.seed)), atDay);
   const main = system.mainWorld;
   const stored = doc.mainWorldUwp.trim().toUpperCase();
   const orbits = system.orbits.map((orbit) => {
@@ -197,6 +209,9 @@ export function parseSystemDoc(text: string): SystemDoc {
     subsector: typeof r["subsector"] === "string" ? r["subsector"] : "",
     hex: typeof r["hex"] === "string" ? r["hex"] : "",
     seed,
+    // A save written before there were dates is a save drawn at the epoch, so
+    // that is what it reads as and nothing in it has moved.
+    date: formatImperialDate(dateOrEpoch(r["date"])),
     mainWorldUwp:
       typeof r["mainWorldUwp"] === "string" && r["mainWorldUwp"] !== ""
         ? r["mainWorldUwp"]

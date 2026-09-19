@@ -4,6 +4,32 @@ The version in [package.json](package.json) is what the Windows installer of
 `npm run package` names itself after, so it is the one number that reaches a
 user. Dates are the day the release was tagged.
 
+## 2.2.0 — 2026-09-19
+
+Systems know what day it is. Until now a body sat wherever its seed had put it
+and sat there for ever, which made the model a diagram of one arbitrary moment
+and the travel times figures with no date attached to them. Every save still
+loads and every system opens exactly where it always did: the date a save
+without one reads as is the date everything was already drawn at.
+
+- **A Traveller date, on the system view.** `001-1105` in the header, beside
+  where the system is. Change it and every body moves round its orbit by however
+  much of its own year has gone by, so the inner system turns and the outer
+  system barely does. The date is the setting's rather than the system's: one
+  value, carried by the subsector and the sector too, and owned by whichever
+  level is the top of what is open. `SystemSpec.md` 3.5.
+- **Travel times are times on a day.** The panel reads the model, so the run to
+  the gas giant is ten hours in one month and three weeks in another, which is
+  the true answer and was never available before. `SystemSpec.md` 4.9.4.1.
+- **A body's year and the speed it moves at are one number.** The Year row in
+  the panel had been worked out from the primary's light while the orbits were
+  laid out against both stars'. Both now come off the same figure, so a close
+  binary's panel and its diagram agree. `SystemSpec.md` 3.5.2.1.
+
+Nothing about a world's surface moves with the date: sunlight here is averaged
+over a whole year, so there are no seasons for a day to fall in. That is written
+down as an open question rather than left to be discovered. `SystemSpec.md` 13.5.
+
 ## 2.1.0 — 2026-09-17
 
 A tidy of the front of house. 2.0.0 put four levels behind one window and left

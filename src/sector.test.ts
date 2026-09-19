@@ -5,11 +5,13 @@ import {
   parseSectorDoc,
   savedSubsector,
   sectorOf,
+  setSectorDate,
   subsectorIn,
 } from "./sector";
 import { generateSector, letterAt, subsectorSeedFor, SECTOR_HEXES, type Sector } from "./gen/sector";
 import { generateSubsector } from "./gen/subsector";
-import { newSubsectorDoc, setOverride, subsectorOf } from "./subsector";
+import { keepSystem, newSubsectorDoc, savedSystem, setOverride, subsectorOf } from "./subsector";
+import { newSystemDoc } from "./system";
 import { hexDistance, subsectorLetter, parseSectorHex, SUBSECTOR_LETTERS } from "./location";
 
 const SEED = "SPINWARD";
@@ -234,5 +236,26 @@ describe("reading a sector back", () => {
     });
     // Both are dropped: one for its letter, one for not being a subsector at all.
     expect(parseSectorDoc(held).subsectors).toEqual([]);
+  });
+});
+
+describe("the date a sector is at", () => {
+  it("starts at the epoch and reads a dateless save as the epoch", () => {
+    const doc = newSectorDoc(SEED, "Spinward Marches");
+    expect(doc.date).toBe("001-1105");
+    const raw = JSON.parse(JSON.stringify(doc)) as Record<string, unknown>;
+    delete raw["date"];
+    expect(parseSectorDoc(JSON.stringify(raw)).date).toBe("001-1105");
+  });
+
+  it("writes a date all the way down the chain it carries", () => {
+    const doc = newSectorDoc(SEED, "Spinward Marches");
+    const sub = newSubsectorDoc("SUB", "C", "standard", "Regina");
+    keepSystem(sub, "1910", newSystemDoc("SYS", "Regina"));
+    keepSubsector(doc, "C", sub);
+    setSectorDate(doc, "200-1120");
+    expect(doc.date).toBe("200-1120");
+    expect(savedSubsector(doc, "C")!.date).toBe("200-1120");
+    expect(savedSystem(savedSubsector(doc, "C")!, "1910")!.date).toBe("200-1120");
   });
 });
