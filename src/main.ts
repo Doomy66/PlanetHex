@@ -1909,6 +1909,13 @@ function openHelp(): void {
 }
 
 el("help").addEventListener("click", openHelp);
+el("landing-help").addEventListener("click", openHelp);
+// The landing carries the short form of Mongoose Publishing's notice; the help
+// carries it whole, and this is the way from one to the other.
+el("landing-fair-use").addEventListener("click", () => {
+  openHelp();
+  el("help-fair-use").scrollIntoView({ block: "start" });
+});
 
 /* What this is, and how to say something about it. AppSpec 2.6 ----------- */
 

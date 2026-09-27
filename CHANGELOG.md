@@ -4,6 +4,13 @@ The version in [package.json](package.json) is what the Windows installer of
 `npm run package` names itself after, so it is the one number that reaches a
 user. Dates are the day the release was tagged.
 
+## Unreleased
+
+- **The foot MainLine and the Traveller Ship Designer share.** Help, release
+  notes, suggestions and the version; links to the other two; and the short
+  form of Mongoose Publishing's notice, whose Fair use notice link opens the
+  help at the notice in full. The help and the README carry the whole notice.
+
 ## 2.2.0 — 2026-09-19
 
 Systems know what day it is. Until now a body sat wherever its seed had put it

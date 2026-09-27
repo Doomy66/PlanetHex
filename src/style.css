@@ -670,6 +670,26 @@ body[data-view="planet"] .landing { display: none; }
 .landing-links a:hover,
 .landing-links .linky:hover { color: var(--text); border-bottom-color: var(--accent); }
 .landing-version { color: #6a7280; }
+.landing-foot { margin-top: 22px; display: flex; flex-direction: column; align-items: center; gap: 10px; text-align: center; }
+.landing-foot .landing-links { margin-top: 0; }
+.landing-foot .landing-links a,
+.landing-foot .landing-links .linky,
+.landing-legal a,
+.landing-legal .linky { border-bottom-color: #3a404b; }
+.landing-legal { margin: 4px 0 0; max-width: 64ch; font-size: 12px; line-height: 1.55; color: #6a7280; }
+.landing-legal a,
+.landing-legal .linky {
+  color: var(--muted);
+  background: none;
+  border: 0;
+  border-bottom: 1px solid #3a404b;
+  padding: 0;
+  font: inherit;
+  text-decoration: none;
+  cursor: pointer;
+}
+.landing-legal a:hover,
+.landing-legal .linky:hover { color: var(--text); border-bottom-color: var(--accent); }
 
 /* The same links inside the help, where somebody reading about the application
    is most likely to have something to say about it. */
