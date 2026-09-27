@@ -620,8 +620,11 @@ body[data-view="planet"] .landing { display: none; }
 }
 .landing-card h1 {
   font-size: clamp(34px, 7vw, 52px);
-  line-height: 1;
-  margin: 0;
+  /* Room below for a descender, which the gold would otherwise stop short of,
+     and the same box in all three applications whether the name has one. */
+  line-height: 1.2;
+  padding-bottom: 0.08em;
+  margin: -6px 0 0;
   font-weight: 600;
   letter-spacing: 0.02em;
   /* The gold this application marks a user's own choices in, running into the
@@ -1126,6 +1129,22 @@ body[data-view="planet"] .system { display: none; }
   row-gap: 6px;
 }
 .system-head h1 { margin: 0; }
+.system-head .brand { align-self: center; }
+.panel-head .brand { align-self: center; }
+
+/* The mark and the name, as MainLine, PlanetHex and the Traveller Ship Designer
+   all head their working screens. */
+.brand { display: inline-flex; align-items: center; gap: 8px; flex: none; margin: 0; }
+.brand img { display: block; width: 20px; height: 20px; border-radius: 5px; }
+.brand-name {
+  font-size: 15px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  background: linear-gradient(100deg, var(--text) 18%, var(--accent) 62%, #f4dfa6 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
 .sys-stars { color: var(--accent); }
 .sys-counts { color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .system-actions { margin-left: auto; display: flex; gap: 6px; align-items: center; }

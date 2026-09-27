@@ -10,6 +10,9 @@ user. Dates are the day the release was tagged.
   notes, suggestions and the version; links to the other two; and the short
   form of Mongoose Publishing's notice, whose Fair use notice link opens the
   help at the notice in full. The help and the README carry the whole notice.
+- **One header across the family.** The start screen's mark and name, and the
+  20px mark and gold name heading the working screens, the same size in
+  MainLine, PlanetHex and the Traveller Ship Designer.
 
 ## 2.2.0 — 2026-09-19
 
