@@ -1454,7 +1454,8 @@ body.resizing { cursor: col-resize; user-select: none; }
   background: var(--panel);
   border-bottom: 1px solid var(--line);
 }
-.help-head h2 { margin: 0; color: var(--text); font-size: 12px; }
+/* The name as it is spelt, not in the capitals of the headings under it. */
+.help-head h2 { margin: 0; color: var(--text); font-size: 14px; font-weight: 600; text-transform: none; letter-spacing: 0.02em; }
 .help-x {
   margin-left: auto;
   padding: 0 6px;
