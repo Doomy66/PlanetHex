@@ -106,21 +106,6 @@ The difference is the File System Access API, which is Chromium only. Where it
 is missing the application says so on the status line rather than failing at the
 moment the user clicks Save.
 
-For the desktop build:
-
-```bash
-npm run desktop
-```
-
-That builds the static bundle and opens it in Electron, which serves it over a
-custom `app://` scheme so the page has a real origin.
-
-`npm run package` produces a Windows installer, `PlanetHex-Setup-<version>.exe`.
-It installs per user, so it needs no administrator, and it puts nothing outside
-the user's own profile. The output goes to `%LOCALAPPDATA%/PlanetHex/release`
-unless `PLANETHEX_OUT` names somewhere else; the project's own drive is ReFS,
-which electron-builder cannot package onto, so the build has to land elsewhere.
-
 ## Scripts
 
 | Script | What it does |
@@ -129,10 +114,7 @@ which electron-builder cannot package onto, so the build has to land elsewhere.
 | `npm run build` | Type check, then build into `dist/`. |
 | `npm test` | Run the test suite once. |
 | `npm run test:watch` | Run it on every change. |
-| `npm run desktop` | Build, then open the desktop shell. |
-| `npm run icon` | Regenerate `build/icon.ico` from `build/icon.svg`. |
-| `npm run sidebar` | Regenerate the installer's sidebar image. |
-| `npm run package` | Build the Windows installer. |
+| `npm run preview` | Serve the built `dist/` locally. |
 
 ## Layout
 
@@ -144,7 +126,6 @@ which electron-builder cannot package onto, so the build has to land elsewhere.
 | `src/io/` | Save, load, the map images, and the export formats in `src/io/export/`. |
 | `src/io/travellermap.ts` | Reading a published sector off The Traveller Map, and `src/io/charted.ts` turning it into documents. |
 | `src/gen/border.ts` | Filling a published border's ring of hexes and tracing the outline the map draws. |
-| `electron/` | The desktop shell and its packaging script. |
 | `PlanetSpec.md` | The specification for a planet. Every decision, and why. |
 | `SystemSpec.md` | The specification for a star system: its stars, its orbits, and its worlds. |
 | `SubSectorSpec.md` | The specification for a subsector of star systems. |
@@ -177,7 +158,9 @@ and what it was for.
 ## Built with
 
 TypeScript, Vite, three.js for the globe, SVG for the map and the local patch,
-Vitest for the tests, and Electron for the desktop build.
+and Vitest for the tests. It is a browser application and nothing else: no
+shell around it, no packaging step, and no runtime but the one already on the
+machine.
 
 ## Publishing it
 
@@ -197,8 +180,9 @@ user saves them.
 ## Licence
 
 MIT, see [LICENSE](LICENSE). The application icon is derived from a
-[Tabler](https://tabler.io/icons) icon, also MIT, whose notice travels with the
-packaged build as `LICENSE-tabler-icons.txt`.
+[Tabler](https://tabler.io/icons) icon, also MIT, whose notice is served beside
+it as `LICENSE-tabler-icons.txt`. `public/favicon.ico` is a committed build of
+`public/icon.svg`.
 
 PlanetHex generates worlds by the procedure in the Traveller SRD: the Universal
 World Profile, the order the digits are rolled in, the modifiers each takes from

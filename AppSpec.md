@@ -48,7 +48,7 @@ This document is the shell. [PlanetSpec.md](PlanetSpec.md) specifies a planet, [
 
 2.3 Below the rows is the recent list: the documents last opened, each with its level, its name, and where it came from, most recent first.
 
-2.3.1 A recent entry reopens what it names without a picker where the browser still holds permission for it, and asks for the folder again where it does not. The File System Access API keeps handles across sessions but not the grant to use them, so a reopen can cost one click. The desktop shell has no such limit and pays nothing.
+2.3.1 A recent entry reopens what it names without a picker where the browser still holds permission for it, and asks for the folder again where it does not. The File System Access API keeps handles across sessions but not the grant to use them, so a reopen can cost one click.
 
 2.3.2 An entry whose folder has been moved or deleted says so where it sits and offers to be forgotten, rather than failing when it is clicked.
 
@@ -196,7 +196,7 @@ This document is the shell. [PlanetSpec.md](PlanetSpec.md) specifies a planet, [
 
 7.3 A move down under 6.1 discards nothing and prompts about nothing, since the parent stays open.
 
-7.4 Leaving the page checks the whole chain, on the same terms the planet spec 6.4.4.3 sets out and with the desktop shell's own dialogue of 6.4.4.3.1 where there is no browser one.
+7.4 Leaving the page checks the whole chain, on the same terms the planet spec 6.4.4.3 sets out.
 
 ## 8. Importing a published sector
 
@@ -264,7 +264,7 @@ This document is the shell. [PlanetSpec.md](PlanetSpec.md) specifies a planet, [
 
 9.1 **Loading a planet by folder.** A folder load knows where it came from and a file load does not, under 3.3.2, so planets are the only level that still asks for the folder on the next Save. Changing the planet row to a directory picker would close that, at the cost of making a bare JSON file harder to open than it is today. Worth answering; not urgent.
 
-9.2 **Recent list storage.** 2.3 needs handles kept across sessions, which means IndexedDB in the browser and something simpler in the desktop shell. Whether the two share a mechanism or each does what suits it is unanswered.
+9.2 **Recent list storage.** 2.3 needs handles kept across sessions, which means IndexedDB. What happens on a browser without the File System Access API, where there is no handle to keep and a recent entry can only be a name, is unanswered.
 
 9.3 **Save As.** Nothing above lets a document be saved somewhere other than where it came from, and 6.3.1 wants it to exist. It is a small feature that touches every level, so it is listed here rather than four times.
 

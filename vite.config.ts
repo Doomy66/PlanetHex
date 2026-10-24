@@ -13,8 +13,8 @@ const version = JSON.parse(readFileSync("package.json", "utf8")).version as stri
 
 export default defineConfig({
   define: { __APP_VERSION__: JSON.stringify(version) },
-  // Relative asset paths, so dist/ works both from a web server and from the
-  // app:// scheme the desktop shell serves it over. See electron/main.cjs.
+  // Relative asset paths, so dist/ serves from a subdirectory as readily as
+  // from a root and needs nothing configured to do it.
   base: "./",
   server: { port: 5173 },
 });

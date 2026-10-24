@@ -685,10 +685,6 @@ This document is the specification for one planet. [SubSectorSpec.md](SubSectorS
 
 6.4.4.3 The page-exit warning is the browser's own dialog. Its wording cannot be set, and browsers suppress it unless the user has interacted with the page. The New and Load prompts are the application's own, so those can name the planet and say what is about to be lost.
 
-6.4.4.3.1 The desktop shell has no such dialog to fall back on. Chromium embedded leaves the warning to whatever is embedding it, and an embedder that does nothing leaves the refusal standing with nothing on screen: the user presses the close button and the window ignores them, which is worse than either warning them or letting them go. So the shell puts up a dialog of its own, and the wording there is the application's, since it is the application asking.
-
-6.4.4.3.2 Its two answers are to close without saving or to stay. Saving is not among them, because a save needs the folder of 6.4.1.1 and a picker cannot be opened from the shell on the page's behalf. Staying is the safe answer, so it is the one the dialogue starts on.
-
 6.4.4.4 The left panel shows whether the open planet has unsaved edits, so the state is visible before a prompt appears rather than only at the moment something is at risk.
 
 6.4.2 The document carries a version number. The later phases in 6.5 and 6.7 add fields, and a loader that meets a version it does not know should say so rather than opening a partial planet.

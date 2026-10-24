@@ -6,6 +6,14 @@ user. Dates are the day the release was tagged.
 
 ## Unreleased
 
+- **The desktop build is gone.** PlanetHex is a browser application and now
+  nothing else: no Electron shell, no `app://` scheme, no Windows installer,
+  no packaging step, and two fewer development dependencies. What it does is
+  unchanged, because the shell only ever served the same static files the web
+  build serves. Saving still writes a folder in place on Chrome and Edge and
+  downloads a zip everywhere else, which is the File System Access API's doing
+  rather than the shell's. The icon and its licence are served from `public/`
+  as they already were.
 - **Published sectors can be opened, not just rolled.** Import on the sector
   and subsector rows of the landing page offers the forty-five official
   Traveller sectors, and opens one with its real worlds: Spinward Marches
