@@ -24,8 +24,10 @@ import { parseSystemDoc, type SystemDoc } from "./system";
 import { parseStars } from "./gen/star";
 import { formatSectorHex, parseSectorHex, subsectorHexes } from "./location";
 import { parseUwp } from "./planet";
-import { tradeCodes } from "./gen/trade";
+import { parsePbg, tradeCodes } from "./gen/trade";
 import { dateOrEpoch, EPOCH, formatImperialDate } from "./traveller";
+import { parseSource, type ChartedSource } from "./source";
+import { parseChartedMap, type ChartedMap } from "./charted-map";
 
 /**
  * What the referee has written over one hex. Only what changed, under 5.3.1: a
@@ -44,6 +46,24 @@ export interface HexOverride {
   readonly zone?: string;
   /** The Stars column, where the system below has been given other stars. */
   readonly stars?: string;
+  /**
+   * The Allegiance column: who holds the world. 5.3.7.
+   *
+   * Nothing generated has an allegiance worth storing - every rolled world is
+   * non-aligned - so this is only ever written by a world that came from
+   * somewhere with empires in it.
+   */
+  readonly allegiance?: string;
+  /**
+   * The PBG column, as its three digits. 5.3.8.
+   *
+   * Derived from the world's seed like everything else, and overridable for
+   * the same reason the profile is: a world that arrives with its own figures
+   * should keep them. Gas giants are not decoration - they are where a ship
+   * refuels - so a wrong third digit is a wrong answer to a question players
+   * actually ask.
+   */
+  readonly pbg?: string;
   /** Free prose about the system. 5.3.2. */
   readonly note?: string;
   /**
@@ -103,6 +123,21 @@ export interface SubsectorDoc {
    * them, and that is a property of the region rather than of each world in it.
    */
   shifts: { population: number; tech: number };
+  /**
+   * Where this came from, where it was imported rather than rolled. AppSpec 8.4.
+   *
+   * Absent on everything this application makes for itself, which is why it is
+   * optional and why the version does not move for it: a build that does not
+   * know the field drops it and still reads every override under it.
+   */
+  source?: ChartedSource;
+  /**
+   * The borders, express routes and polity names that came with it. AppSpec 8.8.
+   *
+   * Carried rather than fetched again, so a saved sector draws its borders
+   * with nothing but the file.
+   */
+  charted?: ChartedMap;
   overrides: HexOverride[];
   /**
    * The systems under this subsector that somebody has worked on, by hex, each
@@ -182,6 +217,8 @@ function saysNothing(held: HexOverride): boolean {
     held.bases === undefined &&
     held.zone === undefined &&
     held.stars === undefined &&
+    held.allegiance === undefined &&
+    held.pbg === undefined &&
     held.note === undefined &&
     held.present === undefined &&
     held.systemSeed === undefined
@@ -274,17 +311,44 @@ export function subsectorOf(doc: SubsectorDoc): Subsector {
     if (world !== null) held.set(override.at, world);
   }
 
+  // By hex rather than by walking the list for each of the eighty. A subsector
+  // read in from outside carries an override on every world it has, and this
+  // loop runs again for all sixteen of them every time a sector is redrawn.
+  const written = new Map(doc.overrides.map((one) => [one.at, one]));
+
   const worlds: SubsectorWorld[] = [];
   for (const hex of subsectorHexes(doc.letter)) {
     const at = formatSectorHex(hex);
     const world = held.get(at);
     if (world === undefined) continue;
-    const override = overrideFor(doc, at);
+    const override = written.get(at);
     if (override?.present === false) continue;
     worlds.push(override === undefined ? world : wearing(world, override));
   }
 
-  return { ...rolled, worlds, routes: routesBetween(worlds), mains: mainsIn(worlds) };
+  return publishedRoutes(
+    { ...rolled, worlds, routes: routesBetween(worlds), mains: mainsIn(worlds) },
+    doc.charted,
+  );
+}
+
+/**
+ * The express legs a published sector came with, in place of the ones worked
+ * out from the ports. AppSpec 8.8.2, and the same rule the sector follows.
+ *
+ * The whole sector's legs are passed through, not this subsector's share: the
+ * map draws the ones whose hexes it has and ignores the rest, which is what
+ * makes a route that runs off the edge stop at the edge rather than vanish.
+ */
+function publishedRoutes(subsector: Subsector, charted?: ChartedMap): Subsector {
+  if (charted === undefined || charted.routes.length === 0) return subsector;
+  const trade = subsector.routes.filter((route) => route.kind === "trade");
+  const xboat = charted.routes.map((leg) => ({
+    from: leg.from,
+    to: leg.to,
+    kind: "xboat" as const,
+  }));
+  return { ...subsector, routes: [...xboat, ...trade] };
 }
 
 /** One world, wearing what the referee wrote on it. */
@@ -303,8 +367,11 @@ function wearing(world: SubsectorWorld, override: HexOverride): SubsectorWorld {
     bases: override.bases ?? world.bases,
     zone: override.zone ?? world.zone,
     stars: override.stars === undefined ? world.stars : parseStars(override.stars, world.stars),
+    allegiance: override.allegiance ?? world.allegiance,
+    pbg: parsePbg(override.pbg) ?? world.pbg,
   };
 }
+
 
 /**
  * Reads a subsector document back, or throws saying why not. The same contract
@@ -345,6 +412,10 @@ export function parseSubsectorDoc(text: string): SubsectorDoc {
     density:
       typeof density === "string" && density in DENSITIES ? (density as Density) : DEFAULT_DENSITY,
     shifts: parseShifts(r["shifts"]),
+    ...(parseSource(r["source"]) === undefined ? {} : { source: parseSource(r["source"])! }),
+    ...(parseChartedMap(r["charted"]) === undefined
+      ? {}
+      : { charted: parseChartedMap(r["charted"])! }),
     overrides: parseOverrides(r["overrides"]),
     systems: parseSystems(r["systems"]),
   };
@@ -397,14 +468,27 @@ function parseOverrides(raw: unknown): HexOverride[] {
     const at = r["at"];
     if (typeof at !== "string" || parseSectorHex(at) === null) continue;
     const text = (key: string) => (typeof r[key] === "string" && r[key] !== "" ? r[key] : undefined);
+    /**
+     * A field whose empty string is a value rather than an absence.
+     *
+     * Bases and Zone are closed vocabularies, and in both of them "" says
+     * something: no bases, and a green zone. Reading them the way free text is
+     * read would drop the override and let the generated answer back in - a
+     * world written down as having no naval base would come back from a save
+     * with one, because basesFor gives one to better than a third of the good
+     * ports. 5.3.6: the empty string is a value here, not an absence.
+     */
+    const code = (key: string) => (typeof r[key] === "string" ? (r[key] as string) : undefined);
     const present = typeof r["present"] === "boolean" ? r["present"] : undefined;
     const held: HexOverride = {
       at,
       ...(text("name") === undefined ? {} : { name: text("name")! }),
       ...(text("uwp") === undefined ? {} : { uwp: text("uwp")! }),
-      ...(text("bases") === undefined ? {} : { bases: text("bases")! }),
-      ...(text("zone") === undefined ? {} : { zone: text("zone")! }),
+      ...(code("bases") === undefined ? {} : { bases: code("bases")! }),
+      ...(code("zone") === undefined ? {} : { zone: code("zone")! }),
       ...(text("stars") === undefined ? {} : { stars: text("stars")! }),
+      ...(text("allegiance") === undefined ? {} : { allegiance: text("allegiance")! }),
+      ...(text("pbg") === undefined ? {} : { pbg: text("pbg")! }),
       ...(text("note") === undefined ? {} : { note: text("note")! }),
       ...(present === undefined ? {} : { present }),
       ...(text("systemSeed") === undefined ? {} : { systemSeed: text("systemSeed")! }),

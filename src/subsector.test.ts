@@ -54,6 +54,44 @@ describe("a subsector document", () => {
 });
 
 describe("what a referee writes over a hex", () => {
+  it("wears an allegiance and a PBG written over it", () => {
+    // 5.3.7 and 5.3.8, the two columns a published map has that nothing rolled
+    // here does. Everything else about the world is still the world's.
+    const { doc, world } = opened();
+    doc.overrides = [{ at: world.at, allegiance: "ZhIN", pbg: "613" }];
+    const after = subsectorOf(doc).worlds.find((held) => held.at === world.at)!;
+    expect(after.allegiance).toBe("ZhIN");
+    expect(after.pbg).toEqual({ multiplier: 6, belts: 1, gasGiants: 3 });
+    expect(after.seed).toBe(world.seed);
+  });
+
+  it("is non-aligned until something says otherwise", () => {
+    const { world } = opened();
+    expect(world.allegiance).toBe("Na");
+  });
+
+  it("keeps the rolled PBG when the three digits are not three digits", () => {
+    // The same rule the profile follows: half a figure is somebody mid-typing,
+    // and a world should not lose its gas giants to a keystroke.
+    const { doc, world } = opened();
+    doc.overrides = [{ at: world.at, pbg: "6" }];
+    const after = subsectorOf(doc).worlds.find((held) => held.at === world.at)!;
+    expect(after.pbg).toEqual(world.pbg);
+  });
+
+  it("places a world into an empty sheet, and only that world", () => {
+    // Density "none" plus one present override is how a subsector read in from
+    // outside is held: every world on it is one somebody put there, and there
+    // is no rolled world underneath for a slider to let back in.
+    const doc = newSubsectorDoc(SEED, "C", "none", "Regina");
+    expect(subsectorOf(doc).worlds).toHaveLength(0);
+    doc.overrides = [{ at: "1910", present: true, name: "Placed", uwp: "B657744-A" }];
+    const worlds = subsectorOf(doc).worlds;
+    expect(worlds).toHaveLength(1);
+    expect(worlds[0]!.name).toBe("Placed");
+    expect(worlds[0]!.uwp).toBe("B657744-A");
+  });
+
   it("shows the name they typed instead of the one that was rolled", () => {
     const { doc, world } = opened();
     setOverride(doc, world.at, "name", "Hadley's Hope");
@@ -270,6 +308,62 @@ describe("reading a document back", () => {
       overrides: [{ at: "0101" }, { at: "nowhere", name: "Ghost" }, { at: "0102", name: "Kept" }],
     });
     expect(parseSubsectorDoc(doc).overrides).toEqual([{ at: "0102", name: "Kept" }]);
+  });
+
+  it("keeps a bases or zone an override emptied, because empty is a value", () => {
+    // 5.3.6: the document holds what the referee said, and "this world has no
+    // naval base" is something they said. Read as free text the field would be
+    // dropped and basesFor would hand the world a base back on the next load,
+    // which it does for better than a third of the good ports.
+    const doc = JSON.stringify({
+      level: "subsector",
+      version: 1,
+      seed: "X",
+      letter: "C",
+      overrides: [{ at: "0101", bases: "", zone: "" }],
+    });
+    expect(parseSubsectorDoc(doc).overrides).toEqual([{ at: "0101", bases: "", zone: "" }]);
+  });
+
+  it("still drops free text that was emptied", () => {
+    // The other half of the same rule: a name or a note taken back is gone,
+    // because there the empty string is an absence rather than a value.
+    const doc = JSON.stringify({
+      level: "subsector",
+      version: 1,
+      seed: "X",
+      letter: "C",
+      overrides: [{ at: "0101", name: "", note: "", uwp: "", stars: "", bases: "N" }],
+    });
+    expect(parseSubsectorDoc(doc).overrides).toEqual([{ at: "0101", bases: "N" }]);
+  });
+
+  it("keeps an allegiance and a PBG through a save", () => {
+    // 5.3.7 and 5.3.8. Nothing rolled here has either worth storing, so these
+    // only ever arrive on a world that came from outside - and a round trip
+    // that dropped them would hand it back non-aligned with invented gas giants.
+    const doc = JSON.stringify({
+      level: "subsector",
+      version: 1,
+      seed: "X",
+      letter: "C",
+      overrides: [{ at: "0101", allegiance: "ImDd", pbg: "703" }],
+    });
+    expect(parseSubsectorDoc(doc).overrides).toEqual([
+      { at: "0101", allegiance: "ImDd", pbg: "703" },
+    ]);
+  });
+
+  it("carries an emptied base through a save and back onto the world", () => {
+    // The round trip is the thing: in memory wearing() has always honoured "",
+    // so this only ever went wrong once the document had been written out.
+    const { doc, world } = opened();
+    setOverride(doc, world.at, "bases", "N");
+    const written = JSON.parse(JSON.stringify(doc)) as Record<string, unknown>;
+    (written["overrides"] as { bases: string }[])[0]!.bases = "";
+    const read = parseSubsectorDoc(JSON.stringify(written));
+    const after = subsectorOf(read).worlds.find((one) => one.at === world.at)!;
+    expect(after.bases).toBe("");
   });
 });
 

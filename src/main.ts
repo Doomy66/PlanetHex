@@ -97,6 +97,10 @@ import { nextFrame, renderMaps } from "./io/images";
 import { EXPORT_FORMATS, manifest, type ExportContext } from "./io/export";
 import { shaderFor, surfaceOn } from "./surface";
 import { currentAppView, landingSay, setAppView, wireLanding } from "./ui/landing";
+import { pickPublishedSector, describeImport } from "./ui/importer";
+import { describeSource } from "./source";
+import { nameOfAllegiance, type ChartedMap } from "./charted-map";
+import { polityLooks } from "./ui/polity";
 import { auLabel, contentLabel, createOrbitDiagram } from "./ui/orbits";
 import {
   diameterKm as starDiameterKm,
@@ -130,6 +134,7 @@ import {
   type SubsectorWorld,
   type Density,
   type Subsector,
+  pbgOf,
 } from "./gen/subsector";
 import { sectorFile, subsectorFile } from "./io/export/subsector";
 import {
@@ -2678,7 +2683,7 @@ function rerollHexSystem(at: string): void {
   if (world === undefined) return;
   // The subsector names what is in a hex, so the new system takes the new name.
   setHexOverride(subDoc, at, "name", "");
-  openHexSystem(at, world.systemSeed, world.name, world.uwp);
+  openHexSystem(at, world.systemSeed, world.name, world.uwp, pbgOf(world));
   subSay(`Rolled another system into ${at}.`);
 }
 
@@ -3535,7 +3540,7 @@ function drawSubsector(): void {
     subParent === "sector" && sector !== null
       ? aroundSubsector(sector, subDoc.letter)
       : undefined;
-  subsectorMap.render(subsector, around);
+  subsectorMap.render(subsector, around, subDoc?.charted);
   subsectorMap.setMains(el<HTMLInputElement>("sub-mains").checked);
   // Opened on its own eighty hexes. What is over the edge is there to be found
   // by going out, not the first thing a referee is shown. SubSectorSpec 4.7.
@@ -3854,7 +3859,7 @@ async function subsectorFiles(open: SubsectorDoc): Promise<SaveFile[]> {
   // The sector file, since a subsector that cannot be handed to a map is a subsector
   // only this application can read. SubSectorSpec 6.1.
   if (wants("sub-want-sec")) {
-    files.push({ name: `${stem}.sec`, data: subsectorFile(subsector, sector) });
+    files.push({ name: `${stem}.sec`, data: subsectorFile(subsector, sector, open.source) });
   }
   const drawn = () => subsectorMapSvg(drawing, sector, el<HTMLInputElement>("sub-mains").checked);
   if (wants("sub-want-svg")) files.push({ name: `${stem}.svg`, data: drawn() });
@@ -4020,7 +4025,7 @@ el("sub-open").addEventListener("click", () => {
   if (subsector === null || subDoc === null || hexShown === null) return;
   const world = subsector.worlds.find((held) => held.at === hexShown);
   if (world === undefined) return;
-  openHexSystem(world.at, world.systemSeed, world.name, world.uwp);
+  openHexSystem(world.at, world.systemSeed, world.name, world.uwp, pbgOf(world));
 });
 
 /**
@@ -4031,13 +4036,22 @@ el("sub-open").addEventListener("click", () => {
  * the system they worked on: the alternative is the level below quietly undoing
  * itself every time somebody looks at the subsector.
  */
-function openHexSystem(at: string, seed: string, name: string, uwp?: string): void {
+function openHexSystem(
+  at: string,
+  seed: string,
+  name: string,
+  uwp?: string,
+  pbg?: string,
+): void {
   if (subDoc === null) return;
   const held = savedSystem(subDoc, at) ?? newSystemDoc(seed, name);
   // The profile the subsector drew, which is not what the seed alone rolls where
   // the region leans its worlds. AppSpec 1.3.1: the level above fills this in
   // rather than the level below guessing at it.
   if (uwp !== undefined && uwp !== "") held.mainWorldUwp = uwp;
+  // And the PBG with it, so a world the subsector says has three gas giants has
+  // three down here too rather than however many its seed rolled.
+  if (pbg !== undefined && pbg !== "") held.mainWorldPbg = pbg;
   held.sector = el<HTMLInputElement>("sub-sector").value;
   held.hex = at;
   // The subsector names the world and the world names the system, SubSectorSpec
@@ -4214,7 +4228,7 @@ function openSector(next: SectorDoc): void {
 function drawSector(): void {
   if (sectorDoc === null) return;
   sector = sectorOf(sectorDoc);
-  sectorMap.render(sector, subsectorNames());
+  sectorMap.render(sector, subsectorNames(), sectorDoc.charted);
   showSectorAbout();
   showSectorList();
 }
@@ -4248,7 +4262,62 @@ function showSectorAbout(): void {
     fact("Longest Main", `${longest.name}, ${longest.hexes.length} worlds`);
   }
   fact("Seed", sector.seed);
+  // Where it came from, where it came from anywhere. AppSpec 8.4: a reader a
+  // year from now should be able to tell what was published from what was
+  // rolled, and this is the only place the document says so on screen.
+  if (sectorDoc.source !== undefined) fact("Source", describeSource(sectorDoc.source));
+  showPolities(about, sectorDoc.charted);
   el("sec-counts").textContent = `${sector.worlds.length} worlds · seed ${sector.seed}`;
+}
+
+/**
+ * Who holds what, and how each of them is drawn. AppSpec 8.8.4.
+ *
+ * A legend rather than leaving the colours to be worked out, because colour on
+ * its own never carries identity: somebody who cannot tell the blue line from
+ * the green one still has to be able to read the map, and the swatch beside a
+ * name is what lets them.
+ */
+function showPolities(about: HTMLElement, charted?: ChartedMap): void {
+  if (charted === undefined || charted.borders.length === 0) return;
+  const looks = polityLooks(charted.borders.map((border) => border.allegiance));
+  if (looks.size === 0) return;
+  const dt = document.createElement("dt");
+  dt.textContent = looks.size === 1 ? "Polity" : "Polities";
+  const dd = document.createElement("dd");
+  dd.className = "sec-polities";
+  for (const [code, look] of looks) {
+    const row = document.createElement("span");
+    row.className = "sec-polity";
+    const swatch = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+    swatch.setAttribute("viewBox", "0 0 28 8");
+    swatch.setAttribute("class", "sec-swatch");
+    const line = document.createElementNS("http://www.w3.org/2000/svg", "line");
+    line.setAttribute("x1", "1");
+    line.setAttribute("y1", "4");
+    line.setAttribute("x2", "27");
+    line.setAttribute("y2", "4");
+    line.setAttribute("stroke", look.colour);
+    line.setAttribute("stroke-width", "3");
+    line.setAttribute("stroke-linecap", "round");
+    // The dash is in the map's units, where a hex is a hundred across, so it
+    // is scaled down to read the same way in a swatch a few pixels wide.
+    if (look.dash !== "") {
+      line.setAttribute(
+        "stroke-dasharray",
+        look.dash
+          .split(" ")
+          .map((part) => String(Number(part) / 4))
+          .join(" "),
+      );
+    }
+    swatch.append(line);
+    const said = document.createElement("span");
+    said.textContent = nameOfAllegiance(charted, code);
+    row.append(swatch, said);
+    dd.append(row);
+  }
+  about.append(dt, dd);
 }
 
 /**
@@ -4452,7 +4521,7 @@ el("sec-save").addEventListener("click", async () => {
       const stem = sectorFileFor(held).name.replace(/\.[a-z]+$/, "");
       // The whole sector as one file a map can read, which is the export this
       // level exists to make possible. SectorSpec 6.1.
-      files.push({ name: `${stem}.sec`, data: sectorFile(sector, held.name) });
+      files.push({ name: `${stem}.sec`, data: sectorFile(sector, held.name, held.source) });
     }
     if (isSupported()) {
       sectorFolder ??= await pickFolder();
@@ -4502,6 +4571,47 @@ async function loadSector(): Promise<void> {
   }
 }
 
+/* Importing a published sector. AppSpec 8 ------------------------------- */
+
+/**
+ * Open a published sector, or one subsector of one.
+ *
+ * The documents the importer builds are ordinary documents - a seed, a
+ * density and a list of overrides - so from here on nothing downstream knows
+ * or cares that these worlds were published rather than rolled. What it does
+ * carry is where it came from, which the readout shows and the export
+ * credits.
+ *
+ * Marked dirty on arrival: an imported sector is a sector full of work that
+ * has never been saved, and closing it without a word would lose it.
+ */
+async function importPublished(level: "sector" | "subsector"): Promise<void> {
+  const discarding =
+    level === "sector" ? confirmSectorDiscard("Import a sector") : confirmSubDiscard("Import a subsector");
+  if (!discarding) return;
+  try {
+    const held = await pickPublishedSector(level);
+    if (held === null) return;
+    const told = describeImport(held.doc.name || "that sector", held.report);
+    if (held.level === "sector") {
+      sectorFolder = null;
+      openSector(held.doc);
+      markSectorDirty();
+      secSay(told);
+    } else {
+      subFolder = null;
+      openSubsector(held.doc, "landing");
+      markSubDirty();
+      subSay(told);
+    }
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    if (currentAppView() === "landing") landingSay(message, true);
+    else if (level === "sector") secSay(message, true);
+    else subSay(message, true);
+  }
+}
+
 wireLanding({
   planetNew: startNewPlanet,
   planetLoad: loadPlanet,
@@ -4509,8 +4619,10 @@ wireLanding({
   systemLoad: loadSystem,
   subsectorNew: startNewSubsector,
   subsectorLoad: loadSubsector,
+  subsectorImport: () => importPublished("subsector"),
   sectorNew: startNewSector,
   sectorLoad: loadSector,
+  sectorImport: () => importPublished("sector"),
 });
 
 /* Start ------------------------------------------------------------------ */

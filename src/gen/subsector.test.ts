@@ -50,7 +50,7 @@ describe("where the systems are", () => {
   it("only ever adds systems as the density rises", () => {
     // SubSectorSpec 3.2.2.1. A referee who has written notes on half a subsector and
     // then decides the region should be busier keeps the half they wrote.
-    const order: Density[] = ["rift", "sparse", "standard", "dense"];
+    const order: Density[] = ["none", "rift", "sparse", "standard", "dense"];
     for (const seed of SEEDS) {
       let before = new Set<string>();
       for (const density of order) {
@@ -58,6 +58,15 @@ describe("where the systems are", () => {
         for (const at of before) expect(now.has(at), `${seed} ${density} ${at}`).toBe(true);
         before = now;
       }
+    }
+  });
+
+  it("leaves every hex empty at no density at all", () => {
+    // What makes a subsector whose worlds all come from somewhere else safe:
+    // not eighty correct decisions, but nothing to decide. The presence value
+    // is in [0,1) and the threshold is 0, so no hex can be under it.
+    for (const seed of SEEDS) {
+      expect(generateSubsector(seed, "A", "none").worlds, seed).toHaveLength(0);
     }
   });
 

@@ -252,8 +252,27 @@ function clamp(value: number, limit: number): number {
   return Math.min(limit, Math.max(0, value));
 }
 
+/**
+ * The digits a UWP position can take, in order. Traveller's pseudo-hex: the
+ * ordinary sixteen and then on up the alphabet, with I and O left out because
+ * they cannot be told from 1 and 0 on a printed map.
+ *
+ * Generation never goes past F — every limit at 6.7.1 stops at 15 — so for
+ * everything this application rolls, this is plain hexadecimal and nothing
+ * moves. It matters for profiles that arrive from outside: a tech level of G
+ * or H is ordinary in published data, and `toString(16)` would write 16 as
+ * "10" and make a nine-character UWP that nothing can read back.
+ */
+const UWP_DIGITS = "0123456789ABCDEFGHJKLMNPQRSTUVWXYZ";
+
 function hexDigit(value: number): string {
-  return value.toString(16).toUpperCase();
+  const at = Math.max(0, Math.min(UWP_DIGITS.length - 1, Math.round(value)));
+  return UWP_DIGITS[at]!;
+}
+
+/** What one UWP digit is worth, or -1 where the character is not a digit. */
+function digitValue(character: string): number {
+  return UWP_DIGITS.indexOf(character);
 }
 
 /**
@@ -399,7 +418,17 @@ export interface Uwp {
   tech: number;
 }
 
-const UWP_PATTERN = /^([A-EX])([0-9A-Z])([0-9A-Z])([0-9A-Z])([0-9A-Z])([0-9A-Z])([0-9A-Z])-([0-9A-Z])$/;
+/**
+ * A readable UWP: a starport, six pseudo-hex digits, a dash and a tech level.
+ *
+ * The digit positions are the UWP_DIGITS alphabet rather than every letter,
+ * because I and O are not digits - they are left out of pseudo-hex precisely so
+ * they cannot be read as 1 and 0 - and a position holding one is a typo rather
+ * than a value. Rejecting it here is what keeps parseUwp's promise that what it
+ * returns is numbers.
+ */
+const UWP_PATTERN =
+  /^([A-EX])([0-9A-HJ-NP-Z])([0-9A-HJ-NP-Z])([0-9A-HJ-NP-Z])([0-9A-HJ-NP-Z])([0-9A-HJ-NP-Z])([0-9A-HJ-NP-Z])-([0-9A-HJ-NP-Z])$/;
 
 /**
  * Reads the digits back off a UWP string, or null if it is not one. The field is
@@ -428,7 +457,7 @@ export function formatUwp(profile: Uwp): string {
 export function parseUwp(uwp: string): Uwp | null {
   const match = UWP_PATTERN.exec(uwp.trim().toUpperCase());
   if (!match) return null;
-  const digit = (i: number) => parseInt(match[i]!, 36);
+  const digit = (i: number) => digitValue(match[i]!);
   return {
     starport: match[1]!,
     size: digit(2),

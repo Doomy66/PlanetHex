@@ -71,6 +71,17 @@ of writing, this is 100% Claude generated to my exacting requirements.
   equirectangular plate and a grey heightmap, a virtual tabletop scene, the hexes
   as GeoJSON polygons or a CSV table, a Traveller sector line with its trade
   codes worked out, and a printable world sheet in Markdown and HTML.
+- **The published sectors, as well as invented ones.** A sector or a subsector
+  can be opened from the real Traveller map instead of rolled: pick the
+  Spinward Marches and 1910 is Regina A788899-C, with its bases, its
+  allegiance and its three gas giants. Everything under the published line is
+  still PlanetHex's — the surface, the orbits, the moons, the cities — so a
+  canon profile sits on a world this application built. The worlds come from
+  [The Traveller Map](https://travellermap.com) when you ask for a sector and
+  not before; see [the licence](#licence) for why none of it ships here. The
+  polity borders and the real X-boat network come with it, so the Imperial
+  and Zhodani frontiers are drawn where they are drawn and the express routes
+  are the published ones rather than a guess at them.
 
 Every hex has a stable name of the form `F07R33C08` — face, row, and column
 counted on the finest lattice — so a hex can be written in a save file or read
@@ -131,6 +142,8 @@ which electron-builder cannot package onto, so the build has to land elsewhere.
 | `src/gen/` | Generation: the height field, climate, ice, life, biomes, craters, tilt, settlement siting, and the world description. |
 | `src/ui/` | The three panels: flat map, globe, local detail, plus colour and scale bars. |
 | `src/io/` | Save, load, the map images, and the export formats in `src/io/export/`. |
+| `src/io/travellermap.ts` | Reading a published sector off The Traveller Map, and `src/io/charted.ts` turning it into documents. |
+| `src/gen/border.ts` | Filling a published border's ring of hexes and tracing the outline the map draws. |
 | `electron/` | The desktop shell and its packaging script. |
 | `PlanetSpec.md` | The specification for a planet. Every decision, and why. |
 | `SystemSpec.md` | The specification for a star system: its stars, its orbits, and its worlds. |
@@ -194,6 +207,17 @@ procedure is expressed here as code rather than copied as text. No text, table,
 artwork, form, or map from any Traveller publication is reproduced, and no
 setting material — no sector, subsector, world, or name from the Third Imperium
 — ships with the application.
+
+That stays true of the sector import. The published worlds are fetched from
+[The Traveller Map](https://travellermap.com) to your own machine when you pick
+a sector, and nothing is held here: no sector file in this repository, none in
+a build, and no sector or world named anywhere in the source. The site's code
+is Joshua Bell's, under the Apache licence; the data is Mongoose Publishing's,
+published there under the Fair Use Policy below for personal, non-commercial
+use, and under that policy it is not ours — or yours — to republish. A sector
+you import and save is a file for your own table. The application records where
+it came from, says so on screen, and credits The Traveller Map and the Traveller5
+Second Survey in the sector file it exports.
 
 PlanetHex is an unofficial, non-commercial fan work, not affiliated with or
 endorsed by Mongoose Publishing or any other Traveller publisher. It is made

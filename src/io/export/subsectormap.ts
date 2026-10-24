@@ -290,7 +290,7 @@ export function subsectorCsv(subsector: Subsector): string {
         world.pbg.gasGiants,
         starsOf(world),
         world.trade.map((code) => code.code).join(" "),
-        "Na",
+        world.allegiance,
         world.systemSeed,
         world.seed,
       ]

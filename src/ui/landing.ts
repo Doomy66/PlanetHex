@@ -52,10 +52,14 @@ export interface LandingHandlers {
   subsectorNew(): void;
   /** Pick the folder a subsector lives in and open it. AppSpec 3.3. */
   subsectorLoad(): void | Promise<void>;
+  /** Open one subsector of a published sector. AppSpec 8.2. */
+  subsectorImport(): void | Promise<void>;
   /** Roll a new sector and open its map. SectorSpec section 4. */
   sectorNew(): void;
   /** Pick the folder a sector lives in and open it. AppSpec 3.3. */
   sectorLoad(): void | Promise<void>;
+  /** Open a published sector, fetched when it is asked for. AppSpec 8.2. */
+  sectorImport(): void | Promise<void>;
 }
 
 export function wireLanding(handlers: LandingHandlers): void {
@@ -73,6 +77,8 @@ export function wireLanding(handlers: LandingHandlers): void {
   click("landing-system-load", handlers.systemLoad);
   click("landing-sub-new", handlers.subsectorNew);
   click("landing-sub-load", handlers.subsectorLoad);
+  click("landing-sub-import", handlers.subsectorImport);
   click("landing-sector-new", handlers.sectorNew);
   click("landing-sector-load", handlers.sectorLoad);
+  click("landing-sector-import", handlers.sectorImport);
 }

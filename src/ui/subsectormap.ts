@@ -3,6 +3,7 @@ import {
   centreOf,
   hexMapSize,
   dotFor,
+  hexCorners,
   hexPoints,
   COLUMN_STEP,
   HEX_HIGH,
@@ -11,6 +12,9 @@ import {
   ZONE_R,
 } from "../hexlayout";
 import { BORDER_REACH } from "../gen/sector";
+import { borderEdges } from "../gen/border";
+import type { ChartedMap } from "../charted-map";
+import { lookFor, polityLooks } from "./polity";
 import { boxFor, pointIn, wholeOf, zoomedAt, type Box, type View } from "./viewbox";
 import type { SubsectorWorld, Route, Subsector } from "../gen/subsector";
 
@@ -71,7 +75,7 @@ export interface Around {
 
 export interface SubsectorMap {
   readonly element: SVGSVGElement;
-  render(subsector: Subsector, around?: Around): void;
+  render(subsector: Subsector, around?: Around, charted?: ChartedMap): void;
   /** Frame the map on its own eighty hexes again. SubSectorSpec 4.7. */
   resetView(): void;
   /** Show or hide the Mains overlay. SubSectorSpec 3.10.4. */
@@ -85,6 +89,7 @@ export function createSubsectorMap(): SubsectorMap {
   const aroundLayer = make("g", { class: "starmap-around" });
   const mainLayer = make("g");
   const gridLayer = make("g");
+  const borderLayer = make("g");
   const routeLayer = make("g");
   const worldLayer = make("g");
   const selectLayer = make("g");
@@ -93,7 +98,7 @@ export function createSubsectorMap(): SubsectorMap {
   // Under everything: a Main is the ground the rest of the map sits on.
   // The neighbours go under everything: they are context, and the map is what
   // is being read.
-  svg.append(aroundLayer, mainLayer, gridLayer, routeLayer, worldLayer, selectLayer);
+  svg.append(aroundLayer, mainLayer, gridLayer, borderLayer, routeLayer, worldLayer, selectLayer);
 
   const handlers: ((at: string) => void)[] = [];
   const places = new Map<string, { x: number; y: number }>();
@@ -120,9 +125,57 @@ export function createSubsectorMap(): SubsectorMap {
     selectLayer.append(make("polygon", { class: "starmap-select", points: hexPoints(at.x, at.y) }));
   }
 
-  function render(subsector: Subsector, around?: Around): void {
+  /**
+   * The polity borders across this subsector. AppSpec 8.8.1, the same outline
+   * the sector draws and in this map's own frame.
+   *
+   * The whole sector's borders are traced, not this subsector's share: a
+   * frontier does not stop at a subsector line, and the piece of it that runs
+   * just outside is what tells a referee which side of it they are on. Only
+   * the part within the drawn area, the look-ahead margin included, is kept.
+   */
+  function drawBorders(charted: ChartedMap | undefined, acrossFrom: number, downFrom: number): void {
+    if (charted === undefined) return;
+    const near = (col: number, row: number) =>
+      col >= 1 - BORDER_REACH &&
+      col <= SUB_COLS + BORDER_REACH &&
+      row >= 1 - BORDER_REACH &&
+      row <= SUB_ROWS + BORDER_REACH;
+
+    const looks = polityLooks(charted.borders.map((border) => border.allegiance));
+    for (const border of charted.borders) {
+      const look = lookFor(looks, border.allegiance);
+      const steps: string[] = [];
+      for (const { hex, side } of borderEdges(border.hexes)) {
+        // Sector-absolute to this map's own eight by ten. The offsets are
+        // multiples of the subsector's width, which is even, so a hex keeps
+        // the column parity that decides how far it is dropped.
+        const col = hex.col - acrossFrom;
+        const row = hex.row - downFrom;
+        if (!near(col, row)) continue;
+        const { x, y } = centreOf(col, row);
+        const corners = hexCorners(x, y);
+        const from = corners[side]!;
+        const to = corners[(side + 1) % corners.length]!;
+        steps.push(`M${from.x},${from.y}L${to.x},${to.y}`);
+      }
+      if (steps.length === 0) continue;
+      borderLayer.append(
+        make("path", {
+          class: "starmap-border",
+          d: steps.join(""),
+          stroke: look.colour,
+          ...(look.dash === "" ? {} : { "stroke-dasharray": look.dash }),
+          "data-allegiance": border.allegiance,
+        }),
+      );
+    }
+  }
+
+  function render(subsector: Subsector, around?: Around, charted?: ChartedMap): void {
     shown = subsector;
     gridLayer.replaceChildren();
+    borderLayer.replaceChildren();
     routeLayer.replaceChildren();
     worldLayer.replaceChildren();
     aroundLayer.replaceChildren();
@@ -145,6 +198,8 @@ export function createSubsectorMap(): SubsectorMap {
         drawHex(at, x, y, worlds.get(at) ?? null);
       }
     }
+
+    drawBorders(charted, acrossFrom, downFrom);
 
     for (const route of subsector.routes) {
       const from = places.get(route.from);

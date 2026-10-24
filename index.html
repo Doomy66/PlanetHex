@@ -3,9 +3,14 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <!-- connect-src names travellermap.com and nothing else. It is the one
+         host this application talks to, for the sector import of AppSpec 8,
+         and only when a user asks for a sector by name. Everything else is
+         still 'self': no analytics, no fonts, no telemetry, nowhere for a
+         planet to go. -->
     <meta
       http-equiv="Content-Security-Policy"
-      content="default-src 'none'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; connect-src 'self'; worker-src 'self' blob:; base-uri 'none'; form-action 'none'"
+      content="default-src 'none'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; connect-src 'self' https://travellermap.com; worker-src 'self' blob:; base-uri 'none'; form-action 'none'"
     />
     <!-- The icon is the `hexagons` glyph from Tabler Icons by Pawel Kuna, used
          under the MIT licence. The licence text ships with the site as
@@ -74,6 +79,7 @@
             <div class="actions">
               <button id="landing-sub-new" type="button">New</button>
               <button id="landing-sub-load" type="button">Load</button>
+              <button id="landing-sub-import" type="button" title="A subsector of a published sector">Import</button>
             </div>
           </li>
           <!-- The sector is specified and not built. On screen rather than left
@@ -89,6 +95,7 @@
             <div class="actions">
               <button id="landing-sector-new" type="button">New</button>
               <button id="landing-sector-load" type="button">Load</button>
+              <button id="landing-sector-import" type="button" title="A published sector, fetched from The Traveller Map">Import</button>
             </div>
           </li>
         </ul>
@@ -147,6 +154,7 @@
           <div class="sub-settings">
             <label>Density
               <select id="sec-density">
+                <option value="none">None</option>
                 <option value="rift">Rift</option>
                 <option value="sparse">Sparse</option>
                 <option value="standard" selected>Standard</option>
@@ -226,6 +234,7 @@
           <div class="sub-settings">
           <label>Density
             <select id="sub-density">
+              <option value="none">None</option>
               <option value="rift">Rift</option>
               <option value="sparse">Sparse</option>
               <option value="standard" selected>Standard</option>
@@ -649,6 +658,44 @@
     <!-- Spec 6.23: what a save writes is the user's to choose. The lists inside
          are built by main.ts from the detail levels of 2.2.2 and the formats of
          6.17, so neither is written down twice. -->
+    <!-- The sector import of AppSpec 8. The list is built in JS from what
+         travellermap answers with, the way the save dialog builds its own, so
+         nothing here hardcodes a sector name: no setting material ships in
+         this file any more than anywhere else. -->
+    <dialog id="import-dialog" class="save-dialog">
+      <form id="import-form" method="dialog">
+        <h2>Import a published sector</h2>
+        <p class="hint">
+          The worlds of a sector as published, fetched from
+          <strong>The Traveller Map</strong> when you pick one. Nothing is
+          downloaded until then, and nothing is kept but what you save.
+        </p>
+
+        <fieldset>
+          <legend>Sector</legend>
+          <div id="import-sectors" class="save-list"></div>
+        </fieldset>
+
+        <fieldset id="import-which" hidden>
+          <legend>Subsector</legend>
+          <p class="hint">Which of the sixteen to open.</p>
+          <div id="import-letters" class="save-list"></div>
+        </fieldset>
+
+        <p class="hint" id="import-status" role="status"></p>
+        <p class="hint">
+          The data is Mongoose Publishing&rsquo;s, for your own use. It is not
+          ours to pass on, so none of it ships with PlanetHex and a sector you
+          save is yours rather than something to republish.
+        </p>
+
+        <div class="actions">
+          <button id="import-go" type="submit" value="import" disabled>Import</button>
+          <button id="import-cancel" type="button">Cancel</button>
+        </div>
+      </form>
+    </dialog>
+
     <dialog id="save-dialog" class="save-dialog">
       <form id="save-form" method="dialog">
         <h2>Save</h2>

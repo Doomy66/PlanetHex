@@ -30,6 +30,17 @@ import { basesFor, zoneFor } from "./base";
  * others are the rift and the cluster either side of it.
  */
 export const DENSITIES = {
+  /**
+   * No systems at all, which is not a region of space but a blank sheet.
+   *
+   * Every other density is a threshold a fixed per-hex value is tested
+   * against, and that value is in [0,1), so zero can never be under it and no
+   * hex is ever occupied. What it is for is a subsector whose worlds all come
+   * from somewhere else - a published sector read in, or eighty hexes a
+   * referee means to place by hand - where a generated world appearing between
+   * the real ones would be a world nobody put there.
+   */
+  none: 0,
   rift: 1 / 6,
   sparse: 1 / 3,
   standard: 1 / 2,
@@ -64,7 +75,19 @@ export interface SubsectorWorld {
   readonly bases: string;
   /** "A" for amber, "R" for red where a referee has said so, else "". 3.6. */
   readonly zone: string;
+  /**
+   * Who holds the world, as the Allegiance column writes it.
+   *
+   * "Na" - non-aligned - for everything this application rolls, because nothing
+   * generated here has an empire behind it to claim anything. It is a column on
+   * every published sector map, so a world that arrives from outside carries
+   * the code it arrived with and the export writes it back out.
+   */
+  readonly allegiance: string;
 }
+
+/** What a world nobody has claimed is down as. */
+export const UNALIGNED = "Na";
 
 /**
  * A route between two worlds. SubSectorSpec 3.9.
@@ -307,6 +330,7 @@ export function worldAt(
     stars: starsFor(systemSeed),
     bases: basesFor(worldSeed, profile),
     zone: zoneFor(worldSeed, profile),
+    allegiance: UNALIGNED,
   };
 }
 

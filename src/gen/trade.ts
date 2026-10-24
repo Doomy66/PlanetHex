@@ -149,3 +149,19 @@ export function pbgFor(seed: string, uwp: string): Pbg {
 export function formatPbg(pbg: Pbg): string {
   return `${pbg.multiplier}${pbg.belts}${pbg.gasGiants}`;
 }
+
+/**
+ * The three digits read back off the column, or undefined where they are not
+ * three digits.
+ *
+ * Half a figure is not applied, for the same reason half a UWP is not: the
+ * referee is mid-typing, and a system should not lose its gas giants to a
+ * keystroke.
+ */
+export function parsePbg(written: string | undefined): Pbg | undefined {
+  if (written === undefined) return undefined;
+  const digits = written.trim();
+  if (!/^[0-9A-F]{3}$/i.test(digits)) return undefined;
+  const value = (at: number) => parseInt(digits[at]!, 16);
+  return { multiplier: value(0), belts: value(1), gasGiants: value(2) };
+}

@@ -13,7 +13,8 @@ This document is the shell. [PlanetSpec.md](PlanetSpec.md) specifies a planet, [
 5. [Loading a folder](#5-loading-a-folder)
 6. [Moving between levels](#6-moving-between-levels)
 7. [Unsaved work](#7-unsaved-work)
-8. [Open questions](#8-open-questions)
+8. [Importing a published sector](#8-importing-a-published-sector)
+9. [Open questions](#9-open-questions)
 
 ---
 
@@ -197,14 +198,78 @@ This document is the shell. [PlanetSpec.md](PlanetSpec.md) specifies a planet, [
 
 7.4 Leaving the page checks the whole chain, on the same terms the planet spec 6.4.4.3 sets out and with the desktop shell's own dialogue of 6.4.4.3.1 where there is no browser one.
 
-## 8. Open questions
+## 8. Importing a published sector
 
-8.1 **Loading a planet by folder.** A folder load knows where it came from and a file load does not, under 3.3.2, so planets are the only level that still asks for the folder on the next Save. Changing the planet row to a directory picker would close that, at the cost of making a bare JSON file harder to open than it is today. Worth answering; not urgent.
+8.1 A sector or a subsector may be opened from **published data** rather than rolled: the worlds of a real Traveller sector, as The Traveller Map holds them, placed on this application's own hexes.
 
-8.2 **Recent list storage.** 2.3 needs handles kept across sessions, which means IndexedDB in the browser and something simpler in the desktop shell. Whether the two share a mechanism or each does what suits it is unanswered.
+8.1.1 Everything this application makes, it makes up. That is the point of it, and it is not what somebody running the Third Imperium needs. A referee who wants the Spinward Marches has no way to get it but to type four hundred worlds in by hand, and the sector level is where that is worst, because sixteen subsectors of invented worlds is the most work and the least use to them.
 
-8.3 **Save As.** Nothing above lets a document be saved somewhere other than where it came from, and 6.3.1 wants it to exist. It is a small feature that touches every level, so it is listed here rather than four times.
+8.2 **The landing page** carries a third action, *Import*, on the sector row and the subsector row. It opens a picker listing the published sectors, and for a subsector the sixteen letters of the one chosen, named as the data names them.
 
-8.4 **A workspace above sectors.** Several sectors, a map of how they sit against each other, and a name for the whole setting. The arithmetic does not stop at a sector and neither does a campaign. Nothing here forbids it, and nothing here builds it.
+8.2.1 The list is fetched, never shipped. No sector name, subsector name or world appears in this application's own files, for the reason at 8.6.
 
-8.5 **How deep the chain goes.** [SystemSpec.md](SystemSpec.md) 13.1 would make a moon of a gas giant openable as a planet, which is a fifth level in all but name. Whether that is a level, or a system with one more kind of thing in it, is unanswered.
+8.2.2 The official sectors only. The source holds some five hundred of varying standing, and a list offering a dozen answers to "which Spinward Marches" is worse than one offering forty-five that are the published setting.
+
+8.3 **What is fetched, and when.** Nothing until a sector is chosen. Then the sector's world table and its subsector names, which is one request of about forty kilobytes, or for a subsector alone the thirty-odd lines of that subsector. What has been fetched is kept for the session, so moving between the subsectors of one sector does not ask again.
+
+8.3.1 The application talks to one host and no other, and its content security policy names that host. Nothing else about it reaches a network, and nothing about a document ever leaves the machine.
+
+8.4 **An imported document is an ordinary document.** A seed, a density of *none*, and one override per published world. Nothing below the import knows the worlds were published rather than rolled.
+
+8.4.1 Density *none* rather than eighty decisions per subsector. Every other density is a threshold a fixed per-hex value is tested against, so zero occupies no hex ever, and "no generated world can appear between the real ones" becomes a property of the document rather than something that has to be got right eighty times and stays right only until somebody moves a slider.
+
+8.4.2 The lean of 3.11 is set to nothing. A published sector's profiles are all given rather than rolled, so a thumb on the dice has nothing to press against and would only mislead whoever read it.
+
+8.5 **The seed is keyed on where the sector is** in charted space, and on nothing else. Everything below follows by the chain of 1.3.
+
+8.5.1 So a published world's ground is the same for every user, on every machine, for ever; and the same whether its sector was imported whole or its subsector imported alone, which is 1.3.1.
+
+8.5.2 Not the era, so one world looked at in two centuries is one rock with two profiles written on it rather than two worlds. Not the name, which the source gives differently in different languages. And above all not the profile, so that when the published data is corrected upstream the world's coastline stays exactly where it was and only its digits move.
+
+8.5.3 What is pinned is what was given: the profile, the name, the bases, the zone, the stars, the allegiance and the PBG. What is generated is everything under them, and that moves if the generators ever change — for a published world exactly as it already does for a rolled one. A world opened, worked up and saved is held by the document and moves no more.
+
+8.6 **The data is not ours.** It is Mongoose Publishing's, published under their Fair Use Policy for personal, non-commercial use, and nothing on the source site may be republished without its contributor's consent.
+
+8.6.1 So none of it is held in this repository or in a build. It is fetched to the user's machine when they ask for it and goes nowhere else, and the claim that no setting material ships with the application stays true.
+
+8.6.2 A document records where it came from, and says so in the readout. The sector file export credits the source and carries the fair use line, because that export is the one written to be read by somebody else's tool and is where the data would otherwise travel with nothing on it to say whose it is.
+
+8.7 **What the published columns cannot keep.** The bases of several services collapse to the naval and scout this application draws; the trade codes are worked out again from the profile and the published remarks are kept as a note; a zone of *forbidden* becomes red and *unabsorbed* becomes none; and a system of three stars or more keeps two.
+
+8.7.1 A world whose published profile cannot be read keeps its name and is given no profile at all, with a note saying why. Inventing one would put rolled digits under a real name with nothing to show they were rolled, which is the one outcome worse than a gap.
+
+8.7.2 An unnamed world is named after its hex, for the same reason: left blank, the generator would supply a name that reads as published as the rest.
+
+8.8 **Borders, the express network and polity names** come with the sector, in the same metadata request its subsector names do, and are carried on the document so a saved sector draws them without going back to the network.
+
+8.8.1 A border arrives as a closed ring of hexes along the inside of a boundary. That is the edge of a shape rather than a shape, so what is drawn is the outline of everything the ring encloses — the empty hexes in the middle included, because a polity holds the space between its worlds and no world marks it. The ring is filled by flooding from outside it and keeping what the flood does not reach; the outline is then every edge of a filled hex with nothing filled on the far side.
+
+8.8.1.1 Flooded from the outside rather than the inside because there is no safe way to pick a hex that is inside: a border can be one hex wide, and the middle of its bounding box is then outside it. A corner of a box drawn round the whole thing with room to spare is outside by construction.
+
+8.8.1.2 A polity may have several borders in one sector — the Imperium has four in the Spinward Marches, a main body and three enclaves — so these are a list rather than one for each allegiance. A border may also run off the edge of the sector, and its path says so with hexes outside the thirty-two by forty. Those hexes are real places; they are simply not places this map draws, so the outline is traced over them and only the part on the map is drawn.
+
+8.8.2 Where the published express network is known it **replaces** the routes of the subsector spec 3.3 rather than being drawn beside them. 3.3 wires every pair of good ports within two hexes, which is a fair guess at where the mail would go and is not where it goes; on a map anybody recognises, the difference between a thin published line and a dense computed mesh is the most visible thing on it. Trade routes are left as they were, since nothing published says where a free trader goes.
+
+8.8.3 Allegiance codes are given their published names, so a border is labelled *Zhodani Consulate* rather than `ZhIN`.
+
+8.8.4 Each allegiance is drawn its own way, and a legend says which is which. One colour for every border is a tangle wherever two of them run alongside each other, which on a real map is exactly where the interesting ground is: the Darrian, Sword Worlds and Imperial frontiers in the Spinward Marches are within a few hexes of each other for most of their length.
+
+8.8.4.1 Identity is a hue **and** a dash, not a hue alone. Three hues is as many as can be told apart on this surface by somebody with any of the common colour deficiencies — checked against the map's own background rather than judged by eye — and a sector can hold four polities or five. Three hues against three dashes gives nine, every pair of which differs in a channel nobody is blind to.
+
+8.8.4.2 The look follows the allegiance, not the order its border happened to arrive in: the codes a document holds are sorted, so the same sector always draws the same way and nothing repaints because a border was added after it.
+
+8.8.4.3 A legend is always shown, and every border carries its name. Colour never carries identity on its own.
+
+## 9. Open questions
+
+9.1 **Loading a planet by folder.** A folder load knows where it came from and a file load does not, under 3.3.2, so planets are the only level that still asks for the folder on the next Save. Changing the planet row to a directory picker would close that, at the cost of making a bare JSON file harder to open than it is today. Worth answering; not urgent.
+
+9.2 **Recent list storage.** 2.3 needs handles kept across sessions, which means IndexedDB in the browser and something simpler in the desktop shell. Whether the two share a mechanism or each does what suits it is unanswered.
+
+9.3 **Save As.** Nothing above lets a document be saved somewhere other than where it came from, and 6.3.1 wants it to exist. It is a small feature that touches every level, so it is listed here rather than four times.
+
+9.4 **A workspace above sectors.** Several sectors, a map of how they sit against each other, and a name for the whole setting. The arithmetic does not stop at a sector and neither does a campaign. Nothing here forbids it, and nothing here builds it.
+
+9.5 **How deep the chain goes.** [SystemSpec.md](SystemSpec.md) 13.1 would make a moon of a gas giant openable as a planet, which is a fifth level in all but name. Whether that is a level, or a system with one more kind of thing in it, is unanswered.
+
+9.6 **A tenth polity.** 8.8.4.1 gives nine distinguishable looks, which is more than any sector of the published setting needs and not infinitely many. What a tenth should do — fold into a plain unclaimed line, or add a third channel — is unanswered, and nothing in the data has asked the question yet.

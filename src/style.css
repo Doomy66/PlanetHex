@@ -1546,3 +1546,43 @@ body.resizing { cursor: col-resize; user-select: none; }
   background: var(--panel);
   border-top: 1px solid var(--line);
 }
+
+/* Published borders and their labels. AppSpec 8.8.1 ---------------------- */
+
+/* Drawn under the worlds and over the grid, so a border reads as the ground
+   a polity holds rather than as something lying on top of its worlds. The
+   line is wide and soft: a frontier on a Traveller map is a claim, not a
+   fence, and a hard thin line would compete with the X-boat routes. */
+/* The stroke colour and dash are set per border, by allegiance, so that two
+   frontiers running alongside each other can be told apart. */
+.sec-border {
+  fill: none;
+  stroke-width: 3;
+  stroke-linecap: round;
+  opacity: 0.85;
+}
+
+.sec-border-label {
+  font-size: 22px;
+  letter-spacing: 0.16em;
+  text-anchor: middle;
+  text-transform: uppercase;
+  opacity: 0.55;
+  pointer-events: none;
+}
+
+/* The same frontier on the subsector map, where a referee actually runs a
+   game. Drawn a little heavier: there are eighty hexes here rather than
+   1,280, so the line can afford to be read at a glance. */
+.starmap-border {
+  fill: none;
+  stroke-width: 4;
+  stroke-linecap: round;
+  opacity: 0.9;
+}
+
+/* The legend: a swatch of the line beside the name, so identity is never
+   carried by colour alone. */
+.sec-polities { display: flex; flex-direction: column; gap: 4px; }
+.sec-polity { display: flex; align-items: center; gap: 7px; }
+.sec-swatch { width: 28px; height: 8px; flex: none; }

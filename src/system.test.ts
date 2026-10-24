@@ -38,6 +38,43 @@ describe("a system document", () => {
   });
 });
 
+describe("the main world the level above says is here", () => {
+  // AppSpec 1.3.1. The profile is not decoration on a finished system: it says
+  // whether the orbit holds a belt or a world, how far out it sits, and
+  // whether it belongs in the habitable zone. Laid over the top afterwards it
+  // would leave the system disagreeing with the subsector that opened it.
+
+  it("builds a size 0 main world as a belt, not a world called one", () => {
+    // A main world whose size digit is 0 is an asteroid belt - that is what
+    // the As trade code means - and published data is full of them.
+    const doc = newSystemDoc(SEED, "Rocks");
+    doc.mainWorldUwp = "E000514-A";
+    const system = systemOf(doc);
+    const home = system.orbits.find((orbit) => "main" in orbit.content && orbit.content.main);
+    expect(home).toBeDefined();
+    expect(home!.content.kind).toBe("belt");
+    expect(system.mainWorld.uwp).toBe("E000514-A");
+  });
+
+  it("still builds an ordinary profile as a world", () => {
+    const doc = newSystemDoc(SEED, "Ground");
+    doc.mainWorldUwp = "B657744-A";
+    const home = systemOf(doc).orbits.find((orbit) => "main" in orbit.content && orbit.content.main);
+    expect(home!.content.kind).toBe("world");
+  });
+
+  it("places the belts and gas giants the PBG asks for", () => {
+    const doc = newSystemDoc(SEED, "Rocks");
+    doc.mainWorldUwp = "B657744-A";
+    doc.mainWorldPbg = "703";
+    const system = systemOf(doc);
+    const giants = system.orbits.filter((orbit) => orbit.content.kind === "giant").length;
+    const belts = system.orbits.filter((orbit) => orbit.content.kind === "belt").length;
+    expect(giants).toBe(3);
+    expect(belts).toBe(0);
+  });
+});
+
 describe("overrides", () => {
   it("stores only what was changed", () => {
     // SystemSpec 9.3 and 5.3.1: a system nobody has edited saves as its seed and

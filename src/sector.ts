@@ -18,7 +18,7 @@ import {
   type Density,
 } from "./gen/subsector";
 import { generateSector, subsectorSeedFor, type Sector } from "./gen/sector";
-import type { Subsector } from "./gen/subsector";
+import type { Subsector, Route } from "./gen/subsector";
 import {
   newSubsectorDoc,
   parseSubsectorDoc,
@@ -28,6 +28,8 @@ import {
 } from "./subsector";
 import { SUBSECTOR_LETTERS } from "./location";
 import { dateOrEpoch, EPOCH, formatImperialDate } from "./traveller";
+import { parseSource, type ChartedSource } from "./source";
+import { parseChartedMap, type ChartedMap } from "./charted-map";
 
 export interface SectorDoc {
   /** Which level this document is, under the app spec 4.1. */
@@ -45,6 +47,20 @@ export interface SectorDoc {
   density: Density;
   /** Which way the whole sector leans. The subsector spec 3.11. */
   shifts: { population: number; tech: number };
+  /**
+   * Where this came from, where it was imported rather than rolled. AppSpec 8.4.
+   *
+   * Optional, and the version does not move for it: a build that does not know
+   * the field drops it and still reads every subsector under it.
+   */
+  source?: ChartedSource;
+  /**
+   * The borders, express routes and polity names that came with it. AppSpec 8.8.
+   *
+   * Carried rather than fetched again, so a saved sector draws its borders
+   * with nothing but the file.
+   */
+  charted?: ChartedMap;
   /** The subsectors somebody has worked on, by letter. SectorSpec 5.3. */
   subsectors: { letter: string; doc: SubsectorDoc }[];
 }
@@ -123,7 +139,32 @@ export function sectorOf(doc: SectorDoc, open?: SubsectorDoc): Sector {
   const worked = new Map<string, Subsector>();
   for (const held of doc.subsectors) worked.set(held.letter.toUpperCase(), subsectorOf(held.doc));
   if (open !== undefined) worked.set(open.letter.toUpperCase(), subsectorOf(open));
-  return generateSector(doc.seed, doc.density, doc.shifts, worked);
+  const sector = generateSector(doc.seed, doc.density, doc.shifts, worked);
+  return wearingRoutes(sector, doc.charted);
+}
+
+/**
+ * The express network a published sector came with, in place of the one worked
+ * out here. AppSpec 8.8.2.
+ *
+ * 3.3 wires every pair of good ports within two hexes, which is a fair guess
+ * at where the mail would go and is not where it goes. The real network is a
+ * chosen few legs, and on a map anybody recognises the difference between the
+ * two is the most visible thing on it. So where the real one is known it
+ * replaces the guess rather than being drawn beside it.
+ *
+ * Trade routes are left alone: nothing published says where a free trader
+ * goes, and 3.3's answer to that is as good as any.
+ */
+function wearingRoutes(sector: Sector, charted?: ChartedMap): Sector {
+  if (charted === undefined || charted.routes.length === 0) return sector;
+  const trade = sector.routes.filter((route) => route.kind === "trade");
+  const xboat: Route[] = charted.routes.map((leg) => ({
+    from: leg.from,
+    to: leg.to,
+    kind: "xboat" as const,
+  }));
+  return { ...sector, routes: [...xboat, ...trade] };
 }
 
 /**
@@ -159,6 +200,10 @@ export function parseSectorDoc(text: string): SectorDoc {
     density:
       typeof density === "string" && density in DENSITIES ? (density as Density) : DEFAULT_DENSITY,
     shifts: parseShifts(r["shifts"]),
+    ...(parseSource(r["source"]) === undefined ? {} : { source: parseSource(r["source"])! }),
+    ...(parseChartedMap(r["charted"]) === undefined
+      ? {}
+      : { charted: parseChartedMap(r["charted"])! }),
     subsectors: parseSubsectors(r["subsectors"]),
   };
 }

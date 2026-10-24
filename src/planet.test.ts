@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { blankPlanet, newPlanet, parseUwp, parsePlanet, rollUwp } from "./planet";
+import { blankPlanet, formatUwp, newPlanet, parseUwp, parsePlanet, rollUwp } from "./planet";
 
 /** A spread of seeds, enough that every branch of the rules is exercised. */
 const WORLDS = Array.from({ length: 500 }, (_, i) => {
@@ -138,6 +138,53 @@ describe("rollUwp", () => {
       return worlds.reduce((sum, { w }) => sum + w.tech, 0) / worlds.length;
     };
     expect(techAt("A")).toBeGreaterThan(techAt("X"));
+  });
+});
+
+describe("pseudo-hex digits", () => {
+  // Traveller's pseudo-hex runs on past F up the alphabet, leaving out I and O
+  // so they cannot be read as 1 and 0. Nothing rolled here goes past F - every
+  // limit at 6.7.1 stops at 15 - so this is about profiles arriving from
+  // outside, where a tech level of G or H is ordinary.
+
+  it("reads and writes the ordinary sixteen unchanged", () => {
+    // The whole point of leaving 0-F alone: no world already saved moves.
+    for (const [at, digit] of [..."0123456789ABCDEF"].entries()) {
+      const uwp = `A${digit}00000-0`;
+      expect(parseUwp(uwp)!.size, uwp).toBe(at);
+      expect(formatUwp(parseUwp(uwp)!), uwp).toBe(uwp);
+    }
+  });
+
+  it("carries on up the alphabet past F", () => {
+    expect(parseUwp("A000000-G")!.tech).toBe(16);
+    expect(parseUwp("A000000-H")!.tech).toBe(17);
+    // J, not I: the next digit after H is worth 18.
+    expect(parseUwp("A000000-J")!.tech).toBe(18);
+  });
+
+  it("writes a tech level above F as one character", () => {
+    // toString(16) wrote 16 as "10", which made a nine-character UWP that
+    // parseUwp then refused - so a canon high-tech world broke on the way back.
+    const high = { ...parseUwp("A000000-0")!, tech: 17 };
+    expect(formatUwp(high)).toBe("A000000-H");
+    expect(parseUwp(formatUwp(high))!.tech).toBe(17);
+  });
+
+  it("refuses I and O, which are not digits", () => {
+    expect(parseUwp("A000000-I")).toBeNull();
+    expect(parseUwp("A000000-O")).toBeNull();
+    expect(parseUwp("AI00000-0")).toBeNull();
+  });
+
+  it("reads the digits published data actually uses", () => {
+    // A size above 10 and a government above 13 are past anything rollUwp can
+    // produce, and both appear in published sectors. They parse, because
+    // parseUwp says what a profile is rather than what the dice can roll.
+    const odd = parseUwp("A87A9F9-C");
+    expect(odd).not.toBeNull();
+    expect(odd!.hydrographics).toBe(10);
+    expect(odd!.government).toBe(15);
   });
 });
 

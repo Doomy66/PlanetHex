@@ -70,7 +70,9 @@ This document is the companion to [PlanetSpec.md](PlanetSpec.md) and is numbered
 
 3.2.1 Each hex draws one value in [0, 1) from its presence stream. A hex holds a system where that value is under the density threshold.
 
-3.2.2 Density is a subsector setting with four choices: **Rift** at one hex in six, **Sparse** at one in three, **Standard** at one in two, and **Dense** at two in three. Standard is the default, and it is the 4+ on one die that Traveller's own maps are built to.
+3.2.2 Density is a subsector setting with five choices: **None**, **Rift** at one hex in six, **Sparse** at one in three, **Standard** at one in two, and **Dense** at two in three. Standard is the default, and it is the 4+ on one die that Traveller's own maps are built to.
+
+3.2.2.0 **None** is a threshold of zero. The value at 3.2.1 is in [0, 1) and so can never be under it, which makes an empty subsector a property of the setting rather than eighty hexes that happen to come out empty. It is for a subsector whose worlds all come from somewhere else — a published sector read in under the app spec 8, or eighty hexes a referee means to place by hand under 3.2.3 — where a rolled world appearing between the real ones would be a world nobody put there.
 
 3.2.2.1 A threshold against a fixed per-hex value rather than a die roll per density, so that raising the density only ever adds systems and never moves the ones already there. A referee who has written notes on half a subsector and then decides the region should be busier keeps the half they wrote.
 
@@ -270,7 +272,7 @@ Nothing is marked Red by generation.
 
 5.2 A save holds no generated world. Load rebuilds all eighty hexes from the seed and the density, exactly as the planet spec 6.3 rebuilds a surface.
 
-5.3 An override is what the user typed over what was rolled, keyed by hex, and it holds only the fields that were changed: name, UWP, bases, zone, PBG, stars, notes, and whether the hex holds a system at all under 3.2.3.
+5.3 An override is what the user typed over what was rolled, keyed by hex, and it holds only the fields that were changed: name, UWP, bases, zone, PBG, stars, allegiance, notes, and whether the hex holds a system at all under 3.2.3.
 
 5.3.1 Only what changed, so a subsector the user has read and not edited saves as its seed and nothing else, and so a later change to the generator improves the worlds nobody has touched while leaving the ones they have alone.
 
@@ -279,6 +281,12 @@ Nothing is marked Red by generation.
 5.3.3 An override never changes a world's seed. The seed is the world, the override is what the referee says about it, and a user who edits a UWP and then opens the world gets the terrain the seed makes with the profile they typed — which is the same arrangement the planet spec 6.7 already has for a hand-edited profile.
 
 5.3.4 An override on a hex that the current density leaves empty is kept, and the hex is drawn as occupied with a mark saying it is there because the user put it there. Dropping it would lose written work to a slider, which is the thing the planet spec 6.4.4 exists to prevent.
+
+5.3.6 Bases and zone are closed vocabularies in which the empty string is a value — no bases, and a green zone — rather than an absence. An override holding one is kept and read back as one. Treated as free text it would be dropped on the way back in, and the rolled answer would return: a world written down as having no naval base would come back from a save with one, since 3.5.1 gives one to better than a third of the good ports.
+
+5.3.7 Allegiance is who holds the world, as the Allegiance column of a sector line writes it. Nothing this application rolls has one — every generated world is non-aligned, and 3.5 gives it no empire to belong to — so the field is only ever written by a world that arrived from somewhere with empires in it. It travels into the sector file and the CSV.
+
+5.3.8 PBG is overridable for the same reason the profile is, and it reaches further: the system below reads it before it lays its orbits out, because it says how many belts and gas giants there are to place. Gas giants are where a ship refuels, so a wrong third digit is a wrong answer to a question players actually ask. Three digits or nothing — half a figure is somebody mid-typing, and a system should not lose its gas giants to a keystroke.
 
 5.3.5 A hex also stores the seed of the system in it, where the referee has rolled a different one. A hex's system seed is derived from the subsector's under 3.1.3 and that is what the hex holds until somebody deliberately replaces it; storing the replacement is what keeps the subsector and the system view agreeing about what is in the hex.
 

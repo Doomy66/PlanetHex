@@ -6,6 +6,68 @@ user. Dates are the day the release was tagged.
 
 ## Unreleased
 
+- **Published sectors can be opened, not just rolled.** Import on the sector
+  and subsector rows of the landing page offers the forty-five official
+  Traveller sectors, and opens one with its real worlds: Spinward Marches
+  1910 is Regina A788899-C, with its naval and scout bases, its allegiance
+  and its three gas giants. PlanetHex still generates everything underneath —
+  the surface, the orbits, the moons, the cities — so a canon profile sits on
+  top of a world this application made. The worlds are fetched from
+  [The Traveller Map](https://travellermap.com) when a sector is asked for,
+  and never before: no sector data ships in the repository or in a build,
+  because it is Mongoose Publishing's and is not ours to pass on. The app
+  spec section 8 is the whole of it.
+  - The seed is keyed on where the sector sits in charted space and nothing
+    else, so a published world's ground is the same for every user for ever,
+    and the same whether the sector was imported whole or that subsector
+    imported alone. Not the era, not the name, and not the profile — so when
+    the Second Survey corrects a UWP upstream, the coastline stays put and
+    only the digits move.
+  - `connect-src` in the content security policy now names travellermap.com.
+    It is the only host this application talks to, and nothing about a
+    document ever leaves the machine.
+- **Borders and the real X-boat network on an imported sector.** The same
+  metadata request that fetches the subsector names already carried the
+  published polity borders, the express routes and the full allegiance names,
+  all of it going unread. The sector map now draws the borders as a line along
+  the hex edges — filling each one from its published ring so the empty hexes
+  a polity holds are inside it — labelled *Zhodani Consulate* rather than
+  `ZhIN`. The published express legs replace the computed ones, so the
+  Spinward Marches shows its thin canon network instead of a mesh wiring every
+  pair of good ports: 439 worlds went from 373 routes to 271. App spec 8.8.
+  - Borders are drawn on the subsector map too, where a referee actually runs
+    a game, in the same colours the sector uses.
+  - Each polity gets a look of its own, with a legend naming them. A hue and a
+    dash rather than a hue alone: three colours is as many as can be told
+    apart on this background by somebody with a colour deficiency, and a
+    sector holds more polities than that. The Darrian, Sword Worlds and
+    Imperial frontiers run within a few hexes of each other for most of their
+    length, and in one colour that stretch was unreadable.
+- **Fixed: a main world the subsector called an asteroid belt was drawn as a
+  world in the system view.** Caliburn in the Sword Worlds is `E000514-A` —
+  size 0, which is what the As trade code means — and the two levels
+  disagreed about it. The system laid its orbits out from the profile its own
+  seed rolled and only then wore the one the subsector gave it, so the belt
+  test had been run against the wrong profile. The known profile now reaches
+  generation, which also puts the main world at the distance its own profile
+  asks for rather than another world's.
+- **A density of None.** An empty subsector, for one whose worlds all come
+  from somewhere else or are to be placed by hand. It is how an imported
+  subsector is held, so no rolled world can appear between the real ones.
+- **Allegiance and PBG can be written over a hex**, which the subsector spec
+  5.3 has always said and the code did not do. Allegiance reaches the sector
+  file and the CSV, which used to write `Na` for everything; PBG reaches the
+  system below, where it decides how many belts and gas giants there are to
+  find.
+- **Fixed: a base or a zone emptied on a hex came back on the next load.**
+  The reader treated the empty string as nothing said rather than as a value,
+  so a world written down as having no naval base was handed one again by the
+  generator. Only a saved document was affected; on screen it had always been
+  right.
+- **Fixed: a tech level above F wrote itself as two characters**, making a
+  UWP nothing could read back. Traveller's pseudo-hex now runs on up the
+  alphabet past F, leaving out I and O as it should. Nothing this application
+  rolls reaches 16, so no existing world moves.
 - **The foot MainLine and the Traveller Ship Designer share.** Help, release
   notes, suggestions and the version; links to the other two; and the short
   form of Mongoose Publishing's notice, whose Fair use notice link opens the

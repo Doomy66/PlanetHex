@@ -15,6 +15,7 @@ import { parseSectorHex, subsectorLetter } from "./location";
 import { parsePlanet, rollUwp, type Planet } from "./planet";
 import { generateSystem, mainWorldSeed, type StarSystem } from "./gen/system";
 import { parseStars, starsFor } from "./gen/star";
+import { parsePbg } from "./gen/trade";
 import { dateOrEpoch, dayFromEpoch, EPOCH, formatImperialDate } from "./traveller";
 
 /**
@@ -59,6 +60,15 @@ export interface SystemDoc {
   date: string;
   /** The profile of 5.1, written down so the document stands alone. */
   mainWorldUwp: string;
+  /**
+   * The main world's PBG, where the level above knows it. AppSpec 1.3.1.
+   *
+   * Carried for the same reason the profile is, and used differently: the
+   * profile is laid over the system once it is built, and this is needed while
+   * it is being built, because it decides how many belts and gas giants the
+   * orbits hold.
+   */
+  mainWorldPbg?: string;
   /**
    * The stars, as the Stars column writes them, where the referee has changed
    * them. Null for the ones the seed rolled. SystemSpec 2.6.
@@ -156,12 +166,14 @@ export function setOverride(
 export function systemOf(doc: SystemDoc): StarSystem {
   const written = doc.star?.trim() ?? "";
   const atDay = dayFromEpoch(dateOrEpoch(doc.date));
+  const pbg = parsePbg(doc.mainWorldPbg);
+  const stored = doc.mainWorldUwp.trim().toUpperCase();
+  const known = stored === "" ? undefined : stored;
   const system =
     written === ""
-      ? generateSystem(doc.seed, undefined, atDay)
-      : generateSystem(doc.seed, parseStars(written, starsFor(doc.seed)), atDay);
+      ? generateSystem(doc.seed, undefined, atDay, pbg, known)
+      : generateSystem(doc.seed, parseStars(written, starsFor(doc.seed)), atDay, pbg, known);
   const main = system.mainWorld;
-  const stored = doc.mainWorldUwp.trim().toUpperCase();
   const orbits = system.orbits.map((orbit) => {
     const content = orbit.content;
     if (content.kind !== "world") return orbit;
@@ -212,6 +224,9 @@ export function parseSystemDoc(text: string): SystemDoc {
     // A save written before there were dates is a save drawn at the epoch, so
     // that is what it reads as and nothing in it has moved.
     date: formatImperialDate(dateOrEpoch(r["date"])),
+    ...(typeof r["mainWorldPbg"] === "string" && r["mainWorldPbg"] !== ""
+      ? { mainWorldPbg: r["mainWorldPbg"] }
+      : {}),
     mainWorldUwp:
       typeof r["mainWorldUwp"] === "string" && r["mainWorldUwp"] !== ""
         ? r["mainWorldUwp"]

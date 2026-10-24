@@ -352,7 +352,13 @@ function shuffled(seed: string, stream: string, of: readonly number[]): number[]
  * the system is the seed's alone, under 1.2; where round its orbit each of it
  * has got to is 3.5, and that is the only thing `atDay` decides.
  */
-export function generateSystem(seed: string, given?: Stars, atDay = 0): StarSystem {
+export function generateSystem(
+  seed: string,
+  given?: Stars,
+  atDay = 0,
+  givenPbg?: Pbg,
+  givenUwp?: string,
+): StarSystem {
   // The stars the seed rolls, unless the referee has said otherwise. A different
   // star is a different system: it lights different orbits, so everything from
   // the habitable zone outwards is laid out again rather than patched.
@@ -362,8 +368,21 @@ export function generateSystem(seed: string, given?: Stars, atDay = 0): StarSyst
   const luminosity = systemLuminosity(stars);
   const laid = discOrbitsFor(seed, luminosity);
   const worldSeed = mainWorldSeed(seed);
-  const uwp = rollUwp(worldSeed);
-  const pbg = pbgFor(worldSeed, uwp);
+  // The profile the level above says is here, where it has said. It has to be
+  // known now rather than laid over the finished system, because the main
+  // world's profile decides three things about the layout: whether the orbit
+  // holds a belt or a world, how far out it wants to be, and whether it
+  // belongs in the habitable zone. A world built from one profile and then
+  // relabelled with another is a system that disagrees with itself - a size 0
+  // main world drawn as a world, with the subsector above calling it an
+  // asteroid belt, which is what it is.
+  const uwp = givenUwp !== undefined && parseUwp(givenUwp) !== null ? givenUwp : rollUwp(worldSeed);
+  // The figures the seed rolls, unless the level above has them. Unlike the
+  // profile, which is laid over the finished system, this has to be known
+  // before the orbits are filled: it says how many belts and gas giants there
+  // are to place, and a world that arrives with three gas giants should have
+  // three to refuel at rather than whatever its seed felt like.
+  const pbg = givenPbg ?? pbgFor(worldSeed, uwp);
 
   // A world with water and breathable air goes in the habitable zone where the
   // star has one, and takes the orbit nearest what its profile asks for within

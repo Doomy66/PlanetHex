@@ -105,6 +105,48 @@ export function hexDistance(a: SectorHex, b: SectorHex): number {
   return down <= across ? across : across + (down - across) / 2;
 }
 
+/**
+ * The six hexes around one, in the order [hexCorners](hexlayout.ts) gives its
+ * edges: south-east, south, south-west, north-west, north, north-east.
+ *
+ * In that order so an edge and the hex across it share an index, which is what
+ * tracing an outline needs: an edge is drawn exactly where the neighbour on the
+ * far side of it is not in the same region.
+ *
+ * No range check. A sector's hexes stop at 32 by 40, but a border drawn around
+ * part of one does not: a published polity runs off the edge into the next
+ * sector, and the path says so with hexes like 0000. A neighbour outside the
+ * sector is a real place; it is simply not a place this map draws.
+ */
+export function neighboursOf(hex: SectorHex): SectorHex[] {
+  // Even columns ride half a hex lower, so which row the diagonal neighbours
+  // sit on depends on which kind of column this is. hexDistance's `halves`
+  // says the same thing arithmetically.
+  const low = hex.col % 2 === 0;
+  const up = low ? hex.row : hex.row - 1;
+  const down = low ? hex.row + 1 : hex.row;
+  return [
+    { col: hex.col + 1, row: down },
+    { col: hex.col, row: hex.row + 1 },
+    { col: hex.col - 1, row: down },
+    { col: hex.col - 1, row: up },
+    { col: hex.col, row: hex.row - 1 },
+    { col: hex.col + 1, row: up },
+  ];
+}
+
+/**
+ * Four digits as a hex, without asking whether the sector has one there.
+ *
+ * parseSectorHex is the one to use for a world, which must be somewhere on
+ * this map. This is for a border path, which may walk outside it.
+ */
+export function parseAnyHex(text: string): SectorHex | null {
+  const digits = text.replace(/\s+/g, "");
+  if (!/^\d{4}$/.test(digits)) return null;
+  return { col: Number(digits.slice(0, 2)), row: Number(digits.slice(2)) };
+}
+
 export function formatLocation(location: PlanetLocation): string {
   const sector = location.sector.trim();
   const hex = parseSectorHex(location.hex);

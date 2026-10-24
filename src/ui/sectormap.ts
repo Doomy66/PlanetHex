@@ -1,13 +1,17 @@
 import {
   centreOf,
   dotFor,
+  hexCorners,
   hexPoints,
   HEX_HIGH,
   HEX_WIDE,
   COLUMN_STEP,
   PAD,
 } from "../hexlayout";
-import { SECTOR_COLS, SECTOR_ROWS, SUB_COLS, SUB_ROWS } from "../location";
+import { parseAnyHex, SECTOR_COLS, SECTOR_ROWS, SUB_COLS, SUB_ROWS } from "../location";
+import { borderEdges, onTheMap } from "../gen/border";
+import { nameOfAllegiance, type BorderPath, type ChartedMap } from "../charted-map";
+import { lookFor, polityLooks, type PolityLook } from "./polity";
 import type { Sector } from "../gen/sector";
 import type { SubsectorWorld } from "../gen/subsector";
 import { boxFor, pointIn, wholeOf, zoomedAt, type Box, type View } from "./viewbox";
@@ -72,7 +76,7 @@ export interface SectorMap {
    * letter, where they have named one - a subsector they have been into and
    * renamed is called that here too.
    */
-  render(sector: Sector, names?: ReadonlyMap<string, string>): void;
+  render(sector: Sector, names?: ReadonlyMap<string, string>, charted?: ChartedMap): void;
   /** Frame the whole sector again. */
   resetView(): void;
   setSelected(letter: string | null, at: string | null): void;
@@ -84,11 +88,12 @@ export interface SectorMap {
 export function createSectorMap(): SectorMap {
   const svg = make("svg", { class: "sectormap" });
   const gridLayer = make("g");
+  const borderLayer = make("g");
   const routeLayer = make("g");
   const worldLayer = make("g");
   const frameLayer = make("g");
   const selectLayer = make("g");
-  svg.append(gridLayer, routeLayer, worldLayer, frameLayer, selectLayer);
+  svg.append(gridLayer, borderLayer, routeLayer, worldLayer, frameLayer, selectLayer);
 
   const pickedSubsector: ((letter: string) => void)[] = [];
   /** What the referee calls each of the sixteen, where they have named one. */
@@ -98,6 +103,8 @@ export function createSectorMap(): SectorMap {
   let selectedLetter: string | null = null;
   let selectedHex: string | null = null;
   let shown: Sector | null = null;
+  /** What was last drawn with it, so a redraw at a new zoom keeps the borders. */
+  let chartedShown: ChartedMap | undefined;
   /** Where the view is: how far in, and what it is centred on. */
   let view: View = { zoom: 1, x: 0, y: 0 };
   let press: { x: number; y: number; from: { x: number; y: number } } | null = null;
@@ -120,6 +127,54 @@ export function createSectorMap(): SectorMap {
     }
   }
 
+  /**
+   * The polity borders, where the sector came with any. AppSpec 8.8.1.
+   *
+   * A border is stroked edge by edge rather than as one closed shape. The
+   * outline of a region of hexes is not a simple polygon - the Imperium alone
+   * has four separate pieces in the Spinward Marches, and a piece can have a
+   * hole in it - so joining the edges into rings would be work with nothing to
+   * show for it on a stroked line.
+   */
+  function drawBorders(charted?: ChartedMap): void {
+    if (charted === undefined) return;
+    const looks = polityLooks(charted.borders.map((border) => border.allegiance));
+    for (const border of charted.borders) {
+      const look = lookFor(looks, border.allegiance);
+      const steps: string[] = [];
+      for (const { hex, side } of borderEdges(border.hexes)) {
+        if (!onTheMap(hex)) continue;
+        const { x, y } = centreOf(hex.col, hex.row);
+        const corners = hexCorners(x, y);
+        const from = corners[side]!;
+        const to = corners[(side + 1) % corners.length]!;
+        steps.push(`M${from.x},${from.y}L${to.x},${to.y}`);
+      }
+      if (steps.length === 0) continue;
+      borderLayer.append(
+        make("path", {
+          class: "sec-border",
+          d: steps.join(""),
+          stroke: look.colour,
+          ...(look.dash === "" ? {} : { "stroke-dasharray": look.dash }),
+          "data-allegiance": border.allegiance,
+        }),
+      );
+      drawBorderLabel(border, charted, look);
+    }
+  }
+
+  /** What a polity is called, written once inside its own border. */
+  function drawBorderLabel(border: BorderPath, charted: ChartedMap, look: PolityLook): void {
+    const said = border.label.trim() !== "" ? border.label : nameOfAllegiance(charted, border.allegiance);
+    const where = parseAnyHex(border.labelAt);
+    if (said === "" || where === null || !onTheMap(where)) return;
+    const { x, y } = centreOf(where.col, where.row);
+    const text = make("text", { class: "sec-border-label", x, y, fill: look.colour });
+    text.textContent = said;
+    borderLayer.append(text);
+  }
+
   /** The box round one subsector, in drawing units. */
   function frameOf(letter: string): { x: number; y: number; width: number; height: number } {
     const at = "ABCDEFGHIJKLMNOP".indexOf(letter.toUpperCase());
@@ -137,10 +192,16 @@ export function createSectorMap(): SectorMap {
     };
   }
 
-  function render(sector: Sector, names: ReadonlyMap<string, string> = new Map()): void {
+  function render(
+    sector: Sector,
+    names: ReadonlyMap<string, string> = new Map(),
+    charted?: ChartedMap,
+  ): void {
     shown = sector;
     named = names;
+    chartedShown = charted;
     gridLayer.replaceChildren();
+    borderLayer.replaceChildren();
     routeLayer.replaceChildren();
     worldLayer.replaceChildren();
     frameLayer.replaceChildren();
@@ -160,6 +221,8 @@ export function createSectorMap(): SectorMap {
         }
       }
     }
+
+    drawBorders(charted);
 
     for (const route of sector.routes) {
       const from = places.get(route.from);
@@ -281,7 +344,7 @@ export function createSectorMap(): SectorMap {
     const close = view.zoom >= DETAIL_FROM;
     if (close === detailDrawn) return;
     detailDrawn = close;
-    render(shown);
+    render(shown, named, chartedShown);
   }
 
   new ResizeObserver(() => showView()).observe(svg);

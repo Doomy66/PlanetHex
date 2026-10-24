@@ -63,18 +63,24 @@ export function centreOf(col: number, row: number): { x: number; y: number } {
  * ends of the horizontal axis and at a quarter of the width either side of the
  * middle, top and bottom.
  */
-export function hexPoints(x: number, y: number): string {
+export function hexCorners(x: number, y: number): { x: number; y: number }[] {
   const wide = HEX_WIDE / 2;
   const quarter = HEX_WIDE / 4;
   const high = HEX_HIGH / 2;
   return [
-    `${x + wide},${y}`,
-    `${x + quarter},${y + high}`,
-    `${x - quarter},${y + high}`,
-    `${x - wide},${y}`,
-    `${x - quarter},${y - high}`,
-    `${x + quarter},${y - high}`,
-  ].join(" ");
+    { x: x + wide, y },
+    { x: x + quarter, y: y + high },
+    { x: x - quarter, y: y + high },
+    { x: x - wide, y },
+    { x: x - quarter, y: y - high },
+    { x: x + quarter, y: y - high },
+  ];
+}
+
+export function hexPoints(x: number, y: number): string {
+  return hexCorners(x, y)
+    .map((corner) => `${corner.x},${corner.y}`)
+    .join(" ");
 }
 
 /** How big the whole map is, in drawing units. */
