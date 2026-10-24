@@ -13,7 +13,9 @@ user. Dates are the day the release was tagged.
   build serves. Saving still writes a folder in place on Chrome and Edge and
   downloads a zip everywhere else, which is the File System Access API's doing
   rather than the shell's. The icon and its licence are served from `public/`
-  as they already were.
+  as they already were. The release workflow that built the installer on a
+  version tag goes with it; the Pages deploy on every push to main is
+  untouched and is how the application is published.
 - **Published sectors can be opened, not just rolled.** Import on the sector
   and subsector rows of the landing page offers the forty-five official
   Traveller sectors, and opens one with its real worlds: Spinward Marches
