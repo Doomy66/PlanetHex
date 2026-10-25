@@ -44,6 +44,16 @@ const ROWS: WorldRow[] = [
   row({ at: "1910", name: "Dee", uwp: "B657744-A", bases: "NS", allegiance: "TeSt", pbg: "703" }),
 ];
 
+/** The same, with the borders and routes a published sector comes with. */
+const CHARTED_META: SectorMetadata = {
+  names: new Map([["A", "First"], ["C", "Third"]]),
+  borders: [
+    { allegiance: "TeSt", label: "Test Hegemony", labelAt: "0102", hexes: ["0101", "0102", "0201", "0101"] },
+  ],
+  routes: [{ from: "0101", to: "0810" }],
+  allegiances: [{ code: "TeSt", name: "The Test Hegemony", short: "Hegemony" }],
+};
+
 const META: SectorMetadata = {
   names: new Map([
     ["A", "First"],
@@ -246,6 +256,33 @@ describe("an imported document saved and read back", () => {
     const read = parseSubsectorDoc(JSON.stringify(doc));
     expect(read.source).toEqual(SOURCE);
     expect(subsectorOf(read).worlds).toEqual(subsectorOf(doc).worlds);
+  });
+
+  it("carries the borders, the routes and the polity names in the file", () => {
+    // The whole of an imported sector lives in its own document: a seed, a
+    // density, overrides, and this. Nothing is fetched again to redraw it, so
+    // a sector saved today opens with its frontiers on a machine that has
+    // never heard of travellermap.
+    const { doc } = importSector(ROWS, SOURCE, CHARTED_META);
+    const read = parseSectorDoc(JSON.stringify(doc));
+    expect(read.charted?.borders).toEqual(CHARTED_META.borders);
+    expect(read.charted?.routes).toEqual(CHARTED_META.routes);
+    expect(read.charted?.allegiances).toEqual(CHARTED_META.allegiances);
+  });
+
+  it("still prefers the published routes after a save", () => {
+    // 8.8.2: the published express legs replace the ones worked out from the
+    // ports, and they have to go on doing it once the file has been read back.
+    const { doc } = importSector(ROWS, SOURCE, CHARTED_META);
+    const read = parseSectorDoc(JSON.stringify(doc));
+    const xboat = sectorOf(read).routes.filter((route) => route.kind === "xboat");
+    expect(xboat).toEqual([{ from: "0101", to: "0810", kind: "xboat" }]);
+  });
+
+  it("gives a subsector the whole sector's borders, so an edge is not cut", () => {
+    const { doc } = importSubsector(ROWS, SOURCE, "C", "Third", CHARTED_META);
+    const read = parseSubsectorDoc(JSON.stringify(doc));
+    expect(read.charted?.borders).toEqual(CHARTED_META.borders);
   });
 
   it("drops provenance it cannot read without losing the worlds", () => {
