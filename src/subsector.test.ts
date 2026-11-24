@@ -65,6 +65,23 @@ describe("what a referee writes over a hex", () => {
     expect(after.seed).toBe(world.seed);
   });
 
+  it("wears the published base letters while they still say what its bases say", () => {
+    // AppSpec 8.7: kept from an import so a corsair base can be told from a depot, and left behind once a referee
+    // writes other bases over the world.
+    const { doc, world } = opened();
+    doc.overrides = [{ at: world.at, bases: "N", publishedBases: "CK" }];
+    expect(subsectorOf(doc).worlds.find((held) => held.at === world.at)!.publishedBases).toBe("CK");
+    doc.overrides = [{ at: world.at, bases: "S", publishedBases: "CK" }];
+    expect(subsectorOf(doc).worlds.find((held) => held.at === world.at)!.publishedBases).toBeUndefined();
+  });
+
+  it("reads the published base letters back from a saved document", () => {
+    const { doc, world } = opened();
+    doc.overrides = [{ at: world.at, bases: "A", publishedBases: "NSW" }];
+    const back = parseSubsectorDoc(JSON.stringify(doc));
+    expect(back.overrides.find((o) => o.at === world.at)!.publishedBases).toBe("NSW");
+  });
+
   it("is non-aligned until something says otherwise", () => {
     const { world } = opened();
     expect(world.allegiance).toBe("Na");

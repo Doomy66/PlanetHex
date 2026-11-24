@@ -234,7 +234,7 @@ This document is the shell. [PlanetSpec.md](PlanetSpec.md) specifies a planet, [
 
 8.6.2 A document records where it came from, and says so in the readout. The sector file export credits the source and carries the fair use line, because that export is the one written to be read by somebody else's tool and is where the data would otherwise travel with nothing on it to say whose it is.
 
-8.7 **What the published columns cannot keep.** The bases of several services collapse to the naval and scout this application draws; the trade codes are worked out again from the profile and the published remarks are kept as a note; a zone of *forbidden* becomes red and *unabsorbed* becomes none; and a system of three stars or more keeps two.
+8.7 **What the published columns cannot keep.** The bases of several services collapse to the naval and scout this application draws, the published letters kept beside them (a hex override's publishedBases) for the world's details, a sector file written back out and any application that tells a corsair base from a depot, until the bases are edited; the trade codes are worked out again from the profile and the published remarks are kept as a note; a zone of *forbidden* becomes red and *unabsorbed* becomes none; and a system of three stars or more keeps two.
 
 8.7.1 A world whose published profile cannot be read keeps its name and is given no profile at all, with a note saying why. Inventing one would put rolled digits under a real name with nothing to show they were rolled, which is the one outcome worse than a gap.
 

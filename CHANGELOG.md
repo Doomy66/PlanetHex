@@ -6,6 +6,13 @@ user. Dates are the day the release was tagged.
 
 ## Unreleased
 
+- **Published bases keep their letters.** A sector imported from The Traveller
+  Map still draws its bases as naval and scout, but each world now keeps the
+  Bases column as published beside them (a hex override's `publishedBases`):
+  a Vargr corsair base, a naval depot, an Aslan clan base or a way station is
+  named as such in the world's details, and a sector file written back out
+  carries the letters it came in with. Writing other bases over the world
+  leaves them behind. App spec 8.7.
 - **The desktop build is gone.** PlanetHex is a browser application and now
   nothing else: no Electron shell, no `app://` scheme, no Windows installer,
   no packaging step, and two fewer development dependencies. What it does is

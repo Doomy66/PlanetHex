@@ -162,7 +162,7 @@ import {
 } from "./subsector";
 import { liveGlobe, worldImage } from "./ui/worldimage";
 import { giantImage } from "./ui/giant";
-import { basesLabel, zoneLabel } from "./gen/base";
+import { basesLabel, publishedBasesLabel, zoneLabel } from "./gen/base";
 import { crossingLabel, hoursAt1g, jumpShadowKm, kmLabel } from "./gen/jump";
 import {
   auToKm,
@@ -4420,7 +4420,7 @@ function showSectorPanel(): void {
     el("sec-what").textContent = `${world.name} — ${world.at}`;
     row("Profile", world.uwp);
     row("Subsector", subsectorName(letterShown));
-    row("Bases", basesLabel(world.bases));
+    row("Bases", world.publishedBases === undefined ? basesLabel(world.bases) : publishedBasesLabel(world.publishedBases));
     row("Zone", zoneLabel(world.zone));
     row("PBG", `${world.pbg.multiplier}${world.pbg.belts}${world.pbg.gasGiants}`);
     row("Stars", starsLabel(world.stars));

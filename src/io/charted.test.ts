@@ -1,3 +1,4 @@
+import { collapseBases, publishedBasesLabel } from "../gen/base";
 import { describe, expect, it } from "vitest";
 import { chartedSeed, importSector, importSubsector, type ChartedSource } from "./charted";
 import { parseWorldTable, type SectorMetadata, type WorldRow } from "./travellermap";
@@ -189,6 +190,18 @@ describe("what the published columns become", () => {
     expect(made({ bases: "" }).bases).toBe("");
     // An embassy is not a base anything here draws.
     expect(made({ bases: "E" }).bases).toBe("");
+  });
+
+  it("keeps the published letters beside them, so the kinds can be told apart", () => {
+    expect(made({ bases: "KM" }).publishedBases).toBe("KM");
+    expect(made({ bases: "c" }).publishedBases).toBe("C");
+    expect(made({ bases: "" }).publishedBases).toBeUndefined();
+  });
+
+  it("collapses a column already collapsed to itself", () => {
+    for (const bases of ["A", "N", "S", ""]) expect(collapseBases(bases)).toBe(bases);
+    expect(publishedBasesLabel("A")).toBe("naval, scout");
+    expect(publishedBasesLabel("CKM")).toBe("corsair, naval, military");
   });
 
   it("keeps amber and red, reddens forbidden and drops unabsorbed", () => {

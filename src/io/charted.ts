@@ -12,6 +12,7 @@
  * of a seeded world rather than instead of one: section 9.3.2.
  */
 
+import { collapseBases } from "../gen/base";
 import { seedFrom } from "../planet";
 import { parseUwp } from "../planet";
 import { subsectorSeedFor } from "../gen/sector";
@@ -186,37 +187,14 @@ function overrideFrom(row: WorldRow, unreadable: string[], unnamed: string[]): H
     name: named ? row.name.trim() : row.at,
     ...(readable ? { uwp: row.uwp } : {}),
     bases: collapseBases(row.bases),
+    // The letters as published, for an application that tells the kinds apart (8.7).
+    ...(row.bases.trim() === "" ? {} : { publishedBases: row.bases.trim().toUpperCase() }),
     zone: readZone(row.zone),
     ...(row.stars.trim() === "" ? {} : { stars: row.stars.trim() }),
     ...(row.pbg.trim() === "" ? {} : { pbg: row.pbg.trim() }),
     ...(row.allegiance.trim() === "" ? {} : { allegiance: row.allegiance.trim() }),
     ...(notes.length === 0 ? {} : { note: notes.join("\n") }),
   };
-}
-
-/**
- * The published Bases column in the three letters this application has.
- * AppSpec 8.3.3.
- *
- * T5 writes one letter per base and several per system, telling a Vargr
- * corsair base from an Aslan clan base from an Imperial depot. A subsector here
- * draws two marks, naval and scout, so the letters are sorted into those two
- * and the rest dropped. What is lost is whose navy it is, which the Allegiance
- * column says anyway.
- */
-/** Corsair, depot, naval, military, clan, naval, Tlaukhu - somebody's navy. */
-const NAVAL = "CDKMNRT";
-/** Scout, exploration, way station - somebody's survey service. */
-const SCOUT = "SVW";
-
-function collapseBases(published: string): string {
-  const letters = published.trim().toUpperCase();
-  const naval = [...letters].some((one) => NAVAL.includes(one));
-  const scout = [...letters].some((one) => SCOUT.includes(one));
-  if (naval && scout) return "A";
-  if (naval) return "N";
-  if (scout) return "S";
-  return "";
 }
 
 /**
