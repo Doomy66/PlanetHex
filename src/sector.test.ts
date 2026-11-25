@@ -173,6 +173,38 @@ describe("a sector document", () => {
     expect(sectorOf(doc).worlds.find((world) => world.at === at)?.name).toBe("Hadley's Hope");
   });
 
+  it("carries a travel zone and an allegiance up to the sector", () => {
+    // What the sector map draws them from. A zone written at the hex and lost
+    // on the way up is a red world a referee planning a route never sees.
+    const doc = newSectorDoc(SEED, "Spinward Marches");
+    const held = subsectorIn(doc, "C");
+    const at = subsectorOf(held).worlds[0]!.at;
+    setOverride(held, at, "zone", "R");
+    setOverride(held, at, "allegiance", "ZhIN");
+    keepSubsector(doc, "C", held);
+    const up = sectorOf(doc).worlds.find((world) => world.at === at)!;
+    expect(up.zone).toBe("R");
+    expect(up.allegiance).toBe("ZhIN");
+    // And through a save, since that is the other way it could be lost.
+    const back = parseSectorDoc(JSON.stringify(doc));
+    const after = sectorOf(back).worlds.find((world) => world.at === at)!;
+    expect(after.zone).toBe("R");
+    expect(after.allegiance).toBe("ZhIN");
+  });
+
+  it("carries a zone the referee turned green up to the sector", () => {
+    // The closed-vocabulary case of the subsector spec 5.3.6 at this level:
+    // "" has to survive the trip or the rolled amber comes back on the map.
+    const doc = newSectorDoc(SEED, "Spinward Marches");
+    const held = subsectorIn(doc, "A");
+    const amber = subsectorOf(held).worlds.find((world) => world.zone !== "");
+    expect(amber, "the seed should roll a zoned world to write over").toBeDefined();
+    setOverride(held, amber!.at, "zone", "");
+    keepSubsector(doc, "A", held);
+    const back = parseSectorDoc(JSON.stringify(doc));
+    expect(sectorOf(back).worlds.find((world) => world.at === amber!.at)?.zone).toBe("");
+  });
+
   it("shows the subsector being looked at before it has been put away", () => {
     // A referee editing a subsector has not saved it against its letter yet, and
     // the border of 4.5 is drawn against the sector, so the open subsector wins.

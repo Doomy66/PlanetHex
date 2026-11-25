@@ -6,6 +6,15 @@ user. Dates are the day the release was tagged.
 
 ## Unreleased
 
+- **The sector map draws travel zones.** It never has: an amber or red world
+  showed its ring on the subsector map and nothing at all one level up, so a
+  world marked red and then looked at across the sector looked like every other
+  world. The same dashed ring and the same two colours now, at every zoom —
+  the map drops the starport and then the name as it pulls back, because detail
+  is what makes a thousand hexes unreadable, but a warning is not detail and a
+  referee planning a route across a sector is exactly who needs to see it. The
+  stroke is held at one width however far out the map is zoomed, since a
+  warning that thins to nothing is one nobody reads.
 - **Travel zone and allegiance on the main world.** Both are now edited in the
   system view too, on the main world's own panel, where a referee is looking
   when they decide either of them: a Green / Amber / Red choice and an

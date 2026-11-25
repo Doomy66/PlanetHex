@@ -921,6 +921,18 @@ body[data-view="subsector"] .sector { display: none; }
 .sectormap:active { cursor: grabbing; }
 .sec-route { stroke: #35608f; stroke-width: 1.6; opacity: 0.5; }
 .sec-xboat { stroke: #6aa6e8; stroke-width: 3; opacity: 0.85; }
+/* The same ring and the same two colours the subsector draws, with the stroke
+   held at one width however far the map is zoomed out: a warning that thins to
+   nothing at sector scale is a warning nobody reads. */
+.sec-zone {
+  fill: none;
+  stroke: #e0b341;
+  stroke-width: 1.6;
+  stroke-dasharray: 5 5;
+  vector-effect: non-scaling-stroke;
+}
+.sec-red { stroke: #e24b4a; }
+
 .sec-hex { cursor: pointer; }
 .sec-hex:hover .sec-world { stroke: var(--accent); stroke-width: 2.5; }
 

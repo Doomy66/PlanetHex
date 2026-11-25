@@ -4,6 +4,7 @@ import {
   hexCorners,
   hexPoints,
   HEX_HIGH,
+  ZONE_R,
   HEX_WIDE,
   COLUMN_STEP,
   PAD,
@@ -253,6 +254,21 @@ export function createSectorMap(): SectorMap {
         const port = make("text", { class: "sec-port", x: where.x, y: where.y - HEX_HIGH * 0.13 });
         port.textContent = world.profile.starport;
         group.append(port);
+      }
+      // A travel zone, at every zoom. The sector map drops detail as it pulls
+      // back - the starport goes, then the name - because detail is what makes
+      // a thousand hexes unreadable. A warning is not detail: a referee looking
+      // at the whole sector to plan a route is exactly who needs to see that
+      // somewhere is red, and there are never many. SectorSpec 4.4.2.
+      if (world.zone !== "") {
+        group.append(
+          make("circle", {
+            class: world.zone === "R" ? "sec-zone sec-red" : "sec-zone",
+            cx: where.x,
+            cy: where.y,
+            r: ZONE_R,
+          }),
+        );
       }
       group.append(
         make("circle", {
