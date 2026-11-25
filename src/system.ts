@@ -80,6 +80,19 @@ export interface SystemDoc {
    */
   mainWorldAllegiance?: string;
   /**
+   * The travel zone over the main world, and so over the system. 9.1.
+   *
+   * "A", "R" or absent for green. A travel zone is a warning about going
+   * somewhere, which makes it a fact about the system a ship is jumping to
+   * rather than about one rock in it, and it is kept here for the same reason
+   * the profile is: the level above committed to it and this document has to
+   * be able to say it on its own.
+   *
+   * Not to be confused with an orbit's habitable zone, which is about where a
+   * world sits and not about whether anybody should go there.
+   */
+  mainWorldZone?: string;
+  /**
    * The stars, as the Stars column writes them, where the referee has changed
    * them. Null for the ones the seed rolled. SystemSpec 2.6.
    */
@@ -236,6 +249,11 @@ export function parseSystemDoc(text: string): SystemDoc {
     date: formatImperialDate(dateOrEpoch(r["date"])),
     ...(typeof r["mainWorldAllegiance"] === "string" && r["mainWorldAllegiance"] !== ""
       ? { mainWorldAllegiance: r["mainWorldAllegiance"] }
+      : {}),
+    // "" is green and is also what a field nobody has set looks like, so it is
+    // not stored either way: absent means green. A or R are the only values.
+    ...(r["mainWorldZone"] === "A" || r["mainWorldZone"] === "R"
+      ? { mainWorldZone: r["mainWorldZone"] }
       : {}),
     ...(typeof r["mainWorldPbg"] === "string" && r["mainWorldPbg"] !== ""
       ? { mainWorldPbg: r["mainWorldPbg"] }

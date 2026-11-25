@@ -6,6 +6,23 @@ user. Dates are the day the release was tagged.
 
 ## Unreleased
 
+- **Travel zone and allegiance on the main world.** Both are now edited in the
+  system view too, on the main world's own panel, where a referee is looking
+  when they decide either of them: a Green / Amber / Red choice and an
+  allegiance box, with the sector's codes offered under it. An edit goes
+  straight back to the hex, so the subsector map redraws under it rather than
+  disagreeing until the next save, and the system carries both in its own file.
+  The travel zone is labelled in full, since an orbit's habitable zone is also
+  a "Zone" and means something else. They show on the main world and nowhere
+  else in that view: a travel zone warns a ship off a system rather than off
+  one rock in it. System spec 9.1.1.
+- **Green, and no bases, can now be set.** Choosing Green over a world the dice
+  made amber, or None over one they gave a naval base, silently did nothing:
+  emptying a field was how an override was taken back, so the override was
+  dropped and the rolled answer came straight back. Agreeing with the generator
+  is now a separate act from setting a field to its empty value — the first
+  leaves no override, the second stores one. Imported worlds were already
+  right, because the import writes its overrides whole. Subsector spec 5.3.6.1.
 - **Foreven, and the sectors the setting left blank.** The import list was the
   forty-five official sectors; it is now sixty-six, adding the twenty still
   under review — the Zhodani home sector, Far Frontiers, Gashikan, Provence,

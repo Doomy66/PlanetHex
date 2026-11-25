@@ -458,6 +458,28 @@
           </div>
           <p id="sys-note" class="sys-note"></p>
           <ul id="sys-moons" class="sys-moons"></ul>
+          <!-- What the main world says about the whole system, edited here
+               because this is where a referee is looking when they decide it.
+               Shown only on the main world: a travel zone warns a ship off a
+               system rather than off one rock in it, and an allegiance holds a
+               system rather than a moon. AppSpec 8.8.3.1, subsector spec 5.3.6
+               and 5.3.7. "Travel zone" in full, because an orbit's zone above
+               is the habitable one and means something else entirely. -->
+          <div id="sys-main-edit" class="sub-edit" hidden>
+            <label class="sys-written">Travel zone
+              <select id="sys-e-zone">
+                <option value="">Green</option>
+                <option value="A">Amber</option>
+                <option value="R">Red</option>
+              </select>
+            </label>
+            <label class="sys-written">Allegiance
+              <input id="sys-e-allegiance" type="text" autocomplete="off" maxlength="4"
+                     list="sys-allegiances" placeholder="Na" />
+            </label>
+            <datalist id="sys-allegiances"></datalist>
+            <div id="sys-e-allegiance-name" class="hint under"></div>
+          </div>
           <label class="sys-written">Notes
             <textarea id="sys-written" rows="2" placeholder="What a referee wants to write here"></textarea>
           </label>

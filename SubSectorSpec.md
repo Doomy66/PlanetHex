@@ -290,6 +290,10 @@ Nothing is marked Red by generation.
 
 5.3.6 Bases and zone are closed vocabularies in which the empty string is a value — no bases, and a green zone — rather than an absence. An override holding one is kept and read back as one. Treated as free text it would be dropped on the way back in, and the rolled answer would return: a world written down as having no naval base would come back from a save with one, since 3.5.1 gives one to better than a third of the good ports.
 
+5.3.6.1 Which means **writing** one has to store it too. Setting a hex to green, or to no bases, is something the referee has said, and the same rule that keeps it through a save has to let it be said in the first place: emptying the field cannot be what clears the override, or a world the dice made amber could never be made green.
+
+5.3.6.2 So taking a field back is a separate act from setting it to its empty value, and it is what agreeing with the generator does. A referee who sets a hex to what the dice already said leaves no override behind, which is 5.3.1; a referee who sets it to green over a rolled amber leaves one, which is this.
+
 5.3.7 Allegiance is who holds the world, as the Allegiance column of a sector line writes it. Nothing this application rolls has one — every generated world is non-aligned, and 3.5 gives it no empire to belong to — so the field is only ever written by a world that arrived from somewhere with empires in it, or by a referee marking out their own. It travels into the sector file and the CSV.
 
 5.3.7.1 It is edited at the hex, beside the name and the profile, and the codes the open sector knows are offered under it. A referee with a map in front of them marks a run of hexes as somebody's space, which is a thing they do hex by hex and not by editing a file.

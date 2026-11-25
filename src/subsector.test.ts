@@ -4,6 +4,7 @@ import {
   overrideFor,
   parseSubsectorDoc,
   setOverride,
+  clearOverride,
   setPresence,
   setSubsectorDate,
   keepSystem,
@@ -155,6 +156,52 @@ describe("what a referee writes over a hex", () => {
     setOverride(doc, world.at, "note", "Pirates.");
     expect(doc.overrides).toHaveLength(1);
     setOverride(doc, world.at, "note", "   ");
+    expect(doc.overrides).toEqual([]);
+  });
+
+  it("stores green and no bases, which are answers rather than silence", () => {
+    // 5.3.6. Without this a referee cannot say a world the dice made amber is
+    // green: the override would be dropped and the rolled zone come back.
+    const { doc, world } = opened();
+    setOverride(doc, world.at, "zone", "");
+    setOverride(doc, world.at, "bases", "");
+    expect(overrideFor(doc, world.at)).toEqual({ at: world.at, zone: "", bases: "" });
+  });
+
+  it("takes a field back only when asked to", () => {
+    const { doc, world } = opened();
+    setOverride(doc, world.at, "zone", "");
+    expect(overrideFor(doc, world.at)?.zone).toBe("");
+    clearOverride(doc, world.at, "zone");
+    expect(overrideFor(doc, world.at)?.zone).toBeUndefined();
+  });
+
+  it("puts green over a world the dice made amber, and keeps it through a save", () => {
+    // The whole point of 5.3.6, end to end rather than at the writer. Letter A
+    // of this seed rolls six amber worlds; asserted, so that a generator that
+    // stopped producing any would fail here rather than quietly prove nothing.
+    const doc = newSubsectorDoc(SEED, "A", "standard", "Zoned");
+    const amber = subsectorOf(doc).worlds.find((one) => one.zone !== "");
+    expect(amber, "the seed should roll a zoned world to write over").toBeDefined();
+    setOverride(doc, amber!.at, "zone", "");
+    const read = parseSubsectorDoc(JSON.stringify(doc));
+    const after = subsectorOf(read).worlds.find((one) => one.at === amber!.at)!;
+    expect(after.zone).toBe("");
+  });
+
+  it("puts no bases over a world the dice gave one, through a save", () => {
+    const doc = newSubsectorDoc(SEED, "A", "standard", "Based");
+    const based = subsectorOf(doc).worlds.find((one) => one.bases !== "");
+    expect(based, "the seed should roll a based world to write over").toBeDefined();
+    setOverride(doc, based!.at, "bases", "");
+    const read = parseSubsectorDoc(JSON.stringify(doc));
+    const after = subsectorOf(read).worlds.find((one) => one.at === based!.at)!;
+    expect(after.bases).toBe("");
+  });
+
+  it("clearing an untouched hex leaves no empty override behind", () => {
+    const { doc, world } = opened();
+    clearOverride(doc, world.at, "zone");
     expect(doc.overrides).toEqual([]);
   });
 

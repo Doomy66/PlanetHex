@@ -95,6 +95,25 @@ describe("overrides", () => {
     expect(doc.overrides).toHaveLength(0);
   });
 
+  it("carries the main world's travel zone and allegiance through a save", () => {
+    // 9.1: what the level above committed to is written down, so the system
+    // can say whose space it is standing in without the subsector above it.
+    const doc = newSystemDoc(SEED, "Regina");
+    doc.mainWorldAllegiance = "ZhIN";
+    doc.mainWorldZone = "A";
+    const read = parseSystemDoc(JSON.stringify(doc))!;
+    expect(read.mainWorldAllegiance).toBe("ZhIN");
+    expect(read.mainWorldZone).toBe("A");
+  });
+
+  it("keeps no travel zone for green, and refuses one it cannot read", () => {
+    // Absent is green, so there is nothing to store and nothing to read back.
+    const doc = newSystemDoc(SEED, "Regina");
+    expect(parseSystemDoc(JSON.stringify(doc))!.mainWorldZone).toBeUndefined();
+    const odd = { ...doc, mainWorldZone: "purple" };
+    expect(parseSystemDoc(JSON.stringify(odd))!.mainWorldZone).toBeUndefined();
+  });
+
   it("lays a typed profile over the one that was rolled", () => {
     const doc = newSystemDoc(SEED, "Regina");
     const main = generateSystem(SEED).mainWorld;

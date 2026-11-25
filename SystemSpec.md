@@ -405,7 +405,18 @@ This document sits under [SubSectorSpec.md](SubSectorSpec.md) and over [PlanetSp
 | Seed | Required. Without it nothing can be rebuilt. |
 | Date | The imperial date of 3.5. Absent reads as the epoch, so an older save opens where it was drawn. |
 | Main world profile | The UWP of 5.1, so the system stands alone under the app spec 4.8. |
+| Main world PBG | Where the level above knows it. Read before the orbits are laid out, since it says how many belts and gas giants there are to place. |
+| Main world allegiance | Who holds the system. A T5 code, or absent where nobody has said. |
+| Main world travel zone | `A`, `R`, or absent for green. |
 | Overrides | Per orbit, only where the user changed something. |
+
+9.1.1 The last two belong to the main world and describe the whole system, which is why they are fields of the document rather than orbit overrides. A travel zone warns a ship away from a system rather than from one rock in it, and an allegiance holds a system rather than a moon of it.
+
+9.1.2 Both are **edited on the main world**, in its panel, and nowhere else in this view. That is where a referee is looking when they decide either of them, and it keeps one answer in one place: an allegiance on the star and another on the main world would be two facts where there is one.
+
+9.1.2.1 The travel zone is labelled in full, because 4.2's habitable zone is also a zone and means something else entirely — where a world sits, rather than whether anybody should go there.
+
+9.1.3 An edit to either is handed straight back to the hex it came from, under the app spec 1.3.3, so the subsector map redraws with it rather than disagreeing until something else happens to save.
 
 9.2 A save holds no generated orbit, world, or surface. Load rebuilds the lot from the seed, as the planet spec 6.3 rebuilds a surface and the subsector spec 5.2 an eighty hex map.
 

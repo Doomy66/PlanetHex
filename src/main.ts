@@ -150,6 +150,7 @@ import {
   overrideFor as hexOverride,
   parseSubsectorDoc,
   setOverride as setHexOverride,
+  clearOverride as clearHexOverride,
   setPresence,
   setSubsectorDate,
   setSystemSeed,
@@ -2308,6 +2309,7 @@ function showOrbit(index: number | null): void {
   facts.replaceChildren();
   el("sys-moons").replaceChildren();
   el("sys-note").textContent = "";
+  el("sys-main-edit").hidden = true;
   open.hidden = true;
   written.value = doc === null || index === null ? "" : (overrideFor(doc, index)?.note ?? "");
   written.disabled = doc === null || index === null;
@@ -2382,6 +2384,10 @@ function showOrbit(index: number | null): void {
     if (inOrbit.main && system.bases.letter !== "") {
       row("Bases", basesLabel(system.bases.letter));
     }
+    // What the main world says about the whole system, editable below. Not
+    // also a fact row: the control is in the same panel a few lines down and
+    // says the same thing, and a reader does not need telling twice.
+    if (inOrbit.main) showMainWorldFields();
     // 4.8.3: a world can sit inside its own star's shadow, and around a dim
     // star it usually does - which is a fact about every departure from it.
     if (orbit.au < starShadowAu(system)) row("Jump", "inside the star's shadow");
@@ -2621,6 +2627,10 @@ el<HTMLInputElement>("sys-date").addEventListener("change", (event) => {
 
 // Free prose about whatever is in an orbit, which is an override under
 // SystemSpec 9.3 and stored only where there is something to store.
+for (const id of ["sys-e-zone", "sys-e-allegiance"]) {
+  el(id).addEventListener("change", editMainWorld);
+}
+
 el<HTMLTextAreaElement>("sys-written").addEventListener("input", (event) => {
   if (doc === null || orbitShown === null) return;
   setOverride(doc, orbitShown, "note", (event.target as HTMLTextAreaElement).value);
@@ -2663,13 +2673,22 @@ function tellSubsectorAboutSystem(subsector: SubsectorDoc, at: string, open: Sys
   const rolled = rolledWorld(at);
   if (rolled === null) return;
   const held = systemOf(open);
-  setHexOverride(subsector, at, "name", open.name === rolled.name ? "" : open.name);
+  /** Store it, or take the field back where the generator already says it. */
+  const agreeing = (field: HexField, value: string, rolledValue: string) => {
+    if (value === rolledValue) clearHexOverride(subsector, at, field);
+    else setHexOverride(subsector, at, field, value);
+  };
+  agreeing("name", open.name, rolled.name);
   const uwp = held.mainWorld.uwp;
-  setHexOverride(subsector, at, "uwp", uwp === rolled.uwp ? "" : uwp);
+  agreeing("uwp", uwp, rolled.uwp);
   // The Stars column is the subsector's, so a star changed down here has to reach
   // it or the two levels describe the same system differently.
-  const stars = starsLabel(held.stars);
-  setHexOverride(subsector, at, "stars", stars === starsLabel(rolled.stars) ? "" : stars);
+  agreeing("stars", starsLabel(held.stars), starsLabel(rolled.stars));
+  // The travel zone and the allegiance are the main world's and the hex's
+  // alike, so an edit at either level has to reach the other or the map and
+  // the system describe one world two ways. 1.3.3.
+  agreeing("zone", open.mainWorldZone ?? "", rolled.zone);
+  agreeing("allegiance", open.mainWorldAllegiance ?? "", rolled.allegiance);
 }
 
 /** Roll a different system into a hex, and tell the subsector about it. */
@@ -2684,7 +2703,7 @@ function rerollHexSystem(at: string): void {
   if (world === undefined) return;
   // The subsector names what is in a hex, so the new system takes the new name.
   setHexOverride(subDoc, at, "name", "");
-  openHexSystem(at, world.systemSeed, world.name, world.uwp, pbgOf(world), world.allegiance);
+  openHexSystem(at, world.systemSeed, world.name, world.uwp, pbgOf(world), world.allegiance, world.zone);
   subSay(`Rolled another system into ${at}.`);
 }
 
@@ -3071,6 +3090,72 @@ function showStarPanel(open: StarSystem, row: (term: string, value: string) => v
   if (doc !== null) row("Seed", doc.seed);
 
   el("sys-note").textContent = starNote(open);
+}
+
+/**
+ * The two fields the main world carries for its whole system. SystemSpec 9.1.
+ *
+ * Filled from the document rather than from the generated system, because
+ * neither of them is generated: a travel zone and an allegiance are things the
+ * map above said, or the referee did.
+ */
+function showMainWorldFields(): void {
+  const box = el("sys-main-edit");
+  box.hidden = doc === null;
+  if (doc === null) return;
+  el<HTMLSelectElement>("sys-e-zone").value = doc.mainWorldZone ?? "";
+  el<HTMLInputElement>("sys-e-allegiance").value = doc.mainWorldAllegiance ?? "";
+  showSystemAllegianceName();
+  // The codes the sector above knows, where there is one. A system opened on
+  // its own has no list and the field is simply typed into.
+  const list = el<HTMLDataListElement>("sys-allegiances");
+  list.replaceChildren(
+    ...(subDoc?.charted?.allegiances ?? []).map((one) => {
+      const option = document.createElement("option");
+      option.value = one.code;
+      option.label = one.name;
+      return option;
+    }),
+  );
+}
+
+/** What the typed code stands for, under the field. */
+function showSystemAllegianceName(): void {
+  const where = el("sys-e-allegiance-name");
+  const charted = subDoc?.charted ?? sectorDoc?.charted;
+  const wanted = el<HTMLInputElement>("sys-e-allegiance").value.trim();
+  if (wanted === "" || charted === undefined) {
+    where.textContent = "";
+    return;
+  }
+  const name = nameOfAllegiance(charted, wanted);
+  where.textContent = name === wanted ? "" : name;
+}
+
+/**
+ * Take an edit to one of them.
+ *
+ * Written onto the system document and handed straight back up to the hex it
+ * came out of, so the subsector map redraws with the new zone under it rather
+ * than disagreeing with the system until something else happens to save.
+ * AppSpec 1.3.3.
+ */
+function editMainWorld(): void {
+  if (doc === null) return;
+  const zone = el<HTMLSelectElement>("sys-e-zone").value;
+  const allegiance = el<HTMLInputElement>("sys-e-allegiance").value.trim();
+  // Absent rather than empty, so a document says only what somebody set.
+  if (zone === "A" || zone === "R") doc.mainWorldZone = zone;
+  else delete doc.mainWorldZone;
+  if (allegiance === "") delete doc.mainWorldAllegiance;
+  else doc.mainWorldAllegiance = allegiance;
+  markSystemDirty();
+  showSystemAllegianceName();
+  if (subDoc !== null && systemParent === "subsector") {
+    keepSystemForSubsector();
+    drawSubsector();
+  }
+  showOrbit(orbitShown);
 }
 
 /** A star's output, said the way a reader can hold it. */
@@ -3851,7 +3936,11 @@ function editHex(field: HexField, value: string): void {
             : field === "allegiance"
               ? rolled.allegiance === value.trim()
               : false);
-  setHexOverride(subDoc, at, field, same ? "" : value);
+  // Agreement is not an override, and is a different act from setting the
+  // field to its empty value - "no bases" over a rolled naval base is a thing
+  // the referee has said. Subsector spec 5.3.6.
+  if (same) clearHexOverride(subDoc, at, field);
+  else setHexOverride(subDoc, at, field, value);
   markSubDirty();
   drawSubsector();
   selectHex(at);
@@ -4097,7 +4186,15 @@ el("sub-open").addEventListener("click", () => {
   if (subsector === null || subDoc === null || hexShown === null) return;
   const world = subsector.worlds.find((held) => held.at === hexShown);
   if (world === undefined) return;
-  openHexSystem(world.at, world.systemSeed, world.name, world.uwp, pbgOf(world), world.allegiance);
+  openHexSystem(
+    world.at,
+    world.systemSeed,
+    world.name,
+    world.uwp,
+    pbgOf(world),
+    world.allegiance,
+    world.zone,
+  );
 });
 
 /**
@@ -4115,6 +4212,7 @@ function openHexSystem(
   uwp?: string,
   pbg?: string,
   allegiance?: string,
+  zone?: string,
 ): void {
   if (subDoc === null) return;
   const held = savedSystem(subDoc, at) ?? newSystemDoc(seed, name);
@@ -4128,6 +4226,8 @@ function openHexSystem(
   // And who holds it, so the system knows whose space it is standing in. The
   // subsector is where that is edited and this is where it is read.
   if (allegiance !== undefined && allegiance !== "") held.mainWorldAllegiance = allegiance;
+  // And the travel zone, which is the hex's warning about the whole system.
+  if (zone === "A" || zone === "R") held.mainWorldZone = zone;
   held.sector = el<HTMLInputElement>("sub-sector").value;
   held.hex = at;
   // The subsector names the world and the world names the system, SubSectorSpec

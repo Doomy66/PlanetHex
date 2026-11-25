@@ -239,16 +239,44 @@ function put(doc: SubsectorDoc, at: string, next: HexOverride): void {
 }
 
 /**
- * Write one field of one hex, or clear it where the value is empty.
+ * The fields where the empty string is a value and not an absence. 5.3.6.
  *
- * Clearing rather than storing a blank is what keeps 5.3.1's promise: a field
- * the referee has emptied is a field they have taken back, and a document full
- * of empty strings has stopped saying only what changed.
+ * Bases and Zone are closed vocabularies in which "none" and "green" are
+ * answers: a world with no bases has no bases, which is a different statement
+ * from nobody having said. Everywhere else - a name, a profile, a note - empty
+ * means nothing was written and the generator's answer stands.
+ */
+const CLOSED: ReadonlySet<HexField> = new Set<HexField>(["bases", "zone"]);
+
+/**
+ * Write one field of one hex.
+ *
+ * An empty value is stored for the closed vocabularies above and clears the
+ * field everywhere else. Without the distinction a referee cannot say "no
+ * bases" or "green" over a hex the dice gave a naval base or an amber zone:
+ * the override would be dropped on the way to the document and the generated
+ * answer would come straight back.
+ *
+ * Saying nothing is `clearOverride`, which is a different act and has to be
+ * asked for. 5.3.1 is kept by the caller choosing between them: a field the
+ * referee has agreed with is taken back, and one they have set is stored.
  */
 export function setOverride(doc: SubsectorDoc, at: string, field: HexField, value: string): void {
   const held = overrideFor(doc, at);
   const next: HexOverride & Record<string, unknown> = { ...held, at, [field]: value.trim() };
-  if (value.trim() === "") delete next[field];
+  if (value.trim() === "" && !CLOSED.has(field)) delete next[field];
+  put(doc, at, next);
+}
+
+/**
+ * Take one field back, so the hex says nothing about it and the generator's
+ * answer stands again. 5.3.1.
+ */
+export function clearOverride(doc: SubsectorDoc, at: string, field: HexField): void {
+  const held = overrideFor(doc, at);
+  if (held === undefined) return;
+  const next: HexOverride & Record<string, unknown> = { ...held, at };
+  delete next[field];
   put(doc, at, next);
 }
 
