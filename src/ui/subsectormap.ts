@@ -10,6 +10,8 @@ import {
   HEX_WIDE,
   MAIN_COLOURS,
   ZONE_R,
+  BELT_ROCKS,
+  BELT_ROCK_R,
 } from "../hexlayout";
 import { BORDER_REACH } from "../gen/sector";
 import { borderEdges } from "../gen/border";
@@ -432,16 +434,8 @@ export function createSubsectorMap(): SubsectorMap {
 
   /** An asteroid belt, which the subsectors draw as a scatter rather than a world. */
   function drawBelt(group: SVGGElement, x: number, y: number): void {
-    const rocks = [
-      [-6, -4],
-      [5, -5],
-      [0, 0],
-      [-4, 5],
-      [7, 3],
-      [2, 7],
-    ];
-    for (const [dx, dy] of rocks) {
-      group.append(make("circle", { class: "starmap-rock", cx: x + dx!, cy: y + dy!, r: 2 }));
+    for (const [dx, dy] of BELT_ROCKS) {
+      group.append(make("circle", { class: "starmap-rock", cx: x + dx, cy: y + dy, r: BELT_ROCK_R }));
     }
   }
 

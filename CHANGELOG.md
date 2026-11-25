@@ -6,6 +6,15 @@ user. Dates are the day the release was tagged.
 
 ## Unreleased
 
+- **Belts look like belts on the sector map.** An asteroid belt was drawn there
+  as an ordinary world dot, and an inhabited one took the airless fill — a belt
+  has no atmosphere — so it came out as a small grey rockball, which is a
+  different place with a different reason to go there. It now gets the same
+  scatter of rocks the subsector map has always drawn, sized to the room the
+  world's dot would have taken so a busy belt reads as loudly as a busy world,
+  and dimmed where nobody lives there. The rock pattern now lives in one place
+  and both maps draw it, since a belt that looked like a belt at one level and
+  a world at the other is the one thing these two levels must not do.
 - **The sector map draws travel zones.** It never has: an amber or red world
   showed its ring on the subsector map and nothing at all one level up, so a
   world marked red and then looked at across the sector looked like every other

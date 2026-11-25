@@ -5,6 +5,8 @@ import {
   hexPoints,
   HEX_HIGH,
   ZONE_R,
+  BELT_ROCKS,
+  BELT_SPREAD,
   HEX_WIDE,
   COLUMN_STEP,
   PAD,
@@ -270,14 +272,34 @@ export function createSectorMap(): SectorMap {
           }),
         );
       }
-      group.append(
-        make("circle", {
-          class: worldClass(world),
-          cx: where.x,
-          cy: where.y,
-          r: dotFor(world.profile.population),
-        }),
-      );
+      // A belt is not a world and must not be drawn as one. Without this an
+      // inhabited belt takes the airless fill - a belt has no atmosphere - and
+      // comes out as a small grey rockball, which is a different place with a
+      // different reason to go there. The subsector has always drawn the
+      // scatter of rocks; this is the same scatter, sized to the room a world's
+      // dot would have taken so a busy belt reads as loudly as a busy world.
+      if (world.profile.size === 0) {
+        const r = dotFor(world.profile.population);
+        for (const [dx, dy] of BELT_ROCKS) {
+          group.append(
+            make("circle", {
+              class: world.profile.population === 0 ? "sec-rock sec-rock-bare" : "sec-rock",
+              cx: where.x + (dx / BELT_SPREAD) * r,
+              cy: where.y + (dy / BELT_SPREAD) * r,
+              r: Math.max(1.2, r * 0.28),
+            }),
+          );
+        }
+      } else {
+        group.append(
+          make("circle", {
+            class: worldClass(world),
+            cx: where.x,
+            cy: where.y,
+            r: dotFor(world.profile.population),
+          }),
+        );
+      }
       if (close || world.profile.population >= NAMED_FROM) {
         const name = make("text", { class: "sec-name", x: where.x, y: where.y + HEX_HIGH * 0.36 });
         name.textContent = world.name;

@@ -35,6 +35,28 @@ export const PAD = HEX_WIDE * 0.45;
 export const DOT = { least: 6, most: 12 } as const;
 export const ZONE_R = 20;
 
+/**
+ * A belt, as the scatter of rocks both maps draw it.
+ *
+ * Shared rather than written twice, because a belt that looked like a belt on
+ * one map and like a world on the other would be the one thing these two
+ * levels must not do. The offsets are in the units BELT_SPREAD measures, so a
+ * map scales the whole cluster by whatever room it has: the subsector draws it
+ * at its own size, and the sector draws it where a world's dot would go.
+ */
+export const BELT_ROCKS: readonly (readonly [number, number])[] = [
+  [-6, -4],
+  [5, -5],
+  [0, 0],
+  [-4, 5],
+  [7, 3],
+  [2, 7],
+];
+
+/** How far the furthest rock sits from the middle, and how big each one is. */
+export const BELT_SPREAD = 7;
+export const BELT_ROCK_R = 2;
+
 /** How many colours the Mains are drawn in before they start round again. */
 export const MAIN_COLOURS = 5;
 
