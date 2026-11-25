@@ -379,6 +379,25 @@ export const ZHODANI: Flavour = {
     `${ZHODANI_HEAD[pick("zho-head", ZHODANI_HEAD.length)]!}${ZHODANI_TAIL[pick("zho-tail", ZHODANI_TAIL.length)]!}`,
 };
 
+/**
+ * The way a world names things because of who holds it, where that is known.
+ *
+ * Allegiance is the one thing a published map says that cuts across the dice.
+ * A hex inside the Consulate is named in Zhodani whatever its seed rolled, and
+ * a blank hex inside the Consulate's border has to be named in Zhodani too, or
+ * the frontier drawn over it means nothing. Undefined for everybody else,
+ * which leaves the seed to decide as it always has.
+ *
+ * The Consulate is ZhCo and its eleven provinces - ZhIN, ZhAx, ZhCa and the
+ * rest - so the two letters settle it; CsZh is a client state of the
+ * Consulate, named the same way by the people who actually live there.
+ */
+export function flavourForAllegiance(code: string | undefined): Flavour | undefined {
+  const allegiance = (code ?? "").trim();
+  if (allegiance.startsWith("Zh") || allegiance === "CsZh") return ZHODANI;
+  return undefined;
+}
+
 /** Which way this world names its places. Fixed by the seed, as everything is. */
 export function flavourFor(seed: string): Flavour {
   const total = FLAVOURS.reduce((sum, f) => sum + f.weight, 0);

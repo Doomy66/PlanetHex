@@ -13,6 +13,7 @@ import {
   settlementSites,
   worldNameFor,
   ZHODANI,
+  flavourForAllegiance,
 } from "./settle";
 import { normalise } from "../ui/colour";
 import type { PlanetDetail } from "./detail";
@@ -128,6 +129,14 @@ describe("what a name is", () => {
 
   it("names a Zhodani world only when asked, the same each time", () => {
     expect(FLAVOURS).not.toContain(ZHODANI);
+    // Nothing reaches it by chance; an allegiance reaches it on purpose.
+    expect(flavourForAllegiance("ZhIN")).toBe(ZHODANI);
+    expect(flavourForAllegiance("ZhCo")).toBe(ZHODANI);
+    expect(flavourForAllegiance("CsZh")).toBe(ZHODANI);
+    expect(flavourForAllegiance("ImDd")).toBeUndefined();
+    expect(flavourForAllegiance("Na")).toBeUndefined();
+    expect(flavourForAllegiance("")).toBeUndefined();
+    expect(flavourForAllegiance(undefined)).toBeUndefined();
     for (let i = 0; i < 2000; i++) expect(flavourFor(`zho-${i}`)).not.toBe(ZHODANI);
     const names = Array.from({ length: 200 }, (_, i) => worldNameFor(`zho-world-${i}`, ZHODANI));
     expect(names).toEqual(Array.from({ length: 200 }, (_, i) => worldNameFor(`zho-world-${i}`, ZHODANI)));

@@ -175,7 +175,35 @@ describe("asking travellermap for a sector", () => {
     });
     const found = await fetchCatalogue(answering({ "/api/universe": universe }));
     expect(found.map((one) => one.name)).toEqual(["Ayeland", "Zedland"]);
-    expect(found[0]).toEqual({ name: "Ayeland", abbreviation: "Aaaa", x: 3, y: 4 });
+    expect(found[0]).toEqual({
+      name: "Ayeland",
+      abbreviation: "Aaaa",
+      x: 3,
+      y: 4,
+      standing: "official",
+    });
+  });
+
+  it("lists the sectors under review and the ones held in reserve", async () => {
+    // Foreven is tagged Preserve rather than Official: the setting claims the
+    // hexes and leaves the worlds to the referee, and leaving it out of the
+    // picker is leaving out the one sector the referee is meant to fill in.
+    const universe = JSON.stringify({
+      Sectors: [
+        { X: 1, Y: 2, Tags: "Official OTU", Abbreviation: "Spin", Names: [{ Text: "Reviewed" }] },
+        { X: 3, Y: 4, Tags: "InReview OTU", Abbreviation: "Zhda", Names: [{ Text: "Reviewing" }] },
+        { X: 5, Y: 6, Tags: "OTU Preserve", Abbreviation: "Fore", Names: [{ Text: "Reserved" }] },
+        { X: 7, Y: 8, Tags: "Apocryphal Faraway", Abbreviation: "Away", Names: [{ Text: "Left out" }] },
+        { X: 9, Y: 0, Tags: "OTU Unreviewed", Abbreviation: "Unre", Names: [{ Text: "Also out" }] },
+        { X: 1, Y: 1, Tags: "OTU", Abbreviation: "Bare", Names: [{ Text: "Out too" }] },
+      ],
+    });
+    const found = await fetchCatalogue(answering({ "/api/universe": universe }));
+    expect(found.map((one) => [one.name, one.standing])).toEqual([
+      ["Reserved", "preserve"],
+      ["Reviewed", "official"],
+      ["Reviewing", "review"],
+    ]);
   });
 
   it("reads the subsector names off the metadata", async () => {

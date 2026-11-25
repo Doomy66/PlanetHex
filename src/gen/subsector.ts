@@ -19,7 +19,7 @@ import { parseUwp, rollUwp, seedFrom, type Uwp, type UwpShifts } from "../planet
 import { mainWorldSeed } from "./system";
 import { starsFor, starsLabel, systemLuminosity, type Stars } from "./star";
 import { formatPbg, pbgFor, tradeCodes, type Pbg, type TradeCode } from "./trade";
-import { flavourFor, worldNameFor, type Flavour } from "./settle";
+import { flavourFor, flavourForAllegiance, worldNameFor, type Flavour } from "./settle";
 import { valueFor } from "./rng";
 import { basesFor, zoneFor } from "./base";
 
@@ -309,6 +309,7 @@ export function worldAt(
   regional = flavourFor(`${seed}:flavour`),
   given?: string,
   shifts: UwpShifts = {},
+  allegiance: string = UNALIGNED,
 ): SubsectorWorld | null {
   // The hex's own system unless the referee has put another one there. A reroll
   // from inside the system view is the one thing that can do that, and what it
@@ -320,8 +321,13 @@ export function worldAt(
   if (profile === null) return null;
   // Most worlds are named the way the region names things, and the rest are
   // wherever somebody from somewhere else settled. SubSectorSpec 3.4.2.1.
+  //
+  // Unless somebody holds the world. An allegiance names its own: the dice
+  // decide between a region's ways of naming things, and whose space this is
+  // is not something the dice were ever asked. 3.4.2.2.
   const follows = valueFor(`${seed}:flavour-follows`, Number(at)) < FOLLOWS_THE_REGION;
-  const flavour = follows ? regional : flavourFor(`${systemSeed}:names`);
+  const flavour =
+    flavourForAllegiance(allegiance) ?? (follows ? regional : flavourFor(`${systemSeed}:names`));
   return {
     hex,
     at,
@@ -335,7 +341,7 @@ export function worldAt(
     stars: starsFor(systemSeed),
     bases: basesFor(worldSeed, profile),
     zone: zoneFor(worldSeed, profile),
-    allegiance: UNALIGNED,
+    allegiance,
   };
 }
 

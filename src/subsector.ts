@@ -102,7 +102,7 @@ export interface HexOverride {
 export const SHIFT_LIMIT = 3;
 
 /** The fields of an override that are plain text. */
-export type HexField = "name" | "uwp" | "bases" | "zone" | "note" | "stars";
+export type HexField = "name" | "uwp" | "bases" | "zone" | "note" | "stars" | "allegiance";
 
 export interface SubsectorDoc {
   /** Which level this document is, under the app spec 4.1. */
@@ -315,6 +315,11 @@ export function subsectorOf(doc: SubsectorDoc): Subsector {
       undefined,
       override.systemSeed,
       doc.shifts,
+      // Who holds the hex, so a world the referee has not written is named by
+      // the people whose space it is rather than by the regional dice. The
+      // override is applied again below; this is the generator being told
+      // before it names anything. 5.3.7.
+      override.allegiance,
     );
     if (world !== null) held.set(override.at, world);
   }

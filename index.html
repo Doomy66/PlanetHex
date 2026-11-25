@@ -345,6 +345,18 @@
                   <option value="R">Red</option>
                 </select>
               </label>
+              <!-- Who holds the world, as a T5 allegiance code. Typed rather than
+                   picked from a list, because the list is the setting's and a
+                   referee's own polity is not on it; the suggestions below are
+                   whatever the open sector happens to know about. Spec 5.3.7.
+                   It is more than a label: an allegiance the application
+                   recognises names the worlds it holds in its own tongue. -->
+              <label class="sys-written">Allegiance
+                <input id="sub-e-allegiance" type="text" autocomplete="off" maxlength="4"
+                       list="sub-allegiances" placeholder="Na" />
+              </label>
+              <datalist id="sub-allegiances"></datalist>
+              <div id="sub-e-allegiance-name" class="hint under"></div>
               <label class="sys-written">Notes
                 <textarea id="sub-e-note" rows="2" placeholder="What a referee wants to write here"></textarea>
               </label>

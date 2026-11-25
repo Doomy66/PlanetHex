@@ -135,6 +135,7 @@ import {
   type Density,
   type Subsector,
   pbgOf,
+  UNALIGNED,
 } from "./gen/subsector";
 import { sectorFile, subsectorFile } from "./io/export/subsector";
 import {
@@ -2683,7 +2684,7 @@ function rerollHexSystem(at: string): void {
   if (world === undefined) return;
   // The subsector names what is in a hex, so the new system takes the new name.
   setHexOverride(subDoc, at, "name", "");
-  openHexSystem(at, world.systemSeed, world.name, world.uwp, pbgOf(world));
+  openHexSystem(at, world.systemSeed, world.name, world.uwp, pbgOf(world), world.allegiance);
   subSay(`Rolled another system into ${at}.`);
 }
 
@@ -3063,6 +3064,10 @@ function showStarPanel(open: StarSystem, row: (term: string, value: string) => v
   if (open.placed.belts > 0) row("Belts", String(open.placed.belts));
   if (open.placed.gasGiants > 0) row("Gas giants", String(open.placed.gasGiants));
   if (open.bases.letter !== "") row("Bases", basesLabel(open.bases.letter));
+  // Whose space the system stands in. The main world's, because that is what
+  // the maps record and what the level above hands down. AppSpec 1.3.1.
+  const whose = doc?.mainWorldAllegiance?.trim() ?? "";
+  if (whose !== "" && whose !== UNALIGNED) row("Allegiance", allegianceLabel(whose));
   if (doc !== null) row("Seed", doc.seed);
 
   el("sys-note").textContent = starNote(open);
@@ -3512,6 +3517,8 @@ function openSubsector(next: SubsectorDoc, parent: "landing" | "sector" = "landi
   openLevels.subsector = true;
   openLevels.system = false;
   openLevels.planet = false;
+  // The allegiances this subsector knows, under the field that takes one.
+  showAllegianceChoices();
   drawSubsector();
   showCrumbs();
   // The busiest world, which is where a referee's eye goes and what the subsector is
@@ -3677,6 +3684,12 @@ function showHexPanel(at: string | null): void {
   el("sub-what").textContent = `${world.name} — ${at}`;
   row("PBG", `${world.pbg.multiplier}${world.pbg.belts}${world.pbg.gasGiants}`);
   row("Stars", starsLabel(world.stars));
+  // Whose space this is, spelled out where the sector knows the name. Shown
+  // only where somebody holds it: "Non-aligned" on four hundred hexes of a
+  // rolled subsector is a row that never says anything. 4.3.1.
+  if (world.allegiance.trim() !== "" && world.allegiance !== UNALIGNED) {
+    row("Allegiance", allegianceLabel(world.allegiance));
+  }
   if (world.trade.length > 0) {
     row("Trade", world.trade.map((code) => `${code.code} ${code.label}`).join(", "));
   }
@@ -3758,6 +3771,62 @@ function showHexFields(at: string, world: SubsectorWorld | null): void {
   el<HTMLSelectElement>("sub-e-bases").value = world.bases;
   el<HTMLSelectElement>("sub-e-zone").value = world.zone;
   el<HTMLTextAreaElement>("sub-e-note").value = hexOverride(subDoc, at)?.note ?? "";
+  el<HTMLInputElement>("sub-e-allegiance").value = world.allegiance;
+  showAllegianceName(world.allegiance);
+}
+
+/**
+ * The codes this sector knows, offered under the allegiance field.
+ *
+ * Whatever came with an imported sector, which is the list that is actually
+ * useful: a referee marking a hex Zhodani wants ZhIN because the sector next
+ * to it is ZhIN, not because they remember the code. A generated sector has
+ * no list and the field is simply typed into.
+ */
+function showAllegianceChoices(): void {
+  const list = el<HTMLDataListElement>("sub-allegiances");
+  const known = subDoc?.charted?.allegiances ?? [];
+  list.replaceChildren(
+    ...known.map((one) => {
+      const option = document.createElement("option");
+      option.value = one.code;
+      // The label rather than the code again, since the code is the value.
+      option.label = one.name;
+      return option;
+    }),
+  );
+}
+
+/**
+ * An allegiance as a reader wants it: the name where the sector knows one, and
+ * the bare code where it does not.
+ *
+ * A code is what the file holds and what a map prints, but "ZhIN" tells a
+ * referee nothing they did not already have to look up. Where the sector came
+ * with a names table it is spelled out, with the code kept beside it because
+ * that is the thing they will type into the box.
+ */
+function allegianceLabel(code: string): string {
+  const wanted = code.trim();
+  const charted = subDoc?.charted ?? sectorDoc?.charted;
+  if (charted === undefined) return wanted;
+  const name = nameOfAllegiance(charted, wanted);
+  return name === wanted ? wanted : `${name} (${wanted})`;
+}
+
+/** What the code stands for, spelled out under the field. */
+function showAllegianceName(code: string): void {
+  const where = el("sub-e-allegiance-name");
+  const charted = subDoc?.charted;
+  const wanted = code.trim();
+  if (wanted === "" || charted === undefined) {
+    where.textContent = "";
+    return;
+  }
+  const name = nameOfAllegiance(charted, wanted);
+  // nameOfAllegiance hands the code back where it knows nothing, and repeating
+  // the code under the box it was typed into says nothing.
+  where.textContent = name === wanted ? "" : name;
 }
 
 /**
@@ -3779,7 +3848,9 @@ function editHex(field: HexField, value: string): void {
           ? rolled.bases === value
           : field === "zone"
             ? rolled.zone === value
-            : false);
+            : field === "allegiance"
+              ? rolled.allegiance === value.trim()
+              : false);
   setHexOverride(subDoc, at, field, same ? "" : value);
   markSubDirty();
   drawSubsector();
@@ -3806,6 +3877,7 @@ el("sub-here").addEventListener("change", () => {
 for (const [id, field] of [
   ["sub-e-name", "name"],
   ["sub-e-uwp", "uwp"],
+  ["sub-e-allegiance", "allegiance"],
 ] as const) {
   // On change rather than on input: a half typed UWP is not a profile, and a
   // subsector redrawn on every keystroke is a subsector that fights the typist.
@@ -4025,7 +4097,7 @@ el("sub-open").addEventListener("click", () => {
   if (subsector === null || subDoc === null || hexShown === null) return;
   const world = subsector.worlds.find((held) => held.at === hexShown);
   if (world === undefined) return;
-  openHexSystem(world.at, world.systemSeed, world.name, world.uwp, pbgOf(world));
+  openHexSystem(world.at, world.systemSeed, world.name, world.uwp, pbgOf(world), world.allegiance);
 });
 
 /**
@@ -4042,6 +4114,7 @@ function openHexSystem(
   name: string,
   uwp?: string,
   pbg?: string,
+  allegiance?: string,
 ): void {
   if (subDoc === null) return;
   const held = savedSystem(subDoc, at) ?? newSystemDoc(seed, name);
@@ -4052,6 +4125,9 @@ function openHexSystem(
   // And the PBG with it, so a world the subsector says has three gas giants has
   // three down here too rather than however many its seed rolled.
   if (pbg !== undefined && pbg !== "") held.mainWorldPbg = pbg;
+  // And who holds it, so the system knows whose space it is standing in. The
+  // subsector is where that is edited and this is where it is read.
+  if (allegiance !== undefined && allegiance !== "") held.mainWorldAllegiance = allegiance;
   held.sector = el<HTMLInputElement>("sub-sector").value;
   held.hex = at;
   // The subsector names the world and the world names the system, SubSectorSpec
@@ -4422,6 +4498,9 @@ function showSectorPanel(): void {
     row("Subsector", subsectorName(letterShown));
     row("Bases", world.publishedBases === undefined ? basesLabel(world.bases) : publishedBasesLabel(world.publishedBases));
     row("Zone", zoneLabel(world.zone));
+    if (world.allegiance.trim() !== "" && world.allegiance !== UNALIGNED) {
+      row("Allegiance", allegianceLabel(world.allegiance));
+    }
     row("PBG", `${world.pbg.multiplier}${world.pbg.belts}${world.pbg.gasGiants}`);
     row("Stars", starsLabel(world.stars));
     if (world.trade.length > 0) {

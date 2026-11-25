@@ -324,3 +324,97 @@ describe("end to end, from a table to a sector", () => {
     expect(worlds[1]!.allegiance).toBe("Na");
   });
 });
+
+describe("a hex the setting claims and leaves blank", () => {
+  /** What a Preserve sector's rows look like: a hex, a claim, and nothing else. */
+  const blankRow = (over: Partial<WorldRow> = {}): WorldRow =>
+    row({ name: "", uwp: "???????-?", pbg: "???", stars: "", remarks: "", allegiance: "ZhIN", ...over });
+
+  const overrideOf = (over: Partial<WorldRow> = {}) =>
+    importSubsector([blankRow({ at: "0101", ...over })], SOURCE, "A", "First").doc.overrides[0]!;
+
+  it("pins the hex and who claims it, and nothing else", () => {
+    const held = overrideOf();
+    expect(held.at).toBe("0101");
+    expect(held.present).toBe(true);
+    expect(held.allegiance).toBe("ZhIN");
+    // The whole point: no name, no profile, no bases, no stars, no PBG. The
+    // generator supplies them, which is what a Preserve sector is for.
+    expect(held.name).toBeUndefined();
+    expect(held.uwp).toBeUndefined();
+    expect(held.bases).toBeUndefined();
+    expect(held.stars).toBeUndefined();
+    expect(held.pbg).toBeUndefined();
+  });
+
+  it("says in the note that the world is generated", () => {
+    expect(overrideOf().note).toContain("Generated");
+  });
+
+  it("counts it as blank rather than as a gap in the data", () => {
+    const report = importSubsector([blankRow()], SOURCE, "A", "First").report;
+    expect(report.blank).toEqual(["0101"]);
+    // Not a world whose profile the setting got wrong, and not one it forgot
+    // to name: one it deliberately left alone.
+    expect(report.unreadable).toEqual([]);
+    expect(report.unnamed).toEqual([]);
+  });
+
+  it("keeps a travel zone even with no world written in the hex", () => {
+    expect(overrideOf({ zone: "A" }).zone).toBe("A");
+    expect(overrideOf({ zone: "" }).zone).toBeUndefined();
+  });
+
+  it("still pins the blank columns of a world the setting did detail", () => {
+    // The other half of the rule, and the one that must not regress: a
+    // detailed row saying "no bases" means no bases, not "roll some".
+    const held = importSubsector([row({ bases: "", zone: "" })], SOURCE, "A", "First").doc
+      .overrides[0]!;
+    expect(held.bases).toBe("");
+    expect(held.zone).toBe("");
+  });
+
+  it("treats a named world with an unreadable profile as detailed", () => {
+    // Tlebria in Foreven: the setting named it and never gave it digits.
+    const held = importSubsector([blankRow({ name: "Tlebria" })], SOURCE, "A", "First");
+    expect(held.doc.overrides[0]!.name).toBe("Tlebria");
+    expect(held.report.unreadable).toEqual(["0101"]);
+    expect(held.report.blank).toEqual([]);
+  });
+
+  it("gives the hex a world, named the way its owner names things", () => {
+    const doc = importSubsector([blankRow()], SOURCE, "A", "First").doc;
+    const worlds = subsectorOf(doc).worlds;
+    expect(worlds).toHaveLength(1);
+    const world = worlds[0]!;
+    expect(world.allegiance).toBe("ZhIN");
+    // A name, a profile and the rest, all generated.
+    expect(world.name.trim()).not.toBe("");
+    expect(world.name).not.toBe("0101");
+    expect(world.uwp).toMatch(/^[A-HJ-NP-Z0-9]{7}-[A-HJ-NP-Z0-9]$/);
+  });
+
+  it("names a Consulate hex differently from an unclaimed one", () => {
+    const zhodani = subsectorOf(
+      importSubsector([blankRow({ allegiance: "ZhIN" })], SOURCE, "A", "First").doc,
+    ).worlds[0]!;
+    const nobody = subsectorOf(
+      importSubsector([blankRow({ allegiance: "XXXX" })], SOURCE, "A", "First").doc,
+    ).worlds[0]!;
+    // Same hex, same seed, same everything but who holds it.
+    expect(zhodani.seed).toBe(nobody.seed);
+    expect(zhodani.name).not.toBe(nobody.name);
+  });
+
+  it("gives the same hex the same world every time", () => {
+    const once = subsectorOf(importSubsector([blankRow()], SOURCE, "A", "First").doc).worlds[0]!;
+    const twice = subsectorOf(importSubsector([blankRow()], SOURCE, "A", "First").doc).worlds[0]!;
+    expect(twice).toEqual(once);
+  });
+
+  it("round-trips through a save", () => {
+    const doc = importSubsector([blankRow()], SOURCE, "A", "First").doc;
+    const read = parseSubsectorDoc(JSON.stringify(doc))!;
+    expect(subsectorOf(read).worlds).toEqual(subsectorOf(doc).worlds);
+  });
+});

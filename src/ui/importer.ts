@@ -150,7 +150,7 @@ export async function pickPublishedSector(level: "sector" | "subsector"): Promis
     const sectors = await theCatalogue();
     list.replaceChildren(
       ...sectors.map((sector) =>
-        choice("import-sector", sector.abbreviation, sector.name, () => {
+        choice("import-sector", sector.abbreviation, labelFor(sector), () => {
           chosen = sector;
           ready();
           if (level === "subsector") {
@@ -212,6 +212,20 @@ function closed(dialog: HTMLDialogElement): Promise<string> {
   });
 }
 
+/**
+ * A sector in the list, with a word about it where one is warranted.
+ *
+ * The official sectors are the list as it was and need no decoration. The
+ * other two do: a sector still under review may yet change upstream, and a
+ * reserved one arrives almost empty on purpose, which is a surprise worth
+ * having before the fetch rather than after it.
+ */
+function labelFor(sector: CataloguedSector): string {
+  if (sector.standing === "review") return `${sector.name} — under review`;
+  if (sector.standing === "preserve") return `${sector.name} — reserved, worlds generated`;
+  return sector.name;
+}
+
 /** What went wrong, in words worth showing somebody. */
 function reason(error: unknown): string {
   return error instanceof Error ? error.message : "Something went wrong fetching that.";
@@ -226,6 +240,11 @@ function reason(error: unknown): string {
  */
 export function describeImport(name: string, report: ImportReport): string {
   const parts = [`${report.worlds} worlds from ${name}`];
+  if (report.blank.length > 0) {
+    // Said first and said plainly, because on a Preserve sector it is most of
+    // them and a referee should know the map they are looking at is theirs.
+    parts.push(`${report.blank.length} left blank by the setting and generated here`);
+  }
   if (report.unreadable.length > 0) {
     parts.push(`${report.unreadable.length} with no readable profile`);
   }

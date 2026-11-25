@@ -32,6 +32,15 @@ export interface ImportReport {
   readonly unreadable: readonly string[];
   /** Worlds the published data leaves unnamed. */
   readonly unnamed: readonly string[];
+  /**
+   * Hexes the published data claims and leaves entirely blank - no name and no
+   * profile - and which this application therefore generates. 8.6.2.
+   *
+   * These are counted apart from the unreadable and the unnamed because they
+   * are not a gap in the data. A Preserve sector is published blank on purpose,
+   * and a referee opening one should be told how much of it is theirs.
+   */
+  readonly blank: readonly string[];
 }
 
 export interface ImportedSector {
@@ -96,16 +105,17 @@ export function importSubsector(
 
   const unreadable: string[] = [];
   const unnamed: string[] = [];
+  const blank: string[] = [];
   const overrides: HexOverride[] = [];
 
   for (const row of rows) {
     const hex = parseSectorHex(row.at);
     if (hex === null || subsectorLetter(hex) !== which) continue;
-    overrides.push(overrideFrom(row, unreadable, unnamed));
+    overrides.push(overrideFrom(row, unreadable, unnamed, blank));
   }
 
   doc.overrides = overrides.sort((a, b) => a.at.localeCompare(b.at));
-  return { doc, report: { worlds: overrides.length, unreadable, unnamed } };
+  return { doc, report: { worlds: overrides.length, unreadable, unnamed, blank } };
 }
 
 /**
@@ -130,16 +140,18 @@ export function importSector(
   let worlds = 0;
   const unreadable: string[] = [];
   const unnamed: string[] = [];
+  const blank: string[] = [];
 
   doc.subsectors = [...SUBSECTOR_LETTERS].map((letter) => {
     const held = importSubsector(rows, source, letter, meta.names.get(letter) ?? `Subsector ${letter}`, meta);
     worlds += held.report.worlds;
     unreadable.push(...held.report.unreadable);
     unnamed.push(...held.report.unnamed);
+    blank.push(...held.report.blank);
     return { letter, doc: held.doc };
   });
 
-  return { doc, report: { worlds, unreadable, unnamed } };
+  return { doc, report: { worlds, unreadable, unnamed, blank } };
 }
 
 /** The borders, routes and names worth carrying, or nothing where there are none. */
@@ -157,19 +169,41 @@ function chartedFrom(meta: SectorMetadata): ChartedMap | undefined {
  *
  * `present` is true on every one of them: at density "none" nothing is in a
  * hex until something says so, and this is the saying so.
+ *
+ * Past that there are two kinds of row, written over very differently. A row
+ * the setting has detailed is authoritative to its last blank column: "no
+ * bases" is a fact about that world, and pinning the empty string is what stops
+ * the generator inventing a naval depot next door to Regina. A row carrying no
+ * name and no readable profile has detailed nothing - it is a claim on a hex -
+ * so it pins the claim and leaves the world itself to be generated. 8.6.2.
  */
-function overrideFrom(row: WorldRow, unreadable: string[], unnamed: string[]): HexOverride {
+function overrideFrom(
+  row: WorldRow,
+  unreadable: string[],
+  unnamed: string[],
+  blank: string[],
+): HexOverride {
   const readable = parseUwp(row.uwp) !== null;
-  if (!readable) unreadable.push(row.at);
   const named = row.name.trim() !== "";
-  if (!named) unnamed.push(row.at);
+  // Named or profiled, the setting has said something about this world and
+  // every column of the row is taken as said. Neither, and it has not.
+  const detailed = readable || named;
+
+  if (detailed && !readable) unreadable.push(row.at);
+  if (detailed && !named) unnamed.push(row.at);
+  if (!detailed) blank.push(row.at);
 
   const notes: string[] = [];
-  if (!readable) {
+  if (detailed && !readable) {
     // Without this the hex would keep the canon name over a rolled profile and
     // look exactly as published as its neighbours. A world whose profile is
     // not known should say that it is not known.
     notes.push(`Published profile ${row.uwp || "(blank)"} is not a readable UWP.`);
+  }
+  if (!detailed) {
+    // Said plainly, because the difference matters: this is not a world the
+    // setting got wrong, it is one the setting left to the referee.
+    notes.push("The published map claims this hex and details no world in it. Generated.");
   }
   if (row.remarks.trim() !== "") {
     // The trade codes are worked out again from the profile, so the published
@@ -179,11 +213,27 @@ function overrideFrom(row: WorldRow, unreadable: string[], unnamed: string[]): H
     notes.push(`Published remarks: ${row.remarks.trim()}`);
   }
 
-  return {
+  // What every row pins, detailed or not: where it is, that something is there,
+  // and who claims it. The allegiance is the whole substance of a blank row,
+  // and it is also what decides how the generated world is named.
+  const claim: HexOverride = {
     at: row.at,
     present: true,
-    // An unnamed hex gets its number rather than nothing, because nothing lets
-    // the generator supply a name that reads as published as the rest.
+    ...(row.allegiance.trim() === "" ? {} : { allegiance: row.allegiance.trim() }),
+    ...(notes.length === 0 ? {} : { note: notes.join("\n") }),
+  };
+
+  if (!detailed) {
+    // Nothing else. Name, profile, bases, stars and PBG are all the
+    // generator's. A zone is kept where the map marks one, because a travel
+    // zone is a warning somebody put there deliberately and survives a hex
+    // having no world written in it.
+    const zone = readZone(row.zone);
+    return { ...claim, ...(zone === "" ? {} : { zone }) };
+  }
+
+  return {
+    ...claim,
     name: named ? row.name.trim() : row.at,
     ...(readable ? { uwp: row.uwp } : {}),
     bases: collapseBases(row.bases),
@@ -192,8 +242,6 @@ function overrideFrom(row: WorldRow, unreadable: string[], unnamed: string[]): H
     zone: readZone(row.zone),
     ...(row.stars.trim() === "" ? {} : { stars: row.stars.trim() }),
     ...(row.pbg.trim() === "" ? {} : { pbg: row.pbg.trim() }),
-    ...(row.allegiance.trim() === "" ? {} : { allegiance: row.allegiance.trim() }),
-    ...(notes.length === 0 ? {} : { note: notes.join("\n") }),
   };
 }
 

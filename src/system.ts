@@ -70,6 +70,16 @@ export interface SystemDoc {
    */
   mainWorldPbg?: string;
   /**
+   * Who holds the main world, and so who holds the system. AppSpec 1.3.1.
+   *
+   * A T5 allegiance code - ImDd, ZhIN, SwCf - or absent where nobody has said.
+   * It belongs to the main world rather than to each rock in the system,
+   * because that is what a map records and what a referee means by whose space
+   * this is. Carried down from the subsector and carried back up again, so the
+   * two levels never disagree about whose border the system sits inside.
+   */
+  mainWorldAllegiance?: string;
+  /**
    * The stars, as the Stars column writes them, where the referee has changed
    * them. Null for the ones the seed rolled. SystemSpec 2.6.
    */
@@ -224,6 +234,9 @@ export function parseSystemDoc(text: string): SystemDoc {
     // A save written before there were dates is a save drawn at the epoch, so
     // that is what it reads as and nothing in it has moved.
     date: formatImperialDate(dateOrEpoch(r["date"])),
+    ...(typeof r["mainWorldAllegiance"] === "string" && r["mainWorldAllegiance"] !== ""
+      ? { mainWorldAllegiance: r["mainWorldAllegiance"] }
+      : {}),
     ...(typeof r["mainWorldPbg"] === "string" && r["mainWorldPbg"] !== ""
       ? { mainWorldPbg: r["mainWorldPbg"] }
       : {}),

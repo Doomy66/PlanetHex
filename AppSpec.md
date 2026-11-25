@@ -208,7 +208,11 @@ This document is the shell. [PlanetSpec.md](PlanetSpec.md) specifies a planet, [
 
 8.2.1 The list is fetched, never shipped. No sector name, subsector name or world appears in this application's own files, for the reason at 8.6.
 
-8.2.2 The official sectors only. The source holds some five hundred of varying standing, and a list offering a dozen answers to "which Spinward Marches" is worse than one offering forty-five that are the published setting.
+8.2.2 Three standings are offered and the rest are not. The source holds some five hundred sectors of widely varying standing, and a list offering a dozen answers to "which Spinward Marches" is worse than one offering only the published setting.
+
+8.2.2.1 **Official**, the forty-five that are the setting as the books have it. **Under review**, complete sectors not yet through the source's own review; they are Charted Space and a referee wanting the Zhodani home sector or Far Frontiers has nowhere else to get them. **Reserved**, a sector the setting deliberately leaves blank for a referee to fill in, of which Foreven — the march between the Imperium and the Consulate — is the one that matters.
+
+8.2.2.2 The last two say so in the list. A sector under review may still change upstream, and a reserved one arrives almost empty on purpose; both are surprises better had before the fetch than after it.
 
 8.3 **What is fetched, and when.** Nothing until a sector is chosen. Then the sector's world table and its subsector names, which is one request of about forty kilobytes, or for a subsector alone the thirty-odd lines of that subsector. What has been fetched is kept for the session, so moving between the subsectors of one sector does not ask again.
 
@@ -240,6 +244,22 @@ This document is the shell. [PlanetSpec.md](PlanetSpec.md) specifies a planet, [
 
 8.7.2 An unnamed world is named after its hex, for the same reason: left blank, the generator would supply a name that reads as published as the rest.
 
+8.7.3 That holds for a row the setting has **detailed**, which is any row carrying a name or a readable profile. Such a row is authoritative down to its blank columns: an empty Bases column is a fact about that world, and pinning it is what stops the generator inventing a depot beside Regina.
+
+8.7.4 A row carrying **neither** a name nor a readable profile has detailed nothing. It is a claim on a hex, and only the claim is pinned — the hex, that something is there, who holds it, and a travel zone where the map marks one. The name, the profile, the bases, the stars and the PBG are generated, by the ordinary chain of 8.5.
+
+8.7.4.1 This is what a reserved sector is made of, and 8.7.1's reasoning does not reach it. There is no published name for rolled digits to sit under and mislead anybody: the setting has said where the frontier runs and left the worlds inside it to the referee, which is this application's whole subject.
+
+8.7.4.2 The hex says so in its note, and the import counts these apart from the unreadable and the unnamed. They are not a gap in the data. A referee opening a reserved sector should be told at once how much of it is theirs.
+
+8.7.5 **Who holds a world decides how it is named.** An allegiance the application recognises names the worlds it holds in its own tongue, in place of the regional naming of the subsector spec 3.4.2.1.
+
+8.7.5.1 Allegiance is the one published fact that cuts across the dice. A hex inside the Consulate is Zhodani whatever its seed rolled, and a blank hex inside the Consulate's border has to be named in Zhodani or the frontier drawn over it means nothing.
+
+8.7.5.2 It settles the naming of a world at the moment the hex is built from its seed: every world of an imported sector, and a hex a referee turns on in a rolled one. A world already rolled into a subsector keeps the name it was rolled with, and so does a world the setting named or the referee named. Setting an allegiance labels such a world; it does not rename it.
+
+8.7.5.3 Deliberately. The worlds that need this are the ones nobody has named — a reserved sector is nothing else — and silently renaming eighty worlds a referee has been reading, and may have written notes against, is a worse answer than a frontier whose older worlds keep their names.
+
 8.8 **Borders, the express network and polity names** come with the sector, in the same metadata request its subsector names do, and are carried on the document so a saved sector draws them without going back to the network.
 
 8.8.1 A border arrives as a closed ring of hexes along the inside of a boundary. That is the edge of a shape rather than a shape, so what is drawn is the outline of everything the ring encloses — the empty hexes in the middle included, because a polity holds the space between its worlds and no world marks it. The ring is filled by flooding from outside it and keeping what the flood does not reach; the outline is then every edge of a filled hex with nothing filled on the far side.
@@ -250,7 +270,11 @@ This document is the shell. [PlanetSpec.md](PlanetSpec.md) specifies a planet, [
 
 8.8.2 Where the published express network is known it **replaces** the routes of the subsector spec 3.3 rather than being drawn beside them. 3.3 wires every pair of good ports within two hexes, which is a fair guess at where the mail would go and is not where it goes; on a map anybody recognises, the difference between a thin published line and a dense computed mesh is the most visible thing on it. Trade routes are left as they were, since nothing published says where a free trader goes.
 
-8.8.3 Allegiance codes are given their published names, so a border is labelled *Zhodani Consulate* rather than `ZhIN`.
+8.8.3 Allegiance codes are given their published names, so a border is labelled *Zhodani Consulate* rather than `ZhIN`. The same names are spelled out wherever a world's allegiance is shown, and the codes a sector knows are offered under the field that takes one.
+
+8.8.3.1 **A world's allegiance is editable**, at the hex, like its name and its profile. It is how a referee marks out their own space, and it is more than a label: it settles how a generated world is named under 8.7.5, so marking a run of hexes Zhodani makes them read Zhodani.
+
+8.8.3.2 It is carried down to the system, which shows it. Whose space a system stands in is a fact about the system and not only about the map above it, and a system saved on its own keeps it.
 
 8.8.4 Each allegiance is drawn its own way, and a legend says which is which. One colour for every border is a tangle wherever two of them run alongside each other, which on a real map is exactly where the interesting ground is: the Darrian, Sword Worlds and Imperial frontiers in the Spinward Marches are within a few hexes of each other for most of their length.
 

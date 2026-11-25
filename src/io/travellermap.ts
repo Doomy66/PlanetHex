@@ -179,6 +179,18 @@ export type Fetcher = (url: string) => Promise<Response>;
 const theFetch: Fetcher = (url) => fetch(url);
 
 /** One sector in the catalogue. */
+/**
+ * How settled a sector's published data is. AppSpec 8.2.1.
+ *
+ * Three standings rather than one, because what arrives differs so much
+ * between them that a user picking blind would be surprised. "official" is
+ * reviewed and complete. "review" is complete and still being checked, which
+ * for every such sector today means a full world table. "preserve" is a sector
+ * the setting deliberately leaves blank for a referee to fill in, and arrives
+ * as little more than hexes and who claims them.
+ */
+export type SectorStanding = "official" | "review" | "preserve";
+
 export interface CataloguedSector {
   readonly name: string;
   /** The four letters the data endpoints are addressed by, such as "Spin". */
@@ -186,15 +198,31 @@ export interface CataloguedSector {
   /** Where it is in charted space. This is what the seed is keyed on. */
   readonly x: number;
   readonly y: number;
+  readonly standing: SectorStanding;
 }
+
+/**
+ * The published tags this application will offer, and what each one means here.
+ *
+ * Read in order, so a sector wearing more than one takes the first that
+ * matches. Everything else travellermap carries - the unreviewed, the
+ * apocryphal, the alternate universes and the far-side survey sectors - is left
+ * out: they are not Charted Space as the books have it, and a picker that
+ * listed all five hundred would bury the forty-five that are.
+ */
+const OFFERED: readonly (readonly [string, SectorStanding])[] = [
+  ["Official", "official"],
+  ["InReview", "review"],
+  ["Preserve", "preserve"],
+];
 
 /**
  * The sectors that can be imported, in name order.
  *
- * The official ones only. travellermap carries five hundred sectors of varying
- * standing, and a list of that length offering a dozen different answers to
- * "which Spinward Marches" is a worse starting point than the forty-five that
- * are the published setting.
+ * The three standings of OFFERED and no others. travellermap carries five
+ * hundred sectors of widely varying standing, and a list of that length
+ * offering a dozen different answers to "which Spinward Marches" is a worse
+ * starting point than one holding only the published setting.
  */
 export async function fetchCatalogue(get: Fetcher = theFetch): Promise<CataloguedSector[]> {
   const raw = await json(get, `${TRAVELLER_MAP}/api/universe?requireData=1&milieu=${MILIEU}`);
@@ -204,14 +232,15 @@ export async function fetchCatalogue(get: Fetcher = theFetch): Promise<Catalogue
   for (const entry of listed) {
     const s = entry as Record<string, unknown>;
     const tags = typeof s["Tags"] === "string" ? s["Tags"].split(/\s+/) : [];
-    if (!tags.includes("Official")) continue;
+    const standing = OFFERED.find(([tag]) => tags.includes(tag))?.[1];
+    if (standing === undefined) continue;
     const abbreviation = typeof s["Abbreviation"] === "string" ? s["Abbreviation"] : "";
     const names = Array.isArray(s["Names"]) ? s["Names"] : [];
     const first = names[0] as { Text?: unknown } | undefined;
     const name = typeof first?.Text === "string" ? first.Text : "";
     if (abbreviation === "" || name === "") continue;
     if (typeof s["X"] !== "number" || typeof s["Y"] !== "number") continue;
-    out.push({ name, abbreviation, x: s["X"], y: s["Y"] });
+    out.push({ name, abbreviation, x: s["X"], y: s["Y"], standing });
   }
   return out.sort((a, b) => a.name.localeCompare(b.name));
 }
