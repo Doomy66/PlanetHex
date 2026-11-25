@@ -11,6 +11,8 @@ import {
   flavourFor,
   FLAVOURS,
   settlementSites,
+  worldNameFor,
+  ZHODANI,
 } from "./settle";
 import { normalise } from "../ui/colour";
 import type { PlanetDetail } from "./detail";
@@ -122,6 +124,15 @@ describe("what a name is", () => {
         expect(polyglot).toBeGreaterThan(seen.get(flavour.key) ?? 0);
       }
     }
+  });
+
+  it("names a Zhodani world only when asked, the same each time", () => {
+    expect(FLAVOURS).not.toContain(ZHODANI);
+    for (let i = 0; i < 2000; i++) expect(flavourFor(`zho-${i}`)).not.toBe(ZHODANI);
+    const names = Array.from({ length: 200 }, (_, i) => worldNameFor(`zho-world-${i}`, ZHODANI));
+    expect(names).toEqual(Array.from({ length: 200 }, (_, i) => worldNameFor(`zho-world-${i}`, ZHODANI)));
+    for (const name of names) expect(name).toMatch(/^[A-Z][a-z]{3,}$/);
+    expect(new Set(names).size).toBeGreaterThan(150);
   });
 
   it("numbers a functional world's places in rank order", () => {
