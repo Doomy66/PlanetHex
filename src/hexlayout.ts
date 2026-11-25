@@ -57,6 +57,42 @@ export const BELT_ROCKS: readonly (readonly [number, number])[] = [
 export const BELT_SPREAD = 7;
 export const BELT_ROCK_R = 2;
 
+/**
+ * The marks beside a world: a naval base, a scout way station, a gas giant.
+ *
+ * The geometry only, so each map appends it with its own element maker. Shared
+ * for the reason BELT_ROCKS is: one hex of one world should look the same
+ * whichever level is drawing it.
+ */
+export const SYMBOL = {
+  /** Bases sit to the left of the dot, a gas giant to the right. */
+  basesLeft: -HEX_WIDE * 0.3,
+  giantRight: HEX_WIDE * 0.27,
+  giantUp: -4,
+  /** Where each base goes when a world has both, rather than one in the middle. */
+  bothUp: -8,
+  bothDown: 9,
+} as const;
+
+/** The ten points of a naval base's star, round a centre. */
+export function navalStar(x: number, y: number): string {
+  const points: string[] = [];
+  for (let i = 0; i < 10; i++) {
+    const r = i % 2 === 0 ? 7 : 3;
+    const angle = (Math.PI / 180) * (i * 36 - 90);
+    points.push(`${x + r * Math.cos(angle)},${y + r * Math.sin(angle)}`);
+  }
+  return points.join(" ");
+}
+
+/** The three points of a scout way station's triangle. */
+export function scoutTriangle(x: number, y: number): string {
+  return `${x},${y - 6} ${x + 6},${y + 5} ${x - 6},${y + 5}`;
+}
+
+/** How big a gas giant's disc and ring are drawn. */
+export const GIANT = { r: 4.5, rx: 8, ry: 2.6 } as const;
+
 /** How many colours the Mains are drawn in before they start round again. */
 export const MAIN_COLOURS = 5;
 

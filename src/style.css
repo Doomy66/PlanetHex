@@ -921,6 +921,13 @@ body[data-view="subsector"] .sector { display: none; }
 .sectormap:active { cursor: grabbing; }
 .sec-route { stroke: #35608f; stroke-width: 1.6; opacity: 0.5; }
 .sec-xboat { stroke: #6aa6e8; stroke-width: 3; opacity: 0.85; }
+/* The bases and a gas giant, the same marks and the same colours the subsector
+   uses, drawn only once the sector map is zoomed in far enough for them. */
+.sec-naval { fill: #e6ebf2; }
+.sec-scout { fill: #9fb0c4; }
+.sec-giant { fill: #d7b273; }
+.sec-giant-ring { fill: none; stroke: #d7b273; stroke-width: 1.4; }
+
 /* A belt, the same scatter of rocks the subsector draws. Dimmed where nobody
    lives there, the way an empty world's dot is drawn hollow. */
 .sec-rock { fill: #9aa5b2; }

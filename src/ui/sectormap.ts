@@ -7,6 +7,10 @@ import {
   ZONE_R,
   BELT_ROCKS,
   BELT_SPREAD,
+  GIANT,
+  SYMBOL,
+  navalStar,
+  scoutTriangle,
   HEX_WIDE,
   COLUMN_STEP,
   PAD,
@@ -304,6 +308,50 @@ export function createSectorMap(): SectorMap {
         const name = make("text", { class: "sec-name", x: where.x, y: where.y + HEX_HIGH * 0.36 });
         name.textContent = world.name;
         group.append(name);
+      }
+
+      // The bases and a gas giant, in the same places and the same shapes the
+      // subsector puts them, and under the same rule as the starport and the
+      // name above: only once the map is close enough to be a map of a
+      // subsector rather than of a sector. Sixteen subsectors of these at once
+      // is not a map of anything. SectorSpec 4.4.1.
+      //
+      // Unlike a travel zone, which is drawn at every zoom: a red world is a
+      // warning and these are logistics, read when a route is being plotted
+      // and that is done close in.
+      if (close) {
+        const left = where.x + SYMBOL.basesLeft;
+        const both = world.bases === "A";
+        if (both || world.bases === "N") {
+          group.append(
+            make("polygon", {
+              class: "sec-naval",
+              points: navalStar(left, both ? where.y + SYMBOL.bothUp : where.y),
+            }),
+          );
+        }
+        if (both || world.bases === "S") {
+          group.append(
+            make("polygon", {
+              class: "sec-scout",
+              points: scoutTriangle(left, both ? where.y + SYMBOL.bothDown : where.y),
+            }),
+          );
+        }
+        if (world.pbg.gasGiants > 0) {
+          const gx = where.x + SYMBOL.giantRight;
+          const gy = where.y + SYMBOL.giantUp;
+          group.append(make("circle", { class: "sec-giant", cx: gx, cy: gy, r: GIANT.r }));
+          group.append(
+            make("ellipse", {
+              class: "sec-giant-ring",
+              cx: gx,
+              cy: gy,
+              rx: GIANT.rx,
+              ry: GIANT.ry,
+            }),
+          );
+        }
       }
       group.addEventListener("click", () => {
         for (const handler of pickedHex) handler(at);

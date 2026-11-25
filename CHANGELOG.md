@@ -6,6 +6,16 @@ user. Dates are the day the release was tagged.
 
 ## Unreleased
 
+- **Gas giants and bases on the sector map.** Neither was drawn there at all.
+  A gas giant is where a ship refuels and a base is who is waiting when it
+  arrives, and both were a level down with no sign of them above. The same
+  marks the subsector uses, in the same places: the naval star and the scout
+  triangle to the left of the world, the ringed disc to the right. They appear
+  once the map is zoomed in far enough to be a map of a subsector rather than
+  of a sector, the same rule the starport and the world's name already follow —
+  sixteen subsectors of these at once is not a map of anything. A travel zone
+  is the exception and still shows at every zoom, because that is a warning
+  rather than logistics.
 - **Belts look like belts on the sector map.** An asteroid belt was drawn there
   as an ordinary world dot, and an inhabited one took the airless fill — a belt
   has no atmosphere — so it came out as a small grey rockball, which is a

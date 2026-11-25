@@ -12,6 +12,9 @@ import {
   ZONE_R,
   BELT_ROCKS,
   BELT_ROCK_R,
+  GIANT,
+  navalStar,
+  scoutTriangle,
 } from "../hexlayout";
 import { BORDER_REACH } from "../gen/sector";
 import { borderEdges } from "../gen/border";
@@ -441,29 +444,20 @@ export function createSubsectorMap(): SubsectorMap {
 
   /** A naval base. */
   function drawStar(group: SVGGElement, x: number, y: number): void {
-    const points: string[] = [];
-    for (let i = 0; i < 10; i++) {
-      const r = i % 2 === 0 ? 7 : 3;
-      const angle = (Math.PI / 180) * (i * 36 - 90);
-      points.push(`${x + r * Math.cos(angle)},${y + r * Math.sin(angle)}`);
-    }
-    group.append(make("polygon", { class: "starmap-naval", points: points.join(" ") }));
+    group.append(make("polygon", { class: "starmap-naval", points: navalStar(x, y) }));
   }
 
   /** A scout way station. */
   function drawTriangle(group: SVGGElement, x: number, y: number): void {
-    group.append(
-      make("polygon", {
-        class: "starmap-scout",
-        points: `${x},${y - 6} ${x + 6},${y + 5} ${x - 6},${y + 5}`,
-      }),
-    );
+    group.append(make("polygon", { class: "starmap-scout", points: scoutTriangle(x, y) }));
   }
 
   /** Somewhere to skim fuel, which is why it is on the subsector at all. */
   function drawGiant(group: SVGGElement, x: number, y: number): void {
-    group.append(make("circle", { class: "starmap-giant", cx: x, cy: y, r: 4.5 }));
-    group.append(make("ellipse", { class: "starmap-giant-ring", cx: x, cy: y, rx: 8, ry: 2.6 }));
+    group.append(make("circle", { class: "starmap-giant", cx: x, cy: y, r: GIANT.r }));
+    group.append(
+      make("ellipse", { class: "starmap-giant-ring", cx: x, cy: y, rx: GIANT.rx, ry: GIANT.ry }),
+    );
   }
 
   new ResizeObserver(() => showView()).observe(svg);
