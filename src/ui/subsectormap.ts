@@ -15,6 +15,8 @@ import {
   GIANT,
   navalStar,
   scoutTriangle,
+  LOUD_FROM,
+  nameAsDrawn,
 } from "../hexlayout";
 import { BORDER_REACH } from "../gen/sector";
 import { borderEdges } from "../gen/border";
@@ -418,13 +420,13 @@ export function createSubsectorMap(): SubsectorMap {
       // A name in capitals is the published shorthand for a world with a
       // billion people on it, the one population figure worth seeing across a
       // table.
-      const loud = world.profile.population >= 9;
+      const loud = world.profile.population >= LOUD_FROM;
       const name = make("text", {
         class: loud ? "starmap-name starmap-loud" : "starmap-name",
         x,
         y: y + HEX_HIGH * 0.33,
       });
-      name.textContent = loud ? world.name.toUpperCase() : world.name;
+      name.textContent = nameAsDrawn(world.name, world.profile.population);
       group.append(name);
 
       // Bases to the left and a gas giant to the right, each its own mark, as

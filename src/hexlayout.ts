@@ -93,6 +93,21 @@ export function scoutTriangle(x: number, y: number): string {
 /** How big a gas giant's disc and ring are drawn. */
 export const GIANT = { r: 4.5, rx: 8, ry: 2.6 } as const;
 
+/**
+ * The population at which a world's name is shouted. SubSectorSpec 4.2.3.
+ *
+ * A billion people and more, which Traveller maps have always written in
+ * capitals. Shared so both maps shout the same worlds: a name in capitals on
+ * one and in lower case on the other says the two levels disagree about how
+ * big the place is.
+ */
+export const LOUD_FROM = 9;
+
+/** A world's name as a map writes it, shouted where it holds a billion. */
+export function nameAsDrawn(name: string, population: number): string {
+  return population >= LOUD_FROM ? name.toUpperCase() : name;
+}
+
 /** How many colours the Mains are drawn in before they start round again. */
 export const MAIN_COLOURS = 5;
 

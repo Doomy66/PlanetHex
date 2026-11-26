@@ -232,6 +232,12 @@ Nothing is marked Red by generation.
 
 4.2.2.2 A world's own globe was tried here and taken out again. At the size a hex allows it is a dark disc — less legible than the dot it replaced, since a dot can be a colour chosen to be told apart and a photograph of a world cannot. It also cost a surface per hex, which arrived over about ten seconds of a map filling itself in. A picture of one world at a time belongs in 4.3.1, where there is room to look at it.
 
+4.2.2.3 A world of a billion people or more — population 9 and up — has its name drawn in **capitals**, as every Traveller map has always drawn one, and in a heavier weight beside it so the convention still reads for somebody who finds all-capitals hard to scan.
+
+4.2.2.3.1 The label only. The name itself keeps the capitalisation it was given, because uppercasing what is stored would lose the real shape of *Yal Vri* or *Kemp's Camp* for good.
+
+4.2.2.3.2 The same rule at every level that draws a name. A world shouted on one map and spoken on another is the two levels disagreeing about how big the place is, so the rule is held in one place and both maps ask it.
+
 4.2.3 Colour that means something needs a key, so the map has one beside it: every colour, every mark, the two weights of lane, and what the size of a dot says. It folds away, because a key is read once and then known.
 
 4.2.3.1 A key rather than a legend drawn into the map itself. The map is scaled to fit its panel and exported as a picture under 6.2, and a legend inside it would be scaled with it and would have to be placed somewhere no hex was.

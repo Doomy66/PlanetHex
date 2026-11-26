@@ -11,6 +11,8 @@ import {
   SYMBOL,
   navalStar,
   scoutTriangle,
+  LOUD_FROM,
+  nameAsDrawn,
   HEX_WIDE,
   COLUMN_STEP,
   PAD,
@@ -305,8 +307,16 @@ export function createSectorMap(): SectorMap {
         );
       }
       if (close || world.profile.population >= NAMED_FROM) {
-        const name = make("text", { class: "sec-name", x: where.x, y: where.y + HEX_HIGH * 0.36 });
-        name.textContent = world.name;
+        // Shouted at a billion people, as the subsector shouts it and as
+        // Traveller maps always have. The same world read as big on one level
+        // and ordinary on the other would be the two levels disagreeing.
+        const loud = world.profile.population >= LOUD_FROM;
+        const name = make("text", {
+          class: loud ? "sec-name sec-loud" : "sec-name",
+          x: where.x,
+          y: where.y + HEX_HIGH * 0.36,
+        });
+        name.textContent = nameAsDrawn(world.name, world.profile.population);
         group.append(name);
       }
 

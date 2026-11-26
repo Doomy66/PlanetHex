@@ -6,6 +6,13 @@ user. Dates are the day the release was tagged.
 
 ## Unreleased
 
+- **A billion people are shouted on the sector map too.** A world with a
+  population digit of 9 or more has its name drawn in capitals, which is how
+  every Traveller map writes one — the subsector map has always done it and the
+  sector map never did, so the same world read as ALDERAMIN at one level and
+  Alderamin at the other. The rule now lives in one place and both maps ask it.
+  The stored name is untouched: only the drawn label is uppercased, so a name
+  like Kemp's Camp keeps its real shape. Subsector spec 4.2.2.3.
 - **Borders on a sector you rolled.** They only ever came from The Traveller
   Map, so a sector of your own had the allegiance column and no line anywhere.
   A frontier is now drawn round the worlds each polity holds, for every polity
