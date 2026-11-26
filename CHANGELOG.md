@@ -6,6 +6,20 @@ user. Dates are the day the release was tagged.
 
 ## Unreleased
 
+- **Polities can be named, on any sector.** An allegiance code is four letters
+  that mean nothing on their own — an imported sector arrived with the table
+  that turns `ZhIN` into the Zhodani Consulate, and a rolled one never had one,
+  so marking out your own space wrote codes that read back as codes. There is
+  now a **Polities…** dialog, from the sector panel or from beside the
+  allegiance box, with a row per polity: the code, the full name, and a short
+  name for labelling a border. Codes already on a world with no name yet are
+  offered as rows waiting to be filled in, so marking twenty hexes and naming
+  them is two steps rather than twenty-one. The dialog explains what each
+  column is for, and there is a matching section in Help.
+  The table is the sector's, so a subsector under one shares it; it is saved in
+  the `.sector` file like everything else; and the sector panel lists every
+  polity in it, with its border's colour where it has a border and the name
+  alone where it has none. App spec 9.
 - **Gas giants and bases on the sector map.** Neither was drawn there at all.
   A gas giant is where a ship refuels and a base is who is waiting when it
   arrives, and both were a level down with no sign of them above. The same

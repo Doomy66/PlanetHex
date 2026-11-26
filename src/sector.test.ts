@@ -11,6 +11,8 @@ import {
 import { generateSector, letterAt, subsectorSeedFor, SECTOR_HEXES, type Sector } from "./gen/sector";
 import { generateSubsector } from "./gen/subsector";
 import { keepSystem, newSubsectorDoc, savedSystem, setOverride, subsectorOf } from "./subsector";
+import { withAllegiances } from "./polities";
+import { nameOfAllegiance } from "./charted-map";
 import { newSystemDoc } from "./system";
 import { hexDistance, subsectorLetter, parseSectorHex, SUBSECTOR_LETTERS } from "./location";
 
@@ -171,6 +173,21 @@ describe("a sector document", () => {
     setOverride(held, at, "name", "Hadley's Hope");
     keepSubsector(doc, "C", held);
     expect(sectorOf(doc).worlds.find((world) => world.at === at)?.name).toBe("Hadley's Hope");
+  });
+
+  it("keeps a polity table a referee wrote on a rolled sector", () => {
+    // AppSpec 8.9: the table is a thing any sector owns, not something only an
+    // import brings, and it has to survive the save like everything else.
+    const doc = newSectorDoc(SEED, "Spinward Marches");
+    doc.charted = withAllegiances(doc.charted, [
+      { code: "Hn", name: "The Hanse of Aldebaran", short: "Hanse" },
+    ]);
+    const back = parseSectorDoc(JSON.stringify(doc));
+    expect(back.charted?.allegiances).toEqual([
+      { code: "Hn", name: "The Hanse of Aldebaran", short: "Hanse" },
+    ]);
+    // And it names a world's code without a border anywhere near it.
+    expect(nameOfAllegiance(back.charted!, "Hn")).toBe("Hanse");
   });
 
   it("carries a travel zone and an allegiance up to the sector", () => {

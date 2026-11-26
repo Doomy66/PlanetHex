@@ -14,7 +14,8 @@ This document is the shell. [PlanetSpec.md](PlanetSpec.md) specifies a planet, [
 6. [Moving between levels](#6-moving-between-levels)
 7. [Unsaved work](#7-unsaved-work)
 8. [Importing a published sector](#8-importing-a-published-sector)
-9. [Open questions](#9-open-questions)
+9. [The polity table](#9-the-polity-table)
+10. [Open questions](#10-open-questions)
 
 ---
 
@@ -284,16 +285,36 @@ This document is the shell. [PlanetSpec.md](PlanetSpec.md) specifies a planet, [
 
 8.8.4.3 A legend is always shown, and every border carries its name. Colour never carries identity on its own.
 
-## 9. Open questions
+## 9. The polity table
 
-9.1 **Loading a planet by folder.** A folder load knows where it came from and a file load does not, under 3.3.2, so planets are the only level that still asks for the folder on the next Save. Changing the planet row to a directory picker would close that, at the cost of making a bare JSON file harder to open than it is today. Worth answering; not urgent.
+9.1 A sector carries a table of **allegiance codes and what they are called**, whether it was imported or rolled. It is the same table 8.8.3 describes and the same place in the document; what changes here is that it is no longer only an import's to fill in.
 
-9.2 **Recent list storage.** 2.3 needs handles kept across sessions, which means IndexedDB. What happens on a browser without the File System Access API, where there is no handle to keep and a recent entry can only be a name, is unanswered.
+9.1.1 A code is four letters and means nothing on its own. A referee marking out their own space under 8.8.3.1 was writing codes that stood for nothing and read back as codes, while an imported sector had every name to hand. The table is what closes that, and it belongs to the sector either way.
 
-9.3 **Save As.** Nothing above lets a document be saved somewhere other than where it came from, and 6.3.1 wants it to exist. It is a small feature that touches every level, so it is listed here rather than four times.
+9.2 **It is edited in a dialog**, reached from the sector panel and from beside the allegiance field on a hex. A row is a code, a full name, and a short name for labelling a border where the full one will not fit.
 
-9.4 **A workspace above sectors.** Several sectors, a map of how they sit against each other, and a name for the whole setting. The arithmetic does not stop at a sector and neither does a campaign. Nothing here forbids it, and nothing here builds it.
+9.2.1 A dialog rather than a panel, because it is a table set up once and then left alone, and the map is what the room is wanted for.
 
-9.5 **How deep the chain goes.** [SystemSpec.md](SystemSpec.md) 13.1 would make a moon of a gas giant openable as a planet, which is a fifth level in all but name. Whether that is a level, or a system with one more kind of thing in it, is unanswered.
+9.2.2 **The codes already in use that the table does not name are offered**, as rows waiting to be filled in. A referee who has marked twenty hexes and then goes to name them should be naming one polity rather than typing a code again. The code for non-aligned is never offered: every rolled world wears it and it is what "nobody" is called.
 
-9.6 **A tenth polity.** 8.8.4.1 gives nine distinguishable looks, which is more than any sector of the published setting needs and not infinitely many. What a tenth should do — fold into a plain unclaimed line, or add a third channel — is unanswered, and nothing in the data has asked the question yet.
+9.2.3 Nothing is written until the dialog is saved, and what it keeps is tidied: trimmed, blank rows dropped, repeats dropped keeping the first, and sorted by code so a saved file does not change because a row was added in the middle. Two codes differing only in case are one code — a typo the map would otherwise draw as two polities. A row given a name and no code cannot be kept, and the count says so rather than dropping it silently.
+
+9.2.4 The case is left as typed. The published codes are mixed case on purpose, and `ZhIN` written back as `ZHIN` would be this application correcting the setting's spelling.
+
+9.3 **Where the table lives**: the sector's, where there is a sector, so a table edited from a subsector under one is the sector's table and a code named once is named everywhere. A subsector opened on its own carries its own. Emptying it takes it off the document rather than leaving an empty table behind.
+
+9.4 The sector panel lists every polity the table names, with its border's colour and dash beside it where it has a border and the name alone where it has none. A polity written down and not yet drawn is still one of the powers in the sector, and leaving it out would make a table just filled in look as though it had not been kept.
+
+## 10. Open questions
+
+10.1 **Loading a planet by folder.** A folder load knows where it came from and a file load does not, under 3.3.2, so planets are the only level that still asks for the folder on the next Save. Changing the planet row to a directory picker would close that, at the cost of making a bare JSON file harder to open than it is today. Worth answering; not urgent.
+
+10.2 **Recent list storage.** 2.3 needs handles kept across sessions, which means IndexedDB. What happens on a browser without the File System Access API, where there is no handle to keep and a recent entry can only be a name, is unanswered.
+
+10.3 **Save As.** Nothing above lets a document be saved somewhere other than where it came from, and 6.3.1 wants it to exist. It is a small feature that touches every level, so it is listed here rather than four times.
+
+10.4 **A workspace above sectors.** Several sectors, a map of how they sit against each other, and a name for the whole setting. The arithmetic does not stop at a sector and neither does a campaign. Nothing here forbids it, and nothing here builds it.
+
+10.5 **How deep the chain goes.** [SystemSpec.md](SystemSpec.md) 13.1 would make a moon of a gas giant openable as a planet, which is a fifth level in all but name. Whether that is a level, or a system with one more kind of thing in it, is unanswered.
+
+10.6 **A tenth polity.** 8.8.4.1 gives nine distinguishable looks, which is more than any sector of the published setting needs and not infinitely many. What a tenth should do — fold into a plain unclaimed line, or add a third channel — is unanswered, and nothing in the data has asked the question yet.

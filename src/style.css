@@ -518,6 +518,49 @@ label.inline input { width: auto; margin: 0; accent-color: var(--accent); }
 .save-option:hover .save-option-label { color: #fff; }
 
 #save-summary { margin: 12px 0 0; }
+
+/* The polity table. AppSpec 8.9: a code, a name, a short name, and a way to
+   drop the row. Wider than the other dialogs because a full allegiance name is
+   a sentence - "Zhodani Consulate, Iadr Nsobl Province" - and a column too
+   narrow to show one is a column nobody can check. */
+.polity-dialog { width: min(720px, 94vw); }
+.polity-rows { display: flex; flex-direction: column; gap: 6px; margin: 14px 0 0; }
+/* Code narrow, name wide, short in between: the shape of the data. */
+.polity-row {
+  display: grid;
+  grid-template-columns: 5.5em minmax(0, 1fr) minmax(0, 0.7fr) 1.8em;
+  gap: 8px;
+  align-items: center;
+}
+.polity-head {
+  color: var(--muted);
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+.polity-row input { width: 100%; min-width: 0; }
+/* Monospaced and centred, since a code is four letters read as a unit rather
+   than as a word. */
+.polity-code { font-family: ui-monospace, "Cascadia Mono", Consolas, monospace; }
+.polity-drop {
+  padding: 0;
+  width: 1.8em;
+  height: 1.8em;
+  line-height: 1;
+  color: var(--muted);
+  background: none;
+  border: 1px solid transparent;
+}
+.polity-drop:hover { color: #fff; border-color: var(--line); }
+.polity-add { display: flex; align-items: center; gap: 10px; margin: 12px 0 0; flex-wrap: wrap; }
+/* The suggested codes read as a sentence, so the buttons in it sit on the line
+   rather than as blocks of their own. */
+#polity-suggest { white-space: normal; }
+#polity-suggest .linky { padding: 0 2px; font-family: ui-monospace, Consolas, monospace; }
+
+/* The way in, under the facts on the sector panel and beside the allegiance
+   field on the subsector. */
+.polity-open { align-self: flex-start; margin: 2px 0 6px; }
 /* All and None are the coarse strokes, so they sit away from Save and Cancel. */
 #save-all { margin-left: auto; }
 

@@ -148,6 +148,8 @@
       <aside class="sys-tree-panel">
         <h2>Sector</h2>
         <dl id="sec-about" class="sys-facts"></dl>
+        <!-- The allegiance table this sector carries. AppSpec 8.9. -->
+        <button id="sec-polities" class="linky polity-open" type="button">Polities&hellip;</button>
 
         <details class="starmap-legend" id="sec-generation" open>
           <summary>Generation</summary>
@@ -357,6 +359,7 @@
               </label>
               <datalist id="sub-allegiances"></datalist>
               <div id="sub-e-allegiance-name" class="hint under"></div>
+              <button id="sub-polities" class="linky polity-open" type="button">Polities&hellip;</button>
               <label class="sys-written">Notes
                 <textarea id="sub-e-note" rows="2" placeholder="What a referee wants to write here"></textarea>
               </label>
@@ -696,6 +699,51 @@
          travellermap answers with, the way the save dialog builds its own, so
          nothing here hardcodes a sector name: no setting material ships in
          this file any more than anywhere else. -->
+    <!-- Who holds what, and what to call them. AppSpec 8.9. A dialog rather
+         than a panel because it is a table a referee sets up once and then
+         leaves alone, and the map is what they want the room for. -->
+    <dialog id="polity-dialog" class="save-dialog polity-dialog">
+      <form id="polity-form" method="dialog">
+        <h2>Polities</h2>
+        <p class="hint">
+          An allegiance code is what a world&rsquo;s owner is written as on a
+          map &mdash; <strong>ImDd</strong>, <strong>ZhIN</strong>,
+          <strong>SwCf</strong>. It is four letters and means nothing on its
+          own: this table is what turns it into a name. Codes you list here are
+          offered when you set a world&rsquo;s allegiance, and the names are
+          what the subsector and sector readouts show in place of the code.
+        </p>
+        <p class="hint">
+          <strong>Code</strong> is what is stored on the world and written to a
+          sector file, so keep it to what other Traveller tools expect: two or
+          four letters, capitalised as the setting writes them.
+          <strong>Name</strong> is the full title, for reading.
+          <strong>Short</strong> is what a border is labelled with on the map,
+          where the full name would not fit &mdash; leave it blank and the full
+          name is used.
+        </p>
+        <p class="hint">
+          A published sector arrives with this table filled in. A sector you
+          rolled starts empty, and whatever you put here is saved in the
+          <code>.sector</code> file with everything else.
+        </p>
+
+        <div id="polity-rows" class="polity-rows"></div>
+
+        <div class="polity-add">
+          <button id="polity-new" type="button">Add a polity</button>
+          <span id="polity-suggest" class="hint"></span>
+        </div>
+
+        <p class="hint" id="polity-status" role="status"></p>
+
+        <div class="actions">
+          <button id="polity-save" type="submit" value="save">Save</button>
+          <button id="polity-cancel" type="button">Cancel</button>
+        </div>
+      </form>
+    </dialog>
+
     <dialog id="import-dialog" class="save-dialog">
       <form id="import-form" method="dialog">
         <h2>Import a published sector</h2>
@@ -1002,6 +1050,35 @@
           colour could only say that it did not. Only there: a hex of the map is sixty thousand square kilometres, and the
           largest city on Earth would be an eighth of one, so the map would be
           claiming a great deal more concrete than there is.
+        </p>
+
+        <h3>Polities</h3>
+        <p>
+          Every world has an <b>allegiance</b>: who holds it, written as a short
+          code the way a Traveller map writes it &mdash; <code>ImDd</code> for
+          the Domain of Deneb, <code>ZhIN</code> for a Zhodani province,
+          <code>Na</code> for a world nobody claims. It is set on the hex, beside
+          the name and the profile, and again on the main world in the system
+          view. Rolled worlds start non-aligned, because the dice have no
+          empires in them.
+        </p>
+        <p>
+          A code means nothing on its own, so a sector carries a table saying
+          what each one is called. <b>Polities&hellip;</b> opens it, from the
+          sector panel or from beside the allegiance box. Each row is a code, a
+          full name, and a short name for labelling a border where the full one
+          would not fit. Codes already in use with no name yet are offered under
+          the list, so marking twenty hexes and then naming them is two steps
+          rather than twenty-one.
+        </p>
+        <p>
+          The table is worth filling in for more than tidiness: the readouts show
+          the name in place of the code, and an allegiance PlanetHex recognises
+          names the worlds it holds in its own tongue &mdash; mark an unnamed
+          frontier Zhodani and it reads as Zhodani ground. A world that already
+          has a name keeps it. A sector imported from The Traveller Map arrives
+          with the table filled in; a sector you rolled starts empty, and
+          whatever you put there is saved in the <code>.sector</code> file.
         </p>
 
         <h3>Hex names</h3>

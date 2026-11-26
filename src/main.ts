@@ -99,7 +99,9 @@ import { shaderFor, surfaceOn } from "./surface";
 import { currentAppView, landingSay, setAppView, wireLanding } from "./ui/landing";
 import { pickPublishedSector, describeImport } from "./ui/importer";
 import { describeSource } from "./source";
-import { nameOfAllegiance, type ChartedMap } from "./charted-map";
+import { nameOfAllegiance, type ChartedMap, type AllegianceName } from "./charted-map";
+import { allegiancesIn, withAllegiances } from "./polities";
+import { editPolities } from "./ui/polities";
 import { polityLooks } from "./ui/polity";
 import { auLabel, contentLabel, createOrbitDiagram } from "./ui/orbits";
 import {
@@ -3110,7 +3112,7 @@ function showMainWorldFields(): void {
   // its own has no list and the field is simply typed into.
   const list = el<HTMLDataListElement>("sys-allegiances");
   list.replaceChildren(
-    ...(subDoc?.charted?.allegiances ?? []).map((one) => {
+    ...allegiancesIn(chartedHere()).map((one) => {
       const option = document.createElement("option");
       option.value = one.code;
       option.label = one.name;
@@ -3122,7 +3124,7 @@ function showMainWorldFields(): void {
 /** What the typed code stands for, under the field. */
 function showSystemAllegianceName(): void {
   const where = el("sys-e-allegiance-name");
-  const charted = subDoc?.charted ?? sectorDoc?.charted;
+  const charted = chartedHere();
   const wanted = el<HTMLInputElement>("sys-e-allegiance").value.trim();
   if (wanted === "" || charted === undefined) {
     where.textContent = "";
@@ -3861,6 +3863,75 @@ function showHexFields(at: string, world: SubsectorWorld | null): void {
 }
 
 /**
+ * Open the polity table, and keep what comes back. AppSpec 8.9.
+ *
+ * Written onto whichever document owns the table - the sector where there is
+ * one, the subsector where it is open on its own - and then every field that
+ * reads it is drawn again, since a code that has just been given a name should
+ * show that name without being retyped.
+ */
+async function openPolities(): Promise<void> {
+  const owner: "sector" | "subsector" =
+    sectorDoc !== null && (subDoc === null || subParent === "sector") ? "sector" : "subsector";
+  if (owner === "subsector" && subDoc === null) return;
+
+  const kept = await editPolities(allegiancesIn(chartedHere()), codesInUse());
+  if (kept === null) return;
+  writeAllegiances(owner, kept);
+
+  // Everything that reads the table, redrawn. The subsector map draws border
+  // labels from it, the fields offer it, and the readouts spell it out.
+  showAllegianceChoices();
+  if (hexShown !== null) selectHex(hexShown);
+  drawSubsector();
+  refreshSector();
+  // Said last: both redraws above write their own count to the status bar, so
+  // anything said before them is gone before it is read.
+  const where = owner === "sector" ? "sector" : "subsector";
+  const said = `${kept.length} ${kept.length === 1 ? "polity" : "polities"} on this ${where}.`;
+  if (currentAppView() === "sector") secSay(said);
+  else subSay(said);
+}
+
+/** Put the table on the document that owns it, and mark that document unsaved. */
+function writeAllegiances(owner: "sector" | "subsector", kept: AllegianceName[]): void {
+  if (owner === "sector" && sectorDoc !== null) {
+    sectorDoc.charted = withAllegiances(sectorDoc.charted, kept);
+    // A subsector of this sector that carries its own copy would go on showing
+    // the old names, so the copy goes and the sector's is the one table.
+    if (subDoc !== null && subParent === "sector") subDoc.charted = undefined;
+    markSectorDirty();
+    return;
+  }
+  if (subDoc === null) return;
+  subDoc.charted = withAllegiances(subDoc.charted, kept);
+  markSubDirty();
+}
+
+/**
+ * Every allegiance code worn by a world of what is open, so the dialog can
+ * offer the ones it has no name for.
+ */
+function codesInUse(): string[] {
+  const worlds = sector !== null ? sector.worlds : (subsector?.worlds ?? []);
+  return worlds
+    .map((world) => world.allegiance)
+    .filter((code) => code.trim() !== "" && code !== UNALIGNED);
+}
+
+/**
+ * The allegiance table whichever document is in charge of it. AppSpec 8.9.
+ *
+ * A subsector carries its own where it was imported on its own; under a sector
+ * the sector's is the one that counts, so a table edited at either level is
+ * the same table and a code named once is named everywhere.
+ */
+function chartedHere(): ChartedMap | undefined {
+  if (subParent === "sector" && sectorDoc !== null) return sectorDoc.charted ?? subDoc?.charted;
+  return subDoc?.charted ?? sectorDoc?.charted;
+}
+
+/**
  * The codes this sector knows, offered under the allegiance field.
  *
  * Whatever came with an imported sector, which is the list that is actually
@@ -3870,7 +3941,7 @@ function showHexFields(at: string, world: SubsectorWorld | null): void {
  */
 function showAllegianceChoices(): void {
   const list = el<HTMLDataListElement>("sub-allegiances");
-  const known = subDoc?.charted?.allegiances ?? [];
+  const known = allegiancesIn(chartedHere());
   list.replaceChildren(
     ...known.map((one) => {
       const option = document.createElement("option");
@@ -3893,7 +3964,7 @@ function showAllegianceChoices(): void {
  */
 function allegianceLabel(code: string): string {
   const wanted = code.trim();
-  const charted = subDoc?.charted ?? sectorDoc?.charted;
+  const charted = chartedHere();
   if (charted === undefined) return wanted;
   const name = nameOfAllegiance(charted, wanted);
   return name === wanted ? wanted : `${name} (${wanted})`;
@@ -3902,7 +3973,7 @@ function allegianceLabel(code: string): string {
 /** What the code stands for, spelled out under the field. */
 function showAllegianceName(code: string): void {
   const where = el("sub-e-allegiance-name");
-  const charted = subDoc?.charted;
+  const charted = chartedHere();
   const wanted = code.trim();
   if (wanted === "" || charted === undefined) {
     where.textContent = "";
@@ -3982,6 +4053,12 @@ for (const [id, field] of [
     editHex(field, (event.target as HTMLSelectElement).value);
   });
 }
+for (const id of ["sec-polities", "sub-polities"]) {
+  el(id).addEventListener("click", () => {
+    void openPolities();
+  });
+}
+
 el("sub-e-note").addEventListener("change", (event) => {
   editHex("note", (event.target as HTMLTextAreaElement).value);
 });
@@ -4455,16 +4532,34 @@ function showSectorAbout(): void {
  * name is what lets them.
  */
 function showPolities(about: HTMLElement, charted?: ChartedMap): void {
-  if (charted === undefined || charted.borders.length === 0) return;
+  if (charted === undefined) return;
   const looks = polityLooks(charted.borders.map((border) => border.allegiance));
-  if (looks.size === 0) return;
+  // Everybody with a border, and everybody the table names. A polity a referee
+  // has written down but drawn no frontier for is still one of the powers in
+  // this sector, and a panel that left it out would make the table they just
+  // filled in look as though it had not been kept. AppSpec 9.4.
+  const codes = [...looks.keys()];
+  for (const one of charted.allegiances) {
+    if (!codes.some((code) => code.toLowerCase() === one.code.toLowerCase())) codes.push(one.code);
+  }
+  if (codes.length === 0) return;
   const dt = document.createElement("dt");
-  dt.textContent = looks.size === 1 ? "Polity" : "Polities";
+  dt.textContent = codes.length === 1 ? "Polity" : "Polities";
   const dd = document.createElement("dd");
   dd.className = "sec-polities";
-  for (const [code, look] of looks) {
+  for (const code of codes) {
+    const look = looks.get(code);
     const row = document.createElement("span");
     row.className = "sec-polity";
+    const said = document.createElement("span");
+    said.textContent = nameOfAllegiance(charted, code);
+    if (look === undefined) {
+      // No border, so no line to show: the name alone, with the code beside it
+      // where the name is only the code repeated.
+      row.append(said);
+      dd.append(row);
+      continue;
+    }
     const swatch = document.createElementNS("http://www.w3.org/2000/svg", "svg");
     swatch.setAttribute("viewBox", "0 0 28 8");
     swatch.setAttribute("class", "sec-swatch");
@@ -4488,8 +4583,6 @@ function showPolities(about: HTMLElement, charted?: ChartedMap): void {
       );
     }
     swatch.append(line);
-    const said = document.createElement("span");
-    said.textContent = nameOfAllegiance(charted, code);
     row.append(swatch, said);
     dd.append(row);
   }
