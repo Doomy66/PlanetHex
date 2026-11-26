@@ -737,21 +737,72 @@
           what the subsector and sector readouts show in place of the code.
         </p>
         <p class="hint">
-          <strong>Code</strong> is what is stored on the world and written to a
-          sector file, so keep it to what other Traveller tools expect: two or
-          four letters, capitalised as the setting writes them.
-          <strong>Name</strong> is the full title, for reading.
-          <strong>Short</strong> is what a border is labelled with on the map,
-          where the full name would not fit &mdash; leave it blank and the full
-          name is used. <strong>Border</strong> draws a frontier round the hexes
-          this polity holds; a row you add starts ticked, and a row a published
-          sector brought starts clear.
+          <strong>Code</strong> is stored on the world and written to a sector
+          file. <strong>Name</strong> is the full title, for reading.
+          <strong>Short</strong> labels a border on the map where the full name
+          would not fit &mdash; leave it blank and the full name is used.
+          <strong>Border</strong> draws a frontier round the hexes this polity
+          holds; a row you add starts ticked, and a row a published sector
+          brought starts clear.
         </p>
-        <p class="hint">
-          A published sector arrives with this table filled in. A sector you
-          rolled starts empty, and whatever you put here is saved in the
-          <code>.sector</code> file with everything else.
-        </p>
+
+        <!-- The reference half, folded away: a referee who knows the T5 scheme
+             opens this dialog to type, not to read it again. -->
+        <details class="polity-guide">
+          <summary>How a code is built, and some examples</summary>
+          <p class="hint">
+            The published scheme builds a code from <strong>four letters: two
+            for the power, then two for which part of it</strong>. So
+            <code>Im</code>+<code>Dd</code> is the Third Imperium&rsquo;s Domain
+            of Deneb, <code>Zh</code>+<code>IN</code> the Consulate&rsquo;s Iadr
+            Nsobl Province, and <code>Cs</code>+<code>Im</code> a client state of
+            the Imperium. Capitalise as the setting does.
+          </p>
+          <p class="hint">
+            The stems in use include <code>Im</code> Imperium, <code>Zh</code>
+            Zhodani, <code>As</code> Aslan, <code>So</code> Solomani,
+            <code>Cs</code> client state and <code>Na</code> non-aligned;
+            <code>KkTw</code> is the Two Thousand Worlds and <code>HvFd</code>
+            the Hive Federation. Your own powers take whatever you like &mdash;
+            four letters keeps other Traveller tools happy with your sector file.
+          </p>
+        <table class="polity-examples">
+          <thead>
+            <tr><th>Code</th><th>Name</th><th>Short</th></tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>ImDd</td><td>Third Imperium, Domain of Deneb</td><td>Imperium</td>
+            </tr>
+            <tr>
+              <td>ZhIN</td><td>Zhodani Consulate, Iadr Nsobl Province</td><td>Consulate</td>
+            </tr>
+            <tr>
+              <td>SwCf</td><td>Sword Worlds Confederation</td><td>Sword Worlds</td>
+            </tr>
+            <tr>
+              <td>Hn</td><td>The Hanse of Aldebaran</td><td>Hanse</td>
+            </tr>
+          </tbody>
+        </table>
+          <p class="hint">
+            The first three are the setting&rsquo;s own; the last is invented.
+            PlanetHex writes <code>Na</code> on a world nobody holds, which is
+            its own mark rather than a published code: it needs no row here and
+            is never given a border.
+          </p>
+          <p class="hint">
+            A code beginning <code>Zh</code>, and <code>CsZh</code>, is one
+            PlanetHex knows: worlds it holds that the map leaves unnamed are
+            named in Zhodani rather than by the regional dice. Nothing else is
+            treated specially.
+          </p>
+          <p class="hint">
+            A published sector arrives with this table filled in. A sector you
+            rolled starts empty, and whatever you put here is saved in the
+            <code>.sector</code> file with everything else.
+          </p>
+        </details>
 
         <div id="polity-rows" class="polity-rows"></div>
 
@@ -1092,7 +1143,13 @@
           what each one is called. <b>Polities&hellip;</b> opens it, from the
           sector panel or from beside the allegiance box. Each row is a code, a
           full name, and a short name for labelling a border where the full one
-          would not fit. Codes already in use with no name yet are offered under
+          would not fit &mdash; <code>ImDd</code> / Third Imperium, Domain of
+          Deneb / Imperium, say. The published scheme builds a code from four
+          letters, two for the power and two for which part of it, so
+          <code>Im</code> and <code>Dd</code> make that one and
+          <code>Cs</code>+<code>Im</code> is a client state of the same empire.
+          Your own powers take whatever code you like; the dialogue lists the
+          stems in use and shows worked examples. Codes already in use with no name yet are offered under
           the list, so marking twenty hexes and then naming them is two steps
           rather than twenty-one.
         </p>

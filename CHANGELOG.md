@@ -10,7 +10,11 @@ user. Dates are the day the release was tagged.
   Map, so a sector of your own had the allegiance column and no line anywhere.
   A frontier is now drawn round the worlds each polity holds, for every polity
   whose new **Border** box is ticked — mark some hexes, add the code to the
-  table, and the border appears, since a row you add starts ticked. A row a
+  table, and the border appears, since a row you add starts ticked. The
+  dialogue explains how a published code is built — four letters, two for the
+  power and two for which part of it, so `Im`+`Dd` is the Domain of Deneb —
+  lists the stems in use, and shows four worked rows; the reference half folds
+  away for anyone who already knows it. A row a
   published sector brought starts clear, because a published table names every
   code a world can wear and the client states and the unclaimed are not
   polities to ring.

@@ -524,6 +524,40 @@ label.inline input { width: auto; margin: 0; accent-color: var(--accent); }
    a sentence - "Zhodani Consulate, Iadr Nsobl Province" - and a column too
    narrow to show one is a column nobody can check. */
 .polity-dialog { width: min(720px, 94vw); }
+/* The reference half of the dialog, folded away by default. */
+.polity-guide { margin: 10px 0 0; }
+.polity-guide > summary {
+  color: var(--muted);
+  font-size: 11px;
+  cursor: pointer;
+  padding: 2px 0;
+}
+.polity-guide > summary:hover { color: var(--text); }
+.polity-guide > * { margin-top: 8px; }
+
+/* Four worked rows above the real ones, so the shape of an entry is shown
+   rather than described. Laid out on the same column widths. */
+.polity-examples {
+  width: 100%;
+  margin: 2px 0 10px;
+  border-collapse: collapse;
+  color: var(--muted);
+  font-size: 11px;
+  text-align: left;
+}
+.polity-examples th {
+  padding: 0 8px 2px 0;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+.polity-examples td { padding: 1px 8px 1px 0; }
+.polity-examples td:first-child {
+  color: var(--text);
+  font-family: ui-monospace, "Cascadia Mono", Consolas, monospace;
+  white-space: nowrap;
+}
+
 .polity-rows { display: flex; flex-direction: column; gap: 6px; margin: 14px 0 0; }
 /* Code narrow, name wide, short in between: the shape of the data. */
 .polity-row {
@@ -532,6 +566,9 @@ label.inline input { width: auto; margin: 0; accent-color: var(--accent); }
   gap: 8px;
   align-items: center;
 }
+/* An author display rule beats the UA's display:none for [hidden], so the
+   headings have to be told again or they show over an empty list. */
+.polity-row[hidden] { display: none; }
 .polity-head {
   color: var(--muted);
   font-size: 11px;
