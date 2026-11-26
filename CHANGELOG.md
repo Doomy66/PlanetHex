@@ -6,6 +6,19 @@ user. Dates are the day the release was tagged.
 
 ## Unreleased
 
+- **Borders on a sector you rolled.** They only ever came from The Traveller
+  Map, so a sector of your own had the allegiance column and no line anywhere.
+  A frontier is now drawn round the worlds each polity holds, for every polity
+  named in the table — mark some hexes, name the code, and the border appears.
+  A published border still wins for its own polity, so importing the Spinward
+  Marches and then marking a few more hexes Imperial does not draw a cruder
+  Imperium over the real one.
+  Because a polity also holds the empty space between its worlds, there is a
+  **claim mode**: pick a polity under Borders on the subsector panel, then
+  click hexes to take them in and click again to hand them back. You can hand
+  back a hex the worlds would claim too, for a world that sits outside its own
+  border. Nothing about the line is stored — it is worked out each time from
+  the allegiances and your claims, and only the claims are saved. App spec 9.5.
 - **Polities can be named, on any sector.** An allegiance code is four letters
   that mean nothing on their own — an imported sector arrived with the table
   that turns `ZhIN` into the Zhodani Consulate, and a rolled one never had one,

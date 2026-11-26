@@ -5,6 +5,7 @@ import {
   parseSubsectorDoc,
   setOverride,
   clearOverride,
+  claimsOf,
   setPresence,
   setSubsectorDate,
   keepSystem,
@@ -156,6 +157,33 @@ describe("what a referee writes over a hex", () => {
     setOverride(doc, world.at, "note", "Pirates.");
     expect(doc.overrides).toHaveLength(1);
     setOverride(doc, world.at, "note", "   ");
+    expect(doc.overrides).toEqual([]);
+  });
+
+  it("keeps a claim on a hex with nothing in it", () => {
+    // 5.3.9: the hexes that most need claiming are the empty ones between a
+    // polity's worlds, so the override has to survive with nothing else on it.
+    const { doc } = opened();
+    const empty = "0101";
+    setOverride(doc, empty, "claim", "ZhIN");
+    const read = parseSubsectorDoc(JSON.stringify(doc));
+    expect(claimsOf(read).get(empty)).toBe("ZhIN");
+  });
+
+  it("keeps a hex unclaimed, which is a thing the referee said", () => {
+    // A world whose allegiance would claim it, held outside the frontier.
+    const { doc, world } = opened();
+    setOverride(doc, world.at, "claim", "");
+    const read = parseSubsectorDoc(JSON.stringify(doc));
+    expect(claimsOf(read).get(world.at)).toBe("");
+    expect(claimsOf(read).has(world.at)).toBe(true);
+  });
+
+  it("forgets a claim taken back", () => {
+    const { doc, world } = opened();
+    setOverride(doc, world.at, "claim", "ZhIN");
+    clearOverride(doc, world.at, "claim");
+    expect(claimsOf(doc).has(world.at)).toBe(false);
     expect(doc.overrides).toEqual([]);
   });
 

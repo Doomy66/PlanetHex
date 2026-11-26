@@ -302,6 +302,14 @@ Nothing is marked Red by generation.
 
 5.3.7.3 It is handed down to the system, which shows it and keeps it. [AppSpec.md](AppSpec.md) 1.3.1: what the level above committed to is written down rather than left for the level below to guess at.
 
+5.3.9 A claim says who holds the hex for the purpose of drawing a border, and is a separate thing from the allegiance.
+
+5.3.9.1 They answer different questions. A world can be Imperial and sit outside the Imperial border, which published maps do; and a hex with nothing in it at all can be well inside one, which is the ordinary case — a polity holds the space between its worlds and no world marks it.
+
+5.3.9.2 Absent is the ordinary case: the hex belongs to whoever holds the world in it, and an empty hex to nobody. A code claims it outright. The empty string unclaims it, and is a closed-vocabulary value under 5.3.6 rather than an absence: a hex the referee has handed back has to stay handed back through a save.
+
+5.3.9.3 It is the one override an empty hex carries on its own, which is why it is read off the overrides rather than off the worlds.
+
 5.3.8 PBG is overridable for the same reason the profile is, and it reaches further: the system below reads it before it lays its orbits out, because it says how many belts and gas giants there are to place. Gas giants are where a ship refuels, so a wrong third digit is a wrong answer to a question players actually ask. Three digits or nothing — half a figure is somebody mid-typing, and a system should not lose its gas giants to a keystroke.
 
 5.3.5 A hex also stores the seed of the system in it, where the referee has rolled a different one. A hex's system seed is derived from the subsector's under 3.1.3 and that is what the hex holds until somebody deliberately replaces it; storing the replacement is what keeps the subsector and the system view agreeing about what is in the hex.

@@ -72,6 +72,20 @@ export interface HexOverride {
    * actually ask.
    */
   readonly pbg?: string;
+  /**
+   * Who claims this hex for the purpose of drawing a border. 5.3.9.
+   *
+   * Absent is the ordinary case: the hex is claimed by whoever holds the world
+   * in it, and an empty hex is claimed by nobody. A code claims it outright,
+   * which is how the empty space between a polity's worlds is taken in; the
+   * empty string unclaims it, which is how a world is left outside the
+   * frontier its allegiance would otherwise put it inside.
+   *
+   * Separate from `allegiance` because they answer different questions. A
+   * world can be Imperial and sit outside the border on a published map, and a
+   * hex with nothing in it can be well inside one.
+   */
+  readonly claim?: string;
   /** Free prose about the system. 5.3.2. */
   readonly note?: string;
   /**
@@ -102,7 +116,15 @@ export interface HexOverride {
 export const SHIFT_LIMIT = 3;
 
 /** The fields of an override that are plain text. */
-export type HexField = "name" | "uwp" | "bases" | "zone" | "note" | "stars" | "allegiance";
+export type HexField =
+  | "name"
+  | "uwp"
+  | "bases"
+  | "zone"
+  | "note"
+  | "stars"
+  | "allegiance"
+  | "claim";
 
 export interface SubsectorDoc {
   /** Which level this document is, under the app spec 4.1. */
@@ -226,6 +248,7 @@ function saysNothing(held: HexOverride): boolean {
     held.zone === undefined &&
     held.stars === undefined &&
     held.allegiance === undefined &&
+    held.claim === undefined &&
     held.pbg === undefined &&
     held.note === undefined &&
     held.present === undefined &&
@@ -246,7 +269,7 @@ function put(doc: SubsectorDoc, at: string, next: HexOverride): void {
  * from nobody having said. Everywhere else - a name, a profile, a note - empty
  * means nothing was written and the generator's answer stands.
  */
-const CLOSED: ReadonlySet<HexField> = new Set<HexField>(["bases", "zone"]);
+const CLOSED: ReadonlySet<HexField> = new Set<HexField>(["bases", "zone", "claim"]);
 
 /**
  * Write one field of one hex.
@@ -278,6 +301,21 @@ export function clearOverride(doc: SubsectorDoc, at: string, field: HexField): v
   const next: HexOverride & Record<string, unknown> = { ...held, at };
   delete next[field];
   put(doc, at, next);
+}
+
+/**
+ * Every claim the referee has written in this subsector, by hex. 5.3.9.
+ *
+ * Read off the overrides rather than off the worlds, because the hexes that
+ * most need claiming are the empty ones between a polity's worlds, and an
+ * empty hex has no world to carry anything.
+ */
+export function claimsOf(doc: SubsectorDoc): Map<string, string> {
+  const out = new Map<string, string>();
+  for (const held of doc.overrides) {
+    if (held.claim !== undefined) out.set(held.at, held.claim);
+  }
+  return out;
 }
 
 /**
@@ -534,6 +572,9 @@ function parseOverrides(raw: unknown): HexOverride[] {
       ...(code("zone") === undefined ? {} : { zone: code("zone")! }),
       ...(text("stars") === undefined ? {} : { stars: text("stars")! }),
       ...(text("allegiance") === undefined ? {} : { allegiance: text("allegiance")! }),
+      // A claim is read the closed way: "" unclaims a hex, which is a thing
+      // the referee said and not the absence of one. 5.3.9.
+      ...(code("claim") === undefined ? {} : { claim: code("claim")! }),
       ...(text("pbg") === undefined ? {} : { pbg: text("pbg")! }),
       ...(text("note") === undefined ? {} : { note: text("note")! }),
       ...(present === undefined ? {} : { present }),

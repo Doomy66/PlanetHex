@@ -254,6 +254,29 @@
           </label>
           </div>
         </details>
+        <!-- Painting a frontier. AppSpec 9.5.3: a border follows the
+             allegiance column, and the empty hexes between a polity's worlds
+             are claimed by hand because no world marks them. -->
+        <details class="starmap-legend" id="sub-claiming" open>
+          <summary>Borders</summary>
+          <div class="sub-settings">
+            <p class="hint">
+              A frontier is drawn round the worlds a polity holds, for every
+              polity named in <b>Polities</b>. Claim the empty hexes between
+              them here.
+            </p>
+            <label>Claim for
+              <select id="sub-claim-for">
+                <option value="">Off</option>
+              </select>
+            </label>
+            <p class="hint" id="sub-claim-note">
+              Pick a polity, then click hexes to claim them. Click a claimed
+              hex again to hand it back.
+            </p>
+          </div>
+        </details>
+
         <details class="starmap-legend sub-worlds" id="sub-worlds" open>
           <summary>Worlds</summary>
           <label class="sys-only">
@@ -1079,6 +1102,34 @@
           has a name keeps it. A sector imported from The Traveller Map arrives
           with the table filled in; a sector you rolled starts empty, and
           whatever you put there is saved in the <code>.sector</code> file.
+        </p>
+
+        <h3>Borders</h3>
+        <p>
+          A frontier is drawn round the worlds each polity holds, for every
+          polity named in the table above. Mark some hexes <code>ZhIN</code>,
+          name <code>ZhIN</code> in <b>Polities</b>, and the line appears. A
+          sector imported from The Traveller Map keeps its published borders
+          instead, which are a cartographer's judgement and better than anything
+          worked out from the worlds; a polity the published data draws no
+          border for still gets one this way.
+        </p>
+        <p>
+          The worlds alone are not the whole of a polity, because it holds the
+          empty space between them and no world marks it. <b>Claim for</b> on
+          the subsector panel turns the map into a drawing surface: pick a
+          polity, then click hexes to take them in and click again to hand them
+          back. A hex already enclosed by the frontier needs no claim. You can
+          also hand back a hex the worlds would claim, for a world that sits
+          outside its own polity's border.
+        </p>
+        <p>
+          While you are claiming, a click paints rather than selects a hex, so
+          the panel stays where it is. Set <b>Claim for</b> back to <b>Off</b>
+          to go back to reading the map. Nothing about the border is stored
+          &mdash; it is worked out each time from the allegiances and your
+          claims, and the claims are saved with the hex like anything else you
+          write.
         </p>
 
         <h3>Hex names</h3>

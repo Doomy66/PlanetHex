@@ -561,6 +561,11 @@ label.inline input { width: auto; margin: 0; accent-color: var(--accent); }
 /* The way in, under the facts on the sector panel and beside the allegiance
    field on the subsector. */
 .polity-open { align-self: flex-start; margin: 2px 0 6px; }
+
+/* Painting a frontier. The cursor says the map is being drawn on rather than
+   read, since in this mode a click does not select the hex it lands on. */
+.sub-map.claiming { cursor: crosshair; }
+.sub-map.claiming .starmap-cell { cursor: crosshair; }
 /* All and None are the coarse strokes, so they sit away from Save and Cancel. */
 #save-all { margin-left: auto; }
 
@@ -1121,6 +1126,9 @@ body[data-view="system"] .subsector { display: none; }
    four of them cost one line of panel rather than half the header - and nothing
    at all once the subsector is rolled and the referee has moved on to reading it. */
 .sub-settings { display: grid; gap: 5px; margin: 0 0 4px; }
+/* Sentences in a panel column wrap; the nowrap of .hint is for the one-line
+   readouts beside a field, not for an explanation. */
+.sub-settings .hint { white-space: normal; line-height: 1.35; }
 .sub-settings label {
   display: flex;
   align-items: center;

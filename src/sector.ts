@@ -20,6 +20,7 @@ import {
 import { generateSector, subsectorSeedFor, type Sector } from "./gen/sector";
 import type { Subsector, Route } from "./gen/subsector";
 import {
+  claimsOf,
   newSubsectorDoc,
   parseSubsectorDoc,
   setSubsectorDate,
@@ -86,6 +87,27 @@ export function newSectorDoc(
 export function setSectorDate(doc: SectorDoc, date: string): void {
   doc.date = date;
   for (const held of doc.subsectors) setSubsectorDate(held.doc, date);
+}
+
+/**
+ * Every claim written anywhere in this sector, by hex. AppSpec 9.5.
+ *
+ * Gathered from the subsectors that exist: a letter nobody has opened holds no
+ * overrides and so no claims, and one the referee has painted on is carried
+ * under the sector like everything else they have touched.
+ *
+ * The open subsector can be handed in, the way sectorOf takes it, because a
+ * referee painting a border should see it close over as they paint rather than
+ * when they next go up a level.
+ */
+export function claimsIn(doc: SectorDoc, open?: SubsectorDoc): Map<string, string> {
+  const out = new Map<string, string>();
+  for (const held of doc.subsectors) {
+    if (open !== undefined && held.letter === open.letter) continue;
+    for (const [at, claim] of claimsOf(held.doc)) out.set(at, claim);
+  }
+  if (open !== undefined) for (const [at, claim] of claimsOf(open)) out.set(at, claim);
+  return out;
 }
 
 /** The worked up subsector under a letter, or undefined where nobody has been. */

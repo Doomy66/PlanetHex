@@ -305,6 +305,22 @@ This document is the shell. [PlanetSpec.md](PlanetSpec.md) specifies a planet, [
 
 9.4 The sector panel lists every polity the table names, with its border's colour and dash beside it where it has a border and the name alone where it has none. A polity written down and not yet drawn is still one of the powers in the sector, and leaving it out would make a table just filled in look as though it had not been kept.
 
+9.5 **A border is drawn for a named polity that has no published one**, worked out from who holds the worlds.
+
+9.5.1 The published borders of 8.8.1 are a cartographer's judgement and arrive drawn. A sector somebody rolled has none, and the allegiance column is the only thing in it that says whose space a hex is — so that is what the frontier follows. A referee who marks out their own space should see it on the map rather than only in a readout.
+
+9.5.2 Only for a polity the table names. A frontier round a code nobody has named is a line with no legend, and on an imported sector it would also put a border round every client state and every scrap of unclaimed space, which is not what those codes mean. Naming a polity is how a referee says it is one. The non-aligned are never drawn: "nobody holds this" is not a polity.
+
+9.5.3 A published border wins for its own polity, so importing a sector and then marking a few more hexes Imperial does not draw a second, cruder Imperium over the real one.
+
+9.5.4 **Empty hexes are claimed by hand**, in a claim mode on the subsector map: pick a polity, then click hexes to take them in and click again to hand them back. A polity holds the space between its worlds and no world marks it, so the worlds alone would draw a frontier full of holes. A hex the fill of 8.8.1 already encloses needs no claim.
+
+9.5.4.1 A claim can also be taken off a hex the worlds would claim, because a world sitting outside its own polity's border is a thing published maps do.
+
+9.5.4.2 In claim mode a click paints rather than selects. A referee drawing a frontier does not want the panel jumping to a different hex at every stroke.
+
+9.5.5 The derived borders are **worked out when the map is drawn, never stored**, because they are generated and the subsector spec 5.2 does not store what is generated. What is kept is the claims, which are hex overrides like everything else the referee writes.
+
 ## 10. Open questions
 
 10.1 **Loading a planet by folder.** A folder load knows where it came from and a file load does not, under 3.3.2, so planets are the only level that still asks for the folder on the next Save. Changing the planet row to a directory picker would close that, at the cost of making a bare JSON file harder to open than it is today. Worth answering; not urgent.

@@ -99,7 +99,13 @@ import { shaderFor, surfaceOn } from "./surface";
 import { currentAppView, landingSay, setAppView, wireLanding } from "./ui/landing";
 import { pickPublishedSector, describeImport } from "./ui/importer";
 import { describeSource } from "./source";
-import { nameOfAllegiance, type ChartedMap, type AllegianceName } from "./charted-map";
+import {
+  nameOfAllegiance,
+  NOTHING_CHARTED,
+  type ChartedMap,
+  type AllegianceName,
+} from "./charted-map";
+import { bordersToDraw, derivedBorders } from "./gen/claims";
 import { allegiancesIn, withAllegiances } from "./polities";
 import { editPolities } from "./ui/polities";
 import { polityLooks } from "./ui/polity";
@@ -120,6 +126,7 @@ import { formatImperialDate, parseImperialDate } from "./traveller";
 import { aroundSubsector, letterAt, SECTOR_HEXES, type Sector } from "./gen/sector";
 import {
   keepSubsector,
+  claimsIn,
   newSectorDoc,
   parseSectorDoc,
   savedSubsector,
@@ -153,6 +160,7 @@ import {
   parseSubsectorDoc,
   setOverride as setHexOverride,
   clearOverride as clearHexOverride,
+  claimsOf,
   setPresence,
   setSubsectorDate,
   setSystemSeed,
@@ -3606,6 +3614,7 @@ function openSubsector(next: SubsectorDoc, parent: "landing" | "sector" = "landi
   openLevels.planet = false;
   // The allegiances this subsector knows, under the field that takes one.
   showAllegianceChoices();
+  showClaimMode();
   drawSubsector();
   showCrumbs();
   // The busiest world, which is where a referee's eye goes and what the subsector is
@@ -3634,7 +3643,7 @@ function drawSubsector(): void {
     subParent === "sector" && sector !== null
       ? aroundSubsector(sector, subDoc.letter)
       : undefined;
-  subsectorMap.render(subsector, around, subDoc?.charted);
+  subsectorMap.render(subsector, around, chartedToDraw("subsector"));
   subsectorMap.setMains(el<HTMLInputElement>("sub-mains").checked);
   // Opened on its own eighty hexes. What is over the edge is there to be found
   // by going out, not the first thing a referee is shown. SubSectorSpec 4.7.
@@ -3862,8 +3871,101 @@ function showHexFields(at: string, world: SubsectorWorld | null): void {
   showAllegianceName(world.allegiance);
 }
 
+/** The polity whose hexes are being claimed, or "" when nothing is. 9.5.3. */
+let claimingFor = "";
+
 /**
- * Open the polity table, and keep what comes back. AppSpec 8.9.
+ * Claim a hex for the polity being painted, or hand it back.
+ *
+ * A hex already claimed by this polity is unclaimed, so one control both adds
+ * and removes and the referee need not reach for a modifier. What "unclaimed"
+ * means depends on what put the hex in: a hex the world's own allegiance
+ * claims is written out as claimed by nobody, and a hex only the referee
+ * claimed goes back to saying nothing at all.
+ */
+function paintClaim(at: string): void {
+  if (subDoc === null || claimingFor === "") return;
+  const held = hexOverride(subDoc, at);
+  const world = subsector?.worlds.find((one) => one.at === at);
+  const now = held?.claim ?? world?.allegiance ?? "";
+  if (now === claimingFor) {
+    // Handing it back. Where the world would claim it again, that has to be
+    // said out loud; where it would not, the override is simply taken away.
+    if ((world?.allegiance ?? "") === claimingFor) setHexOverride(subDoc, at, "claim", "");
+    else clearHexOverride(subDoc, at, "claim");
+  } else if ((world?.allegiance ?? "") === claimingFor) {
+    // It already belongs to this polity by its world, so there is nothing to
+    // write: an override agreeing with what is there says nothing. 5.3.1.
+    clearHexOverride(subDoc, at, "claim");
+  } else {
+    setHexOverride(subDoc, at, "claim", claimingFor);
+  }
+  markSubDirty();
+  drawSubsector();
+}
+
+/** The polities that can be painted, and whether the map is in that mode. */
+function showClaimMode(): void {
+  const picker = el<HTMLSelectElement>("sub-claim-for");
+  const named = allegiancesIn(chartedHere());
+  const wanted = claimingFor;
+  picker.replaceChildren();
+  const off = document.createElement("option");
+  off.value = "";
+  off.textContent = named.length === 0 ? "No polities named yet" : "Off";
+  picker.append(off);
+  for (const one of named) {
+    const option = document.createElement("option");
+    option.value = one.code;
+    option.textContent = one.name.trim() === "" ? one.code : `${one.name} (${one.code})`;
+    picker.append(option);
+  }
+  // A polity removed from the table while it was being painted stops the mode
+  // rather than leaving the map painting something that no longer exists.
+  claimingFor = named.some((one) => one.code === wanted) ? wanted : "";
+  picker.value = claimingFor;
+  picker.disabled = named.length === 0;
+  el("sub-map").classList.toggle("claiming", claimingFor !== "");
+  el("sub-claim-note").textContent =
+    named.length === 0
+      ? "Name a polity in Polities first, and its frontier is drawn round the worlds it holds."
+      : claimingFor === ""
+        ? "Pick a polity, then click hexes to claim them. Click a claimed hex again to hand it back."
+        : `Clicking a hex claims it for ${claimingFor}. Click a claimed hex again to hand it back.`;
+}
+
+/**
+ * What a map draws: the published borders, and the ones worked out from who
+ * holds the worlds. AppSpec 9.5.
+ *
+ * Worked out at the moment of drawing rather than stored, because a derived
+ * border is generated and nothing generated is stored - the subsector spec 5.2
+ * again. What is kept is the referee's claims, which are overrides like
+ * everything else they write.
+ */
+function chartedToDraw(level: "sector" | "subsector"): ChartedMap | undefined {
+  const charted = chartedHere();
+  const published = charted?.borders ?? [];
+  const named = allegiancesIn(charted);
+  if (named.length === 0) return charted;
+
+  const worlds = level === "sector" ? (sector?.worlds ?? []) : (subsector?.worlds ?? []);
+  const written =
+    level === "sector"
+      ? sectorDoc !== null
+        ? claimsIn(sectorDoc, subParent === "sector" ? (subDoc ?? undefined) : undefined)
+        : new Map<string, string>()
+      : subDoc !== null
+        ? claimsOf(subDoc)
+        : new Map<string, string>();
+
+  const derived = derivedBorders(worlds, written, published, named);
+  if (derived.length === 0) return charted;
+  return { ...(charted ?? NOTHING_CHARTED), borders: bordersToDraw(published, derived) };
+}
+
+/**
+ * Open the polity table, and keep what comes back. AppSpec 9.
  *
  * Written onto whichever document owns the table - the sector where there is
  * one, the subsector where it is open on its own - and then every field that
@@ -3882,6 +3984,7 @@ async function openPolities(): Promise<void> {
   // Everything that reads the table, redrawn. The subsector map draws border
   // labels from it, the fields offer it, and the readouts spell it out.
   showAllegianceChoices();
+  showClaimMode();
   if (hexShown !== null) selectHex(hexShown);
   drawSubsector();
   refreshSector();
@@ -4201,7 +4304,21 @@ async function loadSubsector(): Promise<void> {
   }
 }
 
-subsectorMap.onSelect(selectHex);
+subsectorMap.onSelect((at) => {
+  // In claim mode a click paints rather than selects: the referee is drawing a
+  // frontier and does not want the panel jumping to a different hex at every
+  // stroke. AppSpec 9.5.3.
+  if (claimingFor !== "") {
+    paintClaim(at);
+    return;
+  }
+  selectHex(at);
+});
+
+el("sub-claim-for").addEventListener("change", (event) => {
+  claimingFor = (event.target as HTMLSelectElement).value;
+  showClaimMode();
+});
 el("sub-inhabited").addEventListener("change", showSubsectorList);
 el("sub-mains").addEventListener("change", () => {
   subsectorMap.setMains(el<HTMLInputElement>("sub-mains").checked);
@@ -4481,7 +4598,7 @@ function openSector(next: SectorDoc): void {
 function drawSector(): void {
   if (sectorDoc === null) return;
   sector = sectorOf(sectorDoc);
-  sectorMap.render(sector, subsectorNames(), sectorDoc.charted);
+  sectorMap.render(sector, subsectorNames(), chartedToDraw("sector"));
   showSectorAbout();
   showSectorList();
 }
