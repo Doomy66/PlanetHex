@@ -3643,7 +3643,14 @@ function drawSubsector(): void {
     subParent === "sector" && sector !== null
       ? aroundSubsector(sector, subDoc.letter)
       : undefined;
-  subsectorMap.render(subsector, around, chartedToDraw("subsector"));
+  subsectorMap.render(
+    subsector,
+    around,
+    chartedToDraw("subsector"),
+    // Only while claiming: a tint on every claimed hex all the time would
+    // compete with the worlds for a reader who is not drawing anything.
+    claimingFor === "" || subDoc === null ? undefined : new Set(claimsOf(subDoc).keys()),
+  );
   subsectorMap.setMains(el<HTMLInputElement>("sub-mains").checked);
   // Opened on its own eighty hexes. What is over the edge is there to be found
   // by going out, not the first thing a referee is shown. SubSectorSpec 4.7.
@@ -3900,8 +3907,31 @@ function paintClaim(at: string): void {
   } else {
     setHexOverride(subDoc, at, "claim", claimingFor);
   }
+  // Painting a polity's ground is asking to see where it is, so a row that was
+  // not drawing a frontier starts. Without this, claiming a hex for an
+  // imported polity - whose row starts clear under 9.5.2 - writes the claim
+  // and draws nothing, which reads as a control that does not work.
+  askForBorder(claimingFor);
   markSubDirty();
   drawSubsector();
+}
+
+/**
+ * Tick a polity's border on, where it was not already. 9.5.2.
+ *
+ * Written to whichever document owns the table, the way the dialog writes it,
+ * so the two ways of setting it do not disagree.
+ */
+function askForBorder(code: string): void {
+  const charted = chartedHere();
+  const named = allegiancesIn(charted);
+  const held = named.find((one) => one.code.toLowerCase() === code.toLowerCase());
+  if (held === undefined || held.border === true) return;
+  const next = named.map((one) => (one === held ? { ...one, border: true } : one));
+  writeAllegiances(
+    sectorDoc !== null && (subDoc === null || subParent === "sector") ? "sector" : "subsector",
+    next,
+  );
 }
 
 /** The polities that can be painted, and whether the map is in that mode. */
@@ -4309,13 +4339,11 @@ async function loadSubsector(): Promise<void> {
 }
 
 subsectorMap.onSelect((at) => {
-  // In claim mode a click paints rather than selects: the referee is drawing a
-  // frontier and does not want the panel jumping to a different hex at every
-  // stroke. AppSpec 9.5.3.
-  if (claimingFor !== "") {
-    paintClaim(at);
-    return;
-  }
+  // In claim mode a click does both: it paints the hex and then selects it.
+  // Painting alone was a mistake - with the panel frozen on whatever hex was
+  // open when the mode went on, every click looked like a click that had not
+  // registered, and the map looked broken rather than busy. AppSpec 9.5.4.2.
+  if (claimingFor !== "") paintClaim(at);
   selectHex(at);
 });
 

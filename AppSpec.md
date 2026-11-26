@@ -317,7 +317,11 @@ This document is the shell. [PlanetSpec.md](PlanetSpec.md) specifies a planet, [
 
 9.5.4.1 A claim can also be taken off a hex the worlds would claim, because a world sitting outside its own polity's border is a thing published maps do.
 
-9.5.4.2 In claim mode a click paints rather than selects. A referee drawing a frontier does not want the panel jumping to a different hex at every stroke.
+9.5.4.2 A click in claim mode does both: it paints the hex and then selects it. Painting alone looked like a map that had stopped responding — the panel stayed on whatever hex was open when the mode went on, so every click read as a click that had not registered.
+
+9.5.4.3 A claimed hex is **tinted while the mode is on**, so painting shows on the hexes and not only in the line that closes round them. A claim on an empty hex away from a polity's worlds moves a frontier very little, and a change nobody can see is a control that appears not to work. The tint is not shown otherwise, where it would compete with the worlds for a reader who is not drawing anything.
+
+9.5.4.4 Claiming a hex for a polity **turns its border on** where it was off. Painting a polity's ground is asking to see where it is, and writing a claim that draws nothing is the same dead end as 9.5.4.3 by another route.
 
 9.5.5 The derived borders are **worked out when the map is drawn, never stored**, because they are generated and the subsector spec 5.2 does not store what is generated. What is kept is the claims, which are hex overrides like everything else the referee writes.
 

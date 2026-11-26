@@ -21,8 +21,11 @@ user. Dates are the day the release was tagged.
   **claim mode**: pick a polity under Borders on the subsector panel, then
   click hexes to take them in and click again to hand them back. You can hand
   back a hex the worlds would claim too, for a world that sits outside its own
-  border. Nothing about the line is stored — it is worked out each time from
-  the allegiances and your claims, and only the claims are saved. App spec 9.5.
+  border. Claimed hexes are tinted while you are painting, a click still
+  selects the hex as well as claiming it, and claiming for a polity ticks its
+  Border box if it was clear. Nothing about the line is stored — it is worked
+  out each time from the allegiances and your claims, and only the claims are
+  saved. App spec 9.5.
 - **Polities can be named, on any sector.** An allegiance code is four letters
   that mean nothing on their own — an imported sector arrived with the table
   that turns `ZhIN` into the Zhodani Consulate, and a rolled one never had one,

@@ -569,6 +569,9 @@ label.inline input { width: auto; margin: 0; accent-color: var(--accent); }
 /* Painting a frontier. The cursor says the map is being drawn on rather than
    read, since in this mode a click does not select the hex it lands on. */
 .sub-map.claiming { cursor: crosshair; }
+/* A hex given to a polity by hand, while the frontier is being drawn. Tinted
+   rather than outlined, because the outline is the border's own job. */
+.starmap-claimed { fill: rgba(224, 179, 65, 0.16); stroke: rgba(224, 179, 65, 0.5); }
 .sub-map.claiming .starmap-cell { cursor: crosshair; }
 /* All and None are the coarse strokes, so they sit away from Save and Cancel. */
 #save-all { margin-left: auto; }

@@ -80,7 +80,12 @@ export interface Around {
 
 export interface SubsectorMap {
   readonly element: SVGSVGElement;
-  render(subsector: Subsector, around?: Around, charted?: ChartedMap): void;
+  render(
+    subsector: Subsector,
+    around?: Around,
+    charted?: ChartedMap,
+    claimed?: ReadonlySet<string>,
+  ): void;
   /** Frame the map on its own eighty hexes again. SubSectorSpec 4.7. */
   resetView(): void;
   /** Show or hide the Mains overlay. SubSectorSpec 3.10.4. */
@@ -117,6 +122,8 @@ export function createSubsectorMap(): SubsectorMap {
    */
   let view: View = { zoom: 1, x: 0, y: 0 };
   let press: { x: number; y: number; from: { x: number; y: number } } | null = null;
+  /** The hexes a referee has claimed by hand, tinted so the painting shows. */
+  let given: ReadonlySet<string> = new Set();
   /** Whether this subsector has neighbours to find outside its own hexes. */
   let hasAround = false;
   /** A drag that moved the subsector swallows the click that ended it. */
@@ -177,8 +184,14 @@ export function createSubsectorMap(): SubsectorMap {
     }
   }
 
-  function render(subsector: Subsector, around?: Around, charted?: ChartedMap): void {
+  function render(
+    subsector: Subsector,
+    around?: Around,
+    charted?: ChartedMap,
+    claimed: ReadonlySet<string> = new Set(),
+  ): void {
     shown = subsector;
+    given = claimed;
     gridLayer.replaceChildren();
     borderLayer.replaceChildren();
     routeLayer.replaceChildren();
@@ -360,7 +373,11 @@ export function createSubsectorMap(): SubsectorMap {
     const title = make("title");
     title.textContent = world === null ? `${at}, empty` : `${at} ${world.name} ${world.uwp}`;
     group.append(title);
-    group.append(make("polygon", { class: "starmap-cell", points: hexPoints(x, y) }));
+    // A hex somebody claimed by hand is tinted, so painting a frontier shows
+    // on the hexes as well as in the line that closes round them. Without it a
+    // claim on an empty hex far from a world is a change nobody can see.
+    const cell = given.has(at) ? "starmap-cell starmap-claimed" : "starmap-cell";
+    group.append(make("polygon", { class: cell, points: hexPoints(x, y) }));
 
     // Every hex says which it is, occupied or not: an empty hex still has to be
     // referrable. SubSectorSpec 4.2.
