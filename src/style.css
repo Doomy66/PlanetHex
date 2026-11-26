@@ -528,7 +528,7 @@ label.inline input { width: auto; margin: 0; accent-color: var(--accent); }
 /* Code narrow, name wide, short in between: the shape of the data. */
 .polity-row {
   display: grid;
-  grid-template-columns: 5.5em minmax(0, 1fr) minmax(0, 0.7fr) 1.8em;
+  grid-template-columns: 5.5em minmax(0, 1fr) minmax(0, 0.7fr) 4em 1.8em;
   gap: 8px;
   align-items: center;
 }
@@ -539,6 +539,10 @@ label.inline input { width: auto; margin: 0; accent-color: var(--accent); }
   letter-spacing: 0.08em;
 }
 .polity-row input { width: 100%; min-width: 0; }
+/* The tick centred under its heading rather than filling the column. */
+.polity-border { display: flex; justify-content: center; margin: 0; }
+.polity-row .polity-draw { width: auto; accent-color: var(--accent); cursor: pointer; }
+.polity-head .polity-border { display: block; text-align: center; }
 /* Monospaced and centred, since a code is four letters read as a unit rather
    than as a word. */
 .polity-code { font-family: ui-monospace, "Cascadia Mono", Consolas, monospace; }

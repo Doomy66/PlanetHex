@@ -64,12 +64,11 @@ export function claimsFor(
 /**
  * The borders to draw that nothing published already draws.
  *
- * Only for a polity the sector's table names. A code is four letters until
- * somebody says what it stands for, and a frontier drawn round a code nobody
- * has named is a line on a map with no legend — on an imported sector it would
- * also put a border round every client state and every scrap of unclaimed
- * space, which is not what those codes mean. Naming a polity is how a referee
- * says they are one. AppSpec 9.5.2.
+ * Only for a polity whose row asks for one. Naming a code is not asking: a
+ * published table names everything a world can be, the client states and the
+ * unclaimed among them, and ringing those would put a frontier round every
+ * scrap of space nobody holds. The row carries the answer, and the dialog
+ * starts a row the referee adds with it ticked. AppSpec 9.5.2.
  *
  * A published border wins over a derived one for the same polity, so importing
  * the Spinward Marches and then marking a few more hexes Imperial does not
@@ -89,7 +88,7 @@ export function derivedBorders(
     const key = code.toLowerCase();
     if (drawn.has(key)) continue;
     const name = names.get(key);
-    if (name === undefined) continue;
+    if (name === undefined || name.border !== true) continue;
     out.push({
       allegiance: code,
       // The label the map writes along the frontier, which is the short name

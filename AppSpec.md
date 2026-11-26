@@ -303,13 +303,13 @@ This document is the shell. [PlanetSpec.md](PlanetSpec.md) specifies a planet, [
 
 9.3 **Where the table lives**: the sector's, where there is a sector, so a table edited from a subsector under one is the sector's table and a code named once is named everywhere. A subsector opened on its own carries its own. Emptying it takes it off the document rather than leaving an empty table behind.
 
-9.4 The sector panel lists every polity the table names, with its border's colour and dash beside it where it has a border and the name alone where it has none. A polity written down and not yet drawn is still one of the powers in the sector, and leaving it out would make a table just filled in look as though it had not been kept.
+9.4 The sector panel lists the polities with a frontier on this map — drawn or asked for — with the border's colour and dash beside each, and the name alone for one that holds nothing yet. A polity named and asked for and not yet drawn is still one of the powers, and leaving it out would make a table just filled in look as though it had not been kept. A row that asks for no border is not listed: an imported table names the client states and the unclaimed too, and listing those would bury the powers among them.
 
 9.5 **A border is drawn for a named polity that has no published one**, worked out from who holds the worlds.
 
 9.5.1 The published borders of 8.8.1 are a cartographer's judgement and arrive drawn. A sector somebody rolled has none, and the allegiance column is the only thing in it that says whose space a hex is — so that is what the frontier follows. A referee who marks out their own space should see it on the map rather than only in a readout.
 
-9.5.2 Only for a polity the table names. A frontier round a code nobody has named is a line with no legend, and on an imported sector it would also put a border round every client state and every scrap of unclaimed space, which is not what those codes mean. Naming a polity is how a referee says it is one. The non-aligned are never drawn: "nobody holds this" is not a polity.
+9.5.2 Only for a polity whose row asks for one, which the table says with a tick per row. Naming a code is not asking: a published table names every code a world can wear, the client states and the unclaimed among them, and ringing those would put a frontier round space nobody holds. A row a referee adds starts ticked, because adding a polity is asking to see where it is; a row an import brought starts unticked, and can be ticked. The non-aligned are never drawn whatever the table says: "nobody holds this" is not a polity.
 
 9.5.3 A published border wins for its own polity, so importing a sector and then marking a few more hexes Imperial does not draw a second, cruder Imperium over the real one.
 

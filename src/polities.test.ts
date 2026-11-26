@@ -2,7 +2,12 @@ import { describe, expect, it } from "vitest";
 import { allegiancesIn, tidyAllegiances, unnamedCodes, withAllegiances } from "./polities";
 import { NOTHING_CHARTED, nameOfAllegiance, type ChartedMap } from "./charted-map";
 
-const ROW = (code: string, name = "", short = "") => ({ code, name, short });
+const ROW = (code: string, name = "", short = "", border = false) => ({
+  code,
+  name,
+  short,
+  border,
+});
 
 describe("tidying what the polity dialog collected", () => {
   it("trims and keeps what was typed", () => {
@@ -45,6 +50,14 @@ describe("tidying what the polity dialog collected", () => {
 
   it("cuts a code longer than the column it is stored in", () => {
     expect(tidyAllegiances([ROW("TooLongToFit")]).kept[0]!.code).toBe("TooL");
+  });
+
+  it("keeps the border tick, and writes it only when it is on", () => {
+    // Absent means no border, so an older file and a published table both read
+    // as "do not draw this", which is what they meant. AppSpec 9.5.2.
+    expect(tidyAllegiances([ROW("Hn", "", "", true)]).kept[0]!.border).toBe(true);
+    expect(tidyAllegiances([ROW("Hn")]).kept[0]!.border).toBeUndefined();
+    expect(Object.keys(tidyAllegiances([ROW("Hn")]).kept[0]!)).not.toContain("border");
   });
 
   it("sorts by code, so the file does not churn", () => {

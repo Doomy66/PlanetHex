@@ -9,7 +9,11 @@ user. Dates are the day the release was tagged.
 - **Borders on a sector you rolled.** They only ever came from The Traveller
   Map, so a sector of your own had the allegiance column and no line anywhere.
   A frontier is now drawn round the worlds each polity holds, for every polity
-  named in the table — mark some hexes, name the code, and the border appears.
+  whose new **Border** box is ticked — mark some hexes, add the code to the
+  table, and the border appears, since a row you add starts ticked. A row a
+  published sector brought starts clear, because a published table names every
+  code a world can wear and the client states and the unclaimed are not
+  polities to ring.
   A published border still wins for its own polity, so importing the Spinward
   Marches and then marking a few more hexes Imperial does not draw a cruder
   Imperium over the real one.

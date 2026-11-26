@@ -4000,9 +4000,13 @@ async function openPolities(): Promise<void> {
 function writeAllegiances(owner: "sector" | "subsector", kept: AllegianceName[]): void {
   if (owner === "sector" && sectorDoc !== null) {
     sectorDoc.charted = withAllegiances(sectorDoc.charted, kept);
-    // A subsector of this sector that carries its own copy would go on showing
-    // the old names, so the copy goes and the sector's is the one table.
-    if (subDoc !== null && subParent === "sector") subDoc.charted = undefined;
+    // A subsector of this sector carries its own copy, from the import that
+    // gave every letter the whole sector's borders. The table in it is
+    // brought up to date rather than thrown away: dropping it would take that
+    // subsector's borders and express routes with it.
+    if (subDoc !== null && subParent === "sector" && subDoc.charted !== undefined) {
+      subDoc.charted = withAllegiances(subDoc.charted, kept);
+    }
     markSectorDirty();
     return;
   }
@@ -4636,7 +4640,9 @@ function showSectorAbout(): void {
   // year from now should be able to tell what was published from what was
   // rolled, and this is the only place the document says so on screen.
   if (sectorDoc.source !== undefined) fact("Source", describeSource(sectorDoc.source));
-  showPolities(about, sectorDoc.charted);
+  // The map's own borders, so a swatch in the legend is the line on the map
+  // and a frontier worked out from the allegiances is in the list too.
+  showPolities(about, chartedToDraw("sector"));
   el("sec-counts").textContent = `${sector.worlds.length} worlds · seed ${sector.seed}`;
 }
 
@@ -4656,7 +4662,13 @@ function showPolities(about: HTMLElement, charted?: ChartedMap): void {
   // this sector, and a panel that left it out would make the table they just
   // filled in look as though it had not been kept. AppSpec 9.4.
   const codes = [...looks.keys()];
+  // And a polity whose row asks for a frontier but that holds nothing yet, so
+  // a referee who has just named one sees it listed rather than wondering
+  // whether it took. A row that asks for no border is not a polity on this
+  // map: a published table names the client states and the unclaimed too, and
+  // listing those would bury the powers among them. AppSpec 9.4.
   for (const one of charted.allegiances) {
+    if (one.border !== true) continue;
     if (!codes.some((code) => code.toLowerCase() === one.code.toLowerCase())) codes.push(one.code);
   }
   if (codes.length === 0) return;

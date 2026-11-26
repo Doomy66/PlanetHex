@@ -36,6 +36,15 @@ export interface AllegianceName {
   readonly name: string;
   /** The short form, for a label that has to fit on a map. */
   readonly short: string;
+  /**
+   * Whether a frontier is drawn round the hexes this polity holds. AppSpec 9.5.2.
+   *
+   * Absent is no, which is what a published table wants: it names everything a
+   * world can be, the client states and the unclaimed among them, and those
+   * are not polities to draw a line round. A row a referee adds is asking for
+   * a border, so the dialog starts it ticked.
+   */
+  readonly border?: boolean;
 }
 
 export interface ChartedMap {
@@ -121,7 +130,14 @@ function parseAllegiances(raw: unknown): AllegianceName[] {
     const r = entry as Record<string, unknown>;
     const code = word(r, "code");
     if (code === "") continue;
-    out.push({ code, name: word(r, "name"), short: word(r, "short") });
+    out.push({
+      code,
+      name: word(r, "name"),
+      short: word(r, "short"),
+      // Only ever written when it is true, so an older file and a published
+      // table both read as "no border", which is what they meant.
+      ...(r["border"] === true ? { border: true } : {}),
+    });
   }
   return out;
 }

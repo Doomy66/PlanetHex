@@ -52,6 +52,20 @@ function rowFor(held: PolityRow): HTMLElement {
     field("polity-short", held.short, "Consulate", "Short name for the map"),
   );
 
+  // Whether a frontier is drawn round what it holds. Off for the rows a
+  // published table brought, which names the unclaimed and the client states
+  // as well as the powers. AppSpec 9.5.2.
+  const wants = document.createElement("label");
+  wants.className = "polity-border";
+  const tick = document.createElement("input");
+  tick.type = "checkbox";
+  tick.className = "polity-draw";
+  tick.checked = held.border;
+  tick.setAttribute("aria-label", "Draw a border round this polity");
+  tick.title = "Draw a frontier round the hexes this polity holds";
+  wants.append(tick);
+  row.append(wants);
+
   const drop = document.createElement("button");
   drop.type = "button";
   drop.className = "polity-drop";
@@ -72,10 +86,14 @@ function readRows(): PolityRow[] {
     code: row.querySelector<HTMLInputElement>(".polity-code")?.value ?? "",
     name: row.querySelector<HTMLInputElement>(".polity-name")?.value ?? "",
     short: row.querySelector<HTMLInputElement>(".polity-short")?.value ?? "",
+    border: row.querySelector<HTMLInputElement>(".polity-draw")?.checked ?? false,
   }));
 }
 
-function addRow(held: PolityRow = { code: "", name: "", short: "" }): void {
+/** A new row asks for a border: adding a polity is asking to see where it is. */
+const FRESH: PolityRow = { code: "", name: "", short: "", border: true };
+
+function addRow(held: PolityRow = FRESH): void {
   const rows = el("polity-rows");
   const row = rowFor(held);
   rows.append(row);
@@ -104,6 +122,7 @@ function headings(): HTMLElement {
     ["Code", "polity-code"],
     ["Name", "polity-name"],
     ["Short", "polity-short"],
+    ["Border", "polity-border"],
   ] as const) {
     const cell = document.createElement("span");
     cell.className = cls;
@@ -152,7 +171,7 @@ export function editPolities(
       add.textContent = code;
       add.title = `Add a row for ${code}`;
       add.addEventListener("click", () => {
-        addRow({ code, name: "", short: "" });
+        addRow({ ...FRESH, code });
         showSuggestions();
       });
       suggest.append(add, document.createTextNode(" "));
@@ -160,7 +179,7 @@ export function editPolities(
   };
 
   rows.replaceChildren(headings());
-  for (const one of held) addRow(one);
+  for (const one of held) addRow({ ...one, border: one.border === true });
   showHeadings();
   say(
     held.length === 0

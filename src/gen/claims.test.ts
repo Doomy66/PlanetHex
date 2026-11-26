@@ -6,8 +6,8 @@ import type { AllegianceName, BorderPath } from "../charted-map";
 
 const world = (at: string, allegiance: string): ClaimableHex => ({ at, allegiance });
 const NAMED: AllegianceName[] = [
-  { code: "ZhIN", name: "Zhodani Consulate", short: "Consulate" },
-  { code: "Hn", name: "The Hanse", short: "" },
+  { code: "ZhIN", name: "Zhodani Consulate", short: "Consulate", border: true },
+  { code: "Hn", name: "The Hanse", short: "", border: true },
 ];
 const no = new Map<string, string>();
 
@@ -58,9 +58,30 @@ describe("the borders that follow from it", () => {
   });
 
   it("draws none for a code nobody has named", () => {
-    // Otherwise an imported sector sprouts a frontier round every client state
-    // and every scrap of unclaimed space.
     expect(derivedBorders([world("0101", "CsIm")], no, [], NAMED)).toEqual([]);
+  });
+
+  it("draws none for a named polity whose row does not ask for one", () => {
+    // The import case, and the one that matters: a published table names
+    // every code a world can wear, the client states and the unclaimed among
+    // them, and ringing those puts a frontier round space nobody holds.
+    const published = [
+      { code: "CsIm", name: "Client state, Third Imperium", short: "NA" },
+      { code: "NaXX", name: "Non-Aligned, unclaimed", short: "NA" },
+    ];
+    const made = derivedBorders(
+      [world("0101", "CsIm"), world("0202", "NaXX")],
+      no,
+      [],
+      published,
+    );
+    expect(made).toEqual([]);
+  });
+
+  it("draws one for a published row the referee has since ticked", () => {
+    const published = [{ code: "CsIm", name: "Client state", short: "", border: true }];
+    const made = derivedBorders([world("0101", "CsIm")], no, [], published);
+    expect(made.map((one) => one.allegiance)).toEqual(["CsIm"]);
   });
 
   it("leaves a published border alone", () => {

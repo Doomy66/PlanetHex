@@ -22,6 +22,8 @@ export interface PolityRow {
   readonly code: string;
   readonly name: string;
   readonly short: string;
+  /** Whether to draw a frontier round the hexes it holds. AppSpec 9.5.2. */
+  readonly border: boolean;
 }
 
 /** The longest an allegiance code can be: T5 writes four, and older data two. */
@@ -89,7 +91,7 @@ export function tidyAllegiances(rows: readonly PolityRow[]): TidyReport {
       continue;
     }
     seen.add(key);
-    kept.push({ code, name, short });
+    kept.push({ code, name, short, ...(row.border ? { border: true } : {}) });
   }
 
   kept.sort((a, b) => a.code.localeCompare(b.code));
